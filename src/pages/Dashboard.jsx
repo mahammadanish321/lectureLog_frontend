@@ -111,6 +111,24 @@ const Dashboard = () => {
               <span>{isSystemActive ? 'Monitoring Active' : 'System Paused'}</span>
             </div>
           </div>
+          
+          <div className="video-stream-wrapper">
+            <img 
+              src="http://localhost:8001/video_feed" 
+              alt="Live Camera Feed" 
+              className="live-video-feed"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="video-placeholder" style={{ display: 'none' }}>
+              <div className="loader-container">
+                <p>Camera Offline or System Paused</p>
+              </div>
+            </div>
+          </div>
+
           <div className="feed-list">
             {liveAttendance.length > 0 ? (
               liveAttendance.map((item, i) => (
@@ -123,12 +141,7 @@ const Dashboard = () => {
                   <div className="status-badge">Recognized</div>
                 </div>
               ))
-            ) : (
-              <div className="empty-state">
-                <LayoutDashboard size={40} className="text-muted" style={{ marginBottom: '1rem' }} />
-                <p className="text-muted">Waiting for recognition events...</p>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 
