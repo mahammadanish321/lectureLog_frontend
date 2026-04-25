@@ -1,0 +1,238 @@
+.timetable-container {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.timetable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+}
+
+.timetable-header h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.header-info p {
+  color: var(--muted-foreground);
+  margin-bottom: 1rem;
+}
+
+.year-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.year-selector-container label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.year-select-dropdown {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  background: var(--accent);
+  border: 1px solid var(--border);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.year-select-dropdown:hover {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.legend {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.dot.busy { background: var(--primary); }
+.dot.free { background: var(--border); }
+
+/* Grid Styles */
+.timetable-grid-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.timetable-grid {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.timetable-grid th, .timetable-grid td {
+  border: 1px solid var(--border);
+  padding: 0;
+  text-align: center;
+  position: relative;
+}
+
+.timetable-grid th {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1rem 0.5rem;
+}
+
+.time-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.time-header .start {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.time-header .end {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.time-header .separator {
+  font-size: 0.65rem;
+  opacity: 0.5;
+}
+
+.day-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.02);
+  min-width: 120px;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--card) !important;
+  border-right: 2px solid var(--border) !important;
+}
+
+.slot-cell {
+  height: 90px;
+  width: 130px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slot-cell.empty:hover {
+  background: var(--accent);
+}
+
+.add-indicator {
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: var(--primary);
+}
+
+.slot-cell.empty:hover .add-indicator {
+  opacity: 1;
+}
+
+.schedule-card {
+  height: 100%;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--primary), #6366f1);
+  color: white;
+  text-align: left;
+}
+
+.schedule-card .subject {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.schedule-card .teacher {
+  font-size: 0.7rem;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.schedule-card:hover .delete-btn {
+  opacity: 1;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 450px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+}
+
+.slot-info {
+  font-size: 0.875rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.modal-actions button {
+  flex: 1;
+}

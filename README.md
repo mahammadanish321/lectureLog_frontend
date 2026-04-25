@@ -1,81 +1,16 @@
-# LectureLog Frontend
+# React + Vite
 
-A modern, responsive web application for managing lecture notes and academic resources.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Features
+Currently, two official plugins are available:
 
-- **User Authentication**: Secure login and registration system.
-- **Dashboard**: Centralized hub for accessing courses and notes.
-- **Course Management**: Create, view, and manage course materials.
-- **Note Management**: Organize notes with rich text editing.
-- **Responsive Design**: Seamless experience across desktop and mobile devices.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Tech Stack
+## React Compiler
 
-- **Frontend**: React, Vite
-- **Styling**: Tailwind CSS
-- **State Management**: React Hooks
-- **HTTP Client**: Axios
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Prerequisites
+## Expanding the ESLint configuration
 
-- Node.js (v14 or higher)
-- npm or yarn
-
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd lectureLog_frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-## Configuration
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
-## Usage
-
-Run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) to view the app in your browser.
-
-## Build
-
-Build the project for production:
-
-```bash
-npm run build
-# or
-yarn build
-```
-
-## License
-
-This project is licensed under the MIT License.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Contact
-
-- **Author**: [Your Name]
-- **Email**: [Your Email]
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
