@@ -91,8 +91,8 @@ const Login = () => {
               <div className="input-group">
                 <Lock size={18} className="input-icon" />
                 <input 
-                  type="password" 
-                  placeholder="Password" 
+                  type={loginMode === 'teacher' ? 'text' : 'password'} 
+                  placeholder={loginMode === 'teacher' ? 'College ID' : 'Password'} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required 
@@ -131,9 +131,9 @@ const Login = () => {
           </button>
         </form>
 
-        {loginMode !== 'student' && (
+        {loginMode === 'admin' && (
           <div className="login-footer">
-            <p>Don't have a staff account? <Link to="/signup" className="link">Sign Up</Link></p>
+            <p>Don't have an admin account? <Link to="/signup" className="link">Sign Up</Link></p>
           </div>
         )}
       </div>

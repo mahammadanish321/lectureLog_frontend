@@ -40,7 +40,7 @@
   border-radius: var(--radius);
   background: var(--accent);
   border: 1px solid var(--border);
-  color: #fff;
+  color: var(--foreground);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -69,6 +69,7 @@
 }
 
 .dot.busy { background: var(--primary); }
+.dot.custom { background: #eab308; }
 .dot.free { background: var(--border); }
 
 /* Grid Styles */
@@ -198,6 +199,22 @@
   opacity: 1;
 }
 
+.schedule-card.custom {
+  background: linear-gradient(135deg, #eab308, #f59e0b);
+  color: #1c1917;
+  border-left: 4px solid #b45309;
+}
+
+.schedule-card.custom .teacher,
+.schedule-card.custom .room-camera {
+  color: rgba(28, 25, 23, 0.7);
+}
+
+.schedule-card.custom .delete-btn {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1c1917;
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -235,4 +252,12 @@
 
 .modal-actions button {
   flex: 1;
+}
+
+.slot-cell.read-only {
+  cursor: default;
+}
+
+.slot-cell.read-only .schedule-card {
+  cursor: default;
 }

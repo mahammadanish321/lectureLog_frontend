@@ -1,58 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
+  --background: #fdfcf7; /* Premium Warm Creamy White */
+  --foreground: #1c1917; /* Warm Dark Coffee */
+  --text-primary: #1c1917; /* Legacy Fallback */
+  --text-secondary: #78716c; /* Legacy Fallback */
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #1c1917;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --popover-foreground: #1c1917;
+  --primary: #4f46e5; /* Radiant Indigo */
+  --primary-foreground: #ffffff;
+  --secondary: #f5f2eb;
+  --secondary-foreground: #1c1917;
+  --muted: #f5f2eb;
+  --muted-foreground: #78716c;
+  --accent: #efebe4;
+  --accent-foreground: #1c1917;
   --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #18181b;
-  --radius: 0.5rem;
+  --destructive-foreground: #ffffff;
+  --border: #e7e1d3;
+  --input: #e7e1d3;
+  --ring: #4f46e5;
+  --radius: 0.75rem;
   --font-sans: 'Inter', system-ui, sans-serif;
   --spacing: 1rem;
-  
-  --chart-1: #e76e50;
-  --chart-2: #2a9d8f;
-  --chart-3: #264653;
-  --chart-4: #e9c46a;
-  --chart-5: #f4a261;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-    --card: #09090b;
-    --card-foreground: #fafafa;
-    --popover: #09090b;
-    --popover-foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
-    --secondary: #27272a;
-    --secondary-foreground: #fafafa;
-    --muted: #27272a;
-    --muted-foreground: #a1a1aa;
-    --accent: #27272a;
-    --accent-foreground: #fafafa;
-    --destructive: #7f1d1d;
-    --destructive-foreground: #fafafa;
-    --border: #27272a;
-    --input: #27272a;
-    --ring: #d4d4d8;
-  }
 }
 
 /* Base resets */

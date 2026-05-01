@@ -9,7 +9,10 @@ import {
   Search,
   ShieldCheck,
   User,
-  Clock
+  Clock,
+  BookOpen,
+  Users,
+  MonitorPlay
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
@@ -33,9 +36,23 @@ const Layout = ({ children }) => {
     { name: 'Routine', path: '/routine', icon: Calendar },
   ];
 
+  if (isAdmin || isTeacher) {
+    navItems.push({ name: 'Students', path: '/students', icon: Users });
+  }
+
   if (isAdmin) {
-    navItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
+    navItems.push({ name: 'Subjects', path: '/subjects', icon: BookOpen });
+    navItems.push({ name: 'Classrooms', path: '/classrooms', icon: MonitorPlay });
     navItems.push({ name: 'Register Student', path: '/students/register', icon: UserPlus });
+    navItems.push({ name: 'Register Teacher', path: '/teachers/register', icon: ShieldCheck });
+  }
+
+  if (isTeacher) {
+    navItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
+  }
+
+  if (isTeacher || user?.role === 'student') {
+    navItems.push({ name: 'You', path: '/you', icon: User });
   }
 
   const currentPage = navItems.find(item => item.path === location.pathname);
@@ -64,12 +81,12 @@ const Layout = ({ children }) => {
         </nav>
 
         <div style={{ marginTop: 'auto', padding: '1rem 0' }}>
-          <div className="user-profile card" style={{ padding: '0.75rem', border: 'none', background: 'rgba(255,255,255,0.05)' }}>
+          <div className="user-profile card" style={{ padding: '0.75rem', border: 'none', background: 'rgba(28, 25, 23, 0.05)' }}>
             <div className="feed-avatar" style={{ background: isAdmin ? 'var(--primary)' : 'var(--secondary)' }}>
               {isAdmin ? <ShieldCheck size={18} /> : <User size={18} />}
             </div>
             <div className="user-details">
-              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{user?.name || user?.roll_number}</p>
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--foreground)' }}>{user?.name || user?.roll_number}</p>
               <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {user?.role}
               </p>

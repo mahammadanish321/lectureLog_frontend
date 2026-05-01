@@ -1,47 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { UserPlus, Upload, Loader2, CheckCircle, Search, Filter, Users, User, Trash2 } from 'lucide-react';
-import './RegisterStudent.css';
+import { UserPlus, Upload, Loader2, CheckCircle, Trash2, Users } from 'lucide-react';
+import './RegisterTeacher.css';
 
-const RegisterStudent = () => {
+const RegisterTeacher = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    roll_number: '',
-    college_id: '',
-    year: '1',
-    stream: 'CSE'
+    college_id: ''
   });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Student list state
-  const [students, setStudents] = useState([]);
+  // Teacher list state
+  const [teachers, setTeachers] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
-  const [filterYear, setFilterYear] = useState('all');
 
-  const fetchStudents = async () => {
+  const fetchTeachers = async () => {
     try {
-      const response = await api.get('/students');
-      setStudents(response.data);
+      const response = await api.get('/teachers');
+      setTeachers(response.data);
     } catch (err) {
-      console.error('Error fetching students:', err);
+      console.error('Error fetching teachers:', err);
     } finally {
       setFetchLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStudents();
+    fetchTeachers();
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this student? All attendance records and photos will be removed.')) return;
+    if (!window.confirm('Are you sure you want to delete this teacher? This may affect scheduled routines.')) return;
     try {
-      await api.delete(`/students/${id}`);
-      fetchStudents();
+      await api.delete(`/teachers/${id}`);
+      fetchTeachers();
     } catch (err) {
       alert('Delete failed: ' + (err.response?.data?.message || err.message));
     }
@@ -57,27 +53,24 @@ const RegisterStudent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return alert('Please upload a student photo');
+    if (!file) return alert('Please upload a teacher photo');
 
     setLoading(true);
     const data = new FormData();
     data.append('name', formData.name);
     data.append('email', formData.email);
-    data.append('roll_number', formData.roll_number);
     data.append('college_id', formData.college_id);
-    data.append('year', formData.year);
-    data.append('stream', formData.stream);
     data.append('image', file);
 
     try {
-      await api.post('/students', data, {
+      await api.post('/teachers', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setSuccess(true);
-      setFormData({ name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE' });
+      setFormData({ name: '', email: '', college_id: '' });
       setFile(null);
       setPreview(null);
-      fetchStudents(); 
+      fetchTeachers(); 
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       alert('Registration failed: ' + (err.response?.data?.message || err.message));
@@ -86,18 +79,14 @@ const RegisterStudent = () => {
     }
   };
 
-  const filteredStudents = filterYear === 'all' 
-    ? students 
-    : students.filter(s => s.year?.toString() === filterYear);
-
   return (
     <div className="register-container animate-fade-in">
       <div className="register-grid">
         {/* Registration Form */}
         <div className="register-content">
           <div className="card-header" style={{ marginBottom: '2rem' }}>
-            <h3>Student Registration</h3>
-            <p>Register a new student with identity verification.</p>
+            <h3>Teacher Registration</h3>
+            <p>Add a new teacher to assign them to class routines.</p>
           </div>
           
           <form onSubmit={handleSubmit} className="register-form">
@@ -124,49 +113,9 @@ const RegisterStudent = () => {
                     type="text" 
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. John Doe"
+                    placeholder="e.g. Dr. Sarah Connor"
                     required 
                   />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Academic Year</label>
-                    <select 
-                      value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    >
-                      <option value="1">1st Year</option>
-                      <option value="2">2nd Year</option>
-                      <option value="3">3rd Year</option>
-                      <option value="4">4th Year</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Stream</label>
-                    <select 
-                      value={formData.stream}
-                      onChange={(e) => setFormData({ ...formData, stream: e.target.value })}
-                    >
-                      <option value="CSE">CSE</option>
-                      <option value="CSBS">CSBS</option>
-                      <option value="ECE">ECE</option>
-                      <option value="ME">ME</option>
-                      <option value="CE">CE</option>
-                      <option value="EE">EE</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>College ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.college_id}
-                      onChange={(e) => setFormData({ ...formData, college_id: e.target.value })}
-                      placeholder="COL-1234"
-                      required 
-                    />
-                  </div>
                 </div>
                 <div className="form-group">
                   <label>Institutional Email</label>
@@ -174,17 +123,17 @@ const RegisterStudent = () => {
                     type="email" 
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="john@college.edu"
+                    placeholder="sarah@college.edu"
                     required 
                   />
                 </div>
                 <div className="form-group">
-                  <label>Roll Number</label>
+                  <label>College ID (Used as default password)</label>
                   <input 
                     type="text" 
-                    value={formData.roll_number}
-                    onChange={(e) => setFormData({ ...formData, roll_number: e.target.value })}
-                    placeholder="2024-CS-01"
+                    value={formData.college_id}
+                    onChange={(e) => setFormData({ ...formData, college_id: e.target.value })}
+                    placeholder="TCH-1234"
                     required 
                   />
                 </div>
@@ -193,7 +142,7 @@ const RegisterStudent = () => {
 
             <button type="submit" className="btn btn-primary submit-btn" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : <UserPlus size={18} />}
-              <span>{loading ? 'Processing...' : 'Register Student'}</span>
+              <span>{loading ? 'Processing...' : 'Register Teacher'}</span>
             </button>
           </form>
 
@@ -201,8 +150,8 @@ const RegisterStudent = () => {
             <div className="success-overlay animate-fade-in">
               <div className="success-card">
                 <CheckCircle size={48} className="icon-success" />
-                <h3>Student Registered!</h3>
-                <p className="text-muted">Facial identity has been successfully processed.</p>
+                <h3>Teacher Registered!</h3>
+                <p className="text-muted">The teacher can now be assigned to routines.</p>
                 <button className="btn btn-secondary" onClick={() => setSuccess(false)} style={{ marginTop: '1rem' }}>
                   Add Another
                 </button>
@@ -211,54 +160,41 @@ const RegisterStudent = () => {
           )}
         </div>
 
-        {/* Student List Sidebar */}
-        <div className="student-list-panel card">
+        {/* Teacher List Sidebar */}
+        <div className="teacher-list-panel card">
           <div className="card-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>Registered Students</h3>
+              <h3>Registered Teachers</h3>
               <Users size={18} className="text-muted" />
-            </div>
-            <div className="list-filters" style={{ marginTop: '1rem' }}>
-              <select 
-                value={filterYear}
-                onChange={(e) => setFilterYear(e.target.value)}
-                style={{ height: '2rem', fontSize: '0.875rem' }}
-              >
-                <option value="all">All Years</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
             </div>
           </div>
 
-          <div className="student-scroll-list">
+          <div className="teacher-scroll-list">
             {fetchLoading ? (
               <div className="loader-container">
                 <Loader2 className="animate-spin" size={24} />
               </div>
-            ) : filteredStudents.length > 0 ? (
-              filteredStudents.map((student) => (
-                <div key={student.id} className="student-item-mini">
+            ) : teachers.length > 0 ? (
+              teachers.map((teacher) => (
+                <div key={teacher.id} className="teacher-item-mini">
                   <div className="mini-image">
                     <img 
-                      src={`http://localhost:5000/public/students/${student.id}.jpg`} 
-                      alt={student.name} 
+                      src={`http://localhost:5000/public/teachers/${teacher.id}.jpg`} 
+                      alt={teacher.name} 
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://ui-avatars.com/api/?name=' + student.name;
+                        e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name;
                       }}
                     />
                   </div>
                   <div className="mini-details">
-                    <p className="name">{student.name}</p>
-                    <p className="sub">{student.roll_number} • Year {student.year} • {student.stream}</p>
+                    <p className="name">{teacher.name}</p>
+                    <p className="sub">{teacher.college_id} • {teacher.email}</p>
                   </div>
                   <button 
                     className="btn-delete-mini"
-                    onClick={() => handleDelete(student.id)}
-                    title="Delete Student"
+                    onClick={() => handleDelete(teacher.id)}
+                    title="Delete Teacher"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -266,7 +202,7 @@ const RegisterStudent = () => {
               ))
             ) : (
               <div className="empty-state">
-                <p className="text-muted">No students registered yet.</p>
+                <p className="text-muted">No teachers registered yet.</p>
               </div>
             )}
           </div>
@@ -276,4 +212,4 @@ const RegisterStudent = () => {
   );
 };
 
-export default RegisterStudent;
+export default RegisterTeacher;

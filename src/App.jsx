@@ -10,6 +10,11 @@ import Sessions from './pages/Sessions';
 import RegisterStudent from './pages/RegisterStudent';
 import ScheduleManager from './pages/ScheduleManager';
 import Timetable from './pages/Timetable';
+import SubjectManager from './pages/SubjectManager';
+import StudentList from './pages/StudentList';
+import RegisterTeacher from './pages/RegisterTeacher';
+import ClassroomManager from './pages/ClassroomManager';
+import You from './pages/You';
 import './App.css';
 
 // Protected Route Component
@@ -17,7 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
   if (loading) return (
-    <div className="loading-screen" style={{ background: '#0a0a0a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+    <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
       <p>Loading LectureLog...</p>
     </div>
   );
@@ -49,7 +54,7 @@ function App() {
           <Route
             path="/sessions"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['teacher']}>
                 <Sessions />
               </ProtectedRoute>
             }
@@ -71,6 +76,14 @@ function App() {
             }
           />
           <Route
+            path="/students"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <StudentList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/students/register"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
@@ -79,10 +92,42 @@ function App() {
             }
           />
           <Route
+            path="/teachers/register"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <RegisterTeacher />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subjects"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <SubjectManager />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/classrooms"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ClassroomManager />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/routine"
             element={
-              <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+              <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
                 <Timetable />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/you"
+            element={
+              <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
+                <You />
               </ProtectedRoute>
             }
           />

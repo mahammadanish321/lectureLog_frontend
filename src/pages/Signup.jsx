@@ -5,7 +5,7 @@ import { UserPlus, Mail, Lock, User, ShieldCheck, Loader2 } from 'lucide-react';
 import './Login.css';
 
 const Signup = () => {
-  const [role, setRole] = useState('teacher'); // 'teacher' or 'admin'
+  const [role, setRole] = useState('admin'); // Only Admin can use public signup
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,10 +24,10 @@ const Signup = () => {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/signup', { ...formData, role });
-      navigate('/login', { state: { message: 'Account created successfully! Please log in.' } });
+      await api.post('/auth/signup', { ...formData, role: 'admin' });
+      navigate('/login', { state: { message: 'Admin account created successfully! Please log in.' } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create account.');
+      setError(err.response?.data?.message || 'Failed to create admin account.');
     } finally {
       setLoading(false);
     }
@@ -39,26 +39,7 @@ const Signup = () => {
         <div className="login-header">
           <div className="logo-icon-large">LL</div>
           <h1>Join LectureLog</h1>
-          <p>Select your role to create an account</p>
-        </div>
-
-        <div className="login-tabs">
-          <button 
-            type="button"
-            className={`tab-btn ${role === 'teacher' ? 'active' : ''}`}
-            onClick={() => setRole('teacher')}
-          >
-            <User size={14} />
-            <span>Teacher</span>
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${role === 'admin' ? 'active' : ''}`}
-            onClick={() => setRole('admin')}
-          >
-            <ShieldCheck size={14} />
-            <span>Admin</span>
-          </button>
+          <p>Create an Admin Account</p>
         </div>
 
         {error && <div className="error-message badge-danger" style={{ padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
@@ -102,7 +83,7 @@ const Signup = () => {
 
           <button type="submit" className="btn btn-primary login-btn" disabled={loading} style={{ marginTop: '1rem' }}>
             {loading ? <Loader2 className="animate-spin" /> : <UserPlus size={20} />}
-            <span>{loading ? 'Creating account...' : `Sign Up as ${role.charAt(0).toUpperCase() + role.slice(1)}`}</span>
+            <span>{loading ? 'Creating Admin...' : 'Sign Up as Admin'}</span>
           </button>
         </form>
 
