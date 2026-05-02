@@ -91,8 +91,8 @@
 }
 
 .btn-delete-mini:hover {
-  background-color: #fee2e2;
-  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--error);
 }
 
 @media (max-width: 1024px) {
@@ -132,13 +132,14 @@
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.2s, background-color 0.2s;
-  background: var(--background);
+  transition: all 0.3s ease;
+  background: var(--secondary);
 }
 
 .photo-upload-label:hover {
   border-color: var(--primary);
-  background: var(--accent);
+  background-color: rgba(30, 113, 69, 0.05);
+  box-shadow: 0 4px 12px rgba(30, 113, 69, 0.15);
 }
 
 .photo-placeholder {
