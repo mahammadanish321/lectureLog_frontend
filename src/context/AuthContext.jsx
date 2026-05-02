@@ -8,6 +8,23 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Development mode: bypass login if VITE_BYPASS_AUTH is set or localStorage flag exists
+    const bypassAuth = localStorage.getItem('bypassAuth') === 'true';
+    
+    if (bypassAuth || import.meta.env.VITE_BYPASS_AUTH === 'true') {
+      const mockUser = {
+        id: 'dev-admin-001',
+        email: 'admin@lectureLog.dev',
+        name: 'Admin User',
+        role: 'admin',
+        verified: true
+      };
+      setUser(mockUser);
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      setLoading(false);
+      return;
+    }
+
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -46,10 +63,24 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    localStorage.removeItem('bypassAuth');
+  };
+
+  const enableBypass = (role = 'admin') => {
+    const mockUser = {
+      id: `dev-${role}-${Date.now()}`,
+      email: `${role}@lectureLog.dev`,
+      name: `${role.charAt(0).toUpperCase() + role.slice(1)} User`,
+      role,
+      verified: true
+    };
+    setUser(mockUser);
+    localStorage.setItem('user', JSON.stringify(mockUser));
+    localStorage.setItem('bypassAuth', 'true');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, logout, loading, enableBypass }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, Loader2, User, ShieldCheck } from 'lucide-react';
@@ -13,8 +13,34 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, adminLogin, studentLogin } = useAuth();
+  const { login, adminLogin, studentLogin, enableBypass } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+D or Cmd+D to bypass login as admin
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        enableBypass('admin');
+        navigate('/');
+      }
+      // Ctrl+T or Cmd+T to bypass as teacher
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault();
+        enableBypass('teacher');
+        navigate('/');
+      }
+      // Ctrl+S or Cmd+S to bypass as student
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        enableBypass('student');
+        navigate('/');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [enableBypass, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -130,6 +156,11 @@ const Login = () => {
             <span>{loading ? 'Logging in...' : `Sign In as ${loginMode.charAt(0).toUpperCase() + loginMode.slice(1)}`}</span>
           </button>
         </form>
+
+        {/* Dev mode hint */}
+        <div style={{ marginTop: '1.5rem', padding: '0.75rem', backgroundColor: 'rgba(30, 113, 69, 0.05)', borderRadius: '0.5rem', fontSize: '0.75rem', color: 'var(--muted-foreground)', textAlign: 'center', border: '1px solid rgba(30, 113, 69, 0.1)' }}>
+          <strong>Dev shortcuts:</strong> Ctrl+D (Admin) | Ctrl+T (Teacher) | Ctrl+S (Student)
+        </div>
 
         {loginMode === 'admin' && (
           <div className="login-footer">
