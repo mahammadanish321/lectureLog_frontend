@@ -1,30 +1,53 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Primary Colors - Modern Forest Green Palette */
+  --primary: #1E7145; /* Forest Green - Main Brand Color */
+  --primary-light: #10B981; /* Emerald Green - Accents */
+  --primary-dark: #15553A; /* Dark Green - Depth */
+  --primary-foreground: #ffffff;
+
+  /* Background & Surface Colors */
   --background: #fdfcf7; /* Premium Warm Creamy White */
   --foreground: #1c1917; /* Warm Dark Coffee */
-  --text-primary: #1c1917; /* Legacy Fallback */
-  --text-secondary: #78716c; /* Legacy Fallback */
   --card: #ffffff;
   --card-foreground: #1c1917;
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
-  --primary: #4f46e5; /* Radiant Indigo */
-  --primary-foreground: #ffffff;
+  
+  /* Secondary & Neutral Colors */
   --secondary: #f5f2eb;
   --secondary-foreground: #1c1917;
   --muted: #f5f2eb;
   --muted-foreground: #78716c;
-  --accent: #efebe4;
+  --accent: #F3F4F6; /* Light Gray for hover states */
   --accent-foreground: #1c1917;
+  
+  /* Status Colors */
+  --success: #10B981; /* Emerald - Success State */
+  --warning: #F59E0B; /* Amber - Warning State */
+  --error: #EF4444; /* Red - Error State */
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  
+  /* UI Elements */
   --border: #e7e1d3;
   --input: #e7e1d3;
-  --ring: #4f46e5;
+  --ring: #1E7145; /* Updated to match primary */
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  
+  /* Legacy Fallbacks */
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  
+  /* Typography & Layout */
   --radius: 0.75rem;
   --font-sans: 'Inter', system-ui, sans-serif;
   --spacing: 1rem;
+  
+  /* Shadows - Donezo Style */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* Base resets */
@@ -58,11 +81,12 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.875rem;
   font-weight: 500;
   padding: 0.5rem 1rem;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition: all 0.2s ease;
   cursor: pointer;
   border: 1px solid transparent;
   gap: 0.5rem;
   text-decoration: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn:disabled {
@@ -73,22 +97,33 @@ h1, h2, h3, h4, h5, h6 {
 .btn-primary {
   background-color: var(--primary);
   color: var(--primary-foreground);
+  box-shadow: var(--shadow-md);
 }
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover { 
+  background-color: var(--primary-dark);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
 
 .btn-secondary {
   background-color: var(--secondary);
   color: var(--secondary-foreground);
   border-color: var(--border);
 }
-.btn-secondary:hover { background-color: var(--accent); }
+.btn-secondary:hover { 
+  background-color: var(--accent);
+  border-color: var(--primary-light);
+}
 
 .btn-outline {
   background-color: transparent;
   border: 1px solid var(--border);
   color: var(--foreground);
 }
-.btn-outline:hover { background-color: var(--accent); }
+.btn-outline:hover { 
+  background-color: var(--accent);
+  border-color: var(--primary);
+}
 
 /* Card System */
 .card {
@@ -96,6 +131,13 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--card-foreground);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light);
 }
 
 /* Input System */
@@ -119,19 +161,67 @@ input:focus, select:focus, textarea:focus {
 
 /* Utilities */
 .text-muted { color: var(--muted-foreground); }
-.badge-danger { 
-  background-color: var(--destructive); 
-  color: var(--destructive-foreground);
-  padding: 0.25rem 0.5rem;
+
+/* Badge System - Status Colors */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
+  font-weight: 600;
+  gap: 0.35rem;
 }
 
+.badge-success { 
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.badge-warning { 
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.badge-danger, .badge-error { 
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+}
+
+.badge-muted {
+  background-color: var(--secondary);
+  color: var(--muted-foreground);
+}
+
+.badge-primary {
+  background-color: rgba(30, 113, 69, 0.1);
+  color: var(--primary);
+}
+
+/* Animations */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -12,7 +12,9 @@ import {
   Clock,
   BookOpen,
   Users,
-  MonitorPlay
+  MonitorPlay,
+  Menu,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
@@ -21,6 +23,7 @@ const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = () => {
     logout();
@@ -101,8 +104,17 @@ const Layout = ({ children }) => {
 
       <main className="main-content">
         <header className="top-navbar">
-          <div className="page-title">
-            <h2>{currentPage ? currentPage.name : 'Portal'}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button 
+              className="menu-toggle" 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none' }}
+            >
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <div className="page-title">
+              <h2>{currentPage ? currentPage.name : 'Portal'}</h2>
+            </div>
           </div>
           <div className="navbar-actions">
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
