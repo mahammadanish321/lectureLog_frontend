@@ -1,218 +1,213 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { MonitorPlay, Loader2, Edit2, Trash2, Check, X } from 'lucide-react';
+import { MonitorPlay, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle, Camera } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './ClassroomManager.css';
 
 const ClassroomManager = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ name: '', camera_url: '' });
-  const [editingId, setEditingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal & Form State
+  const [showModal, setShowModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [availableCameras, setAvailableCameras] = useState([]);
+  const [success, setSuccess] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    camera_source: ''
+  });
+
+  const fetchClassrooms = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/classrooms');
+      setClassrooms(response.data);
+    } catch (err) {
+      console.error('Failed to load classrooms');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchClassrooms();
   }, []);
 
-  useEffect(() => {
-    const getCameras = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => stream.getTracks().forEach(track => track.stop()))
-          .catch(() => {});
+  const handleEditClick = (room) => {
+    setFormData({
+      name: room.name,
+      camera_source: room.camera_source
+    });
+    setCurrentEditId(room.id);
+    setIsEditMode(true);
+    setShowModal(true);
+  };
 
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        
-        const cameraList = videoDevices.map((device, index) => ({
-          id: device.deviceId,
-          name: device.label || `Camera ${index}`,
-          index: index
-        }));
-        
-        setAvailableCameras(cameraList);
-      } catch (err) {
-        console.error("Failed to fetch cameras:", err);
-      }
-    };
-    
-    getCameras();
-  }, []);
-
-  const fetchClassrooms = async () => {
-    try {
-      const response = await api.get('/classrooms');
-      setClassrooms(response.data);
-    } catch (err) {
-      console.error('Error fetching classrooms:', err);
-    } finally {
-      setLoading(false);
-    }
+  const closeModal = () => {
+    setShowModal(false);
+    setIsEditMode(false);
+    setCurrentEditId(null);
+    setFormData({ name: '', camera_source: '' });
+    setSuccess(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (editingId) {
-        await api.put(`/classrooms/${editingId}`, formData);
-        setEditingId(null);
+      if (isEditMode) {
+        await api.put(`/classrooms/${currentEditId}`, formData);
       } else {
         await api.post('/classrooms', formData);
       }
-      setFormData({ name: '', camera_url: '' });
-      fetchClassrooms();
+      setSuccess(true);
+      setTimeout(() => {
+        closeModal();
+        fetchClassrooms();
+      }, 1200);
     } catch (err) {
-      alert('Error saving classroom: ' + (err.response?.data?.message || err.message));
+      alert('Operation Error: ' + (err.response?.data?.message || err.message));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this classroom?')) return;
+    if (!window.confirm('Decommission this classroom and its AI monitoring?')) return;
     try {
       await api.delete(`/classrooms/${id}`);
       fetchClassrooms();
     } catch (err) {
-      alert('Error deleting classroom: ' + (err.response?.data?.message || err.message));
+      alert('Delete failed.');
     }
   };
 
-  const startEdit = (classroom) => {
-    setEditingId(classroom.id);
-    setFormData({ name: classroom.name, camera_url: classroom.camera_url || '' });
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setFormData({ name: '', camera_url: '' });
-  };
+  const filteredRooms = classrooms.filter(r => 
+    r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (r.camera_source && r.camera_source.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="classroom-manager animate-fade-in">
-      <div className="card-header" style={{ marginBottom: '2rem' }}>
-        <h2>Classroom Management</h2>
-        <p className="text-muted">Manage available rooms and their associated camera IDs.</p>
+    <div className="classroom-manager-container">
+      <div className="management-header-row">
+        <div className="title-section">
+          <h1>Classroom Management</h1>
+        </div>
+        <div className="management-context-pill">
+          <span className="meta">Admin</span>
+          <span className="title">Resource Fleet</span>
+        </div>
+        <div className="header-actions">
+          <button className="action-btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={16} style={{ marginRight: '8px' }} />
+            Initialize Classroom
+          </button>
+          <button className="action-btn-outline" onClick={fetchClassrooms}>
+            Refresh Fleet
+          </button>
+        </div>
       </div>
 
-      <div className="manager-grid">
-        {/* Add/Edit Form */}
-        <div className="card form-card">
-          <div className="card-header">
-            <h3>{editingId ? 'Edit Classroom' : 'Add New Classroom'}</h3>
+      <div className="classroom-table-card">
+        <div className="table-controls">
+          <div className="search-box">
+            <Search size={18} color="#94a3b8" />
+            <input 
+              type="text" 
+              placeholder="Search by room name or camera source..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <form onSubmit={handleSubmit} className="classroom-form">
-            <div className="form-group">
-              <label>Room / Lab Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Lab 4A"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
-             <div className="form-group">
-               <label>Camera / CCTV Input</label>
-               {availableCameras.length > 0 ? (
-                 <select
-                   value={formData.camera_url}
-                   onChange={(e) => setFormData({ ...formData, camera_url: e.target.value })}
-                   required
-                   style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                 >
-                   <option value="" style={{ background: '#111', color: '#888' }}>-- Select Camera Input --</option>
-                   {availableCameras.map((cam) => (
-                     <option key={cam.id} value={cam.name} style={{ background: '#111', color: '#fff' }}>
-                       {cam.name} (Index {cam.index})
-                     </option>
-                   ))}
-                 </select>
-               ) : (
-                 <input
-                   type="text"
-                   placeholder="Type camera name (e.g. Smart Connect Camera)"
-                   value={formData.camera_url}
-                   onChange={(e) => setFormData({ ...formData, camera_url: e.target.value })}
-                   required
-                 />
-               )}
-               <small className="helper-text">Directly connect organizational camera setups cleanly.</small>
-             </div>
-            <div className="form-actions">
-              {editingId && (
-                <button type="button" className="btn btn-secondary" onClick={cancelEdit}>
-                  <X size={16} /> Cancel
-                </button>
-              )}
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                {editingId ? 'Update Classroom' : 'Add Classroom'}
-              </button>
-            </div>
-          </form>
         </div>
 
-        {/* Classroom List */}
-        <div className="card list-card">
-          <div className="card-header">
-            <h3>Current Classrooms</h3>
-          </div>
-          {loading ? (
-            <div className="loader-container">
-              <Loader2 className="animate-spin" size={24} />
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>ROOM NAME</th>
-                    <th>CAMERA IDs</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classrooms.length > 0 ? (
-                    classrooms.map((c) => (
-                      <tr key={c.id}>
-                        <td style={{ fontWeight: '500' }}>{c.name}</td>
-                        <td className="text-muted">{c.camera_url || 'N/A'}</td>
-                        <td className="actions-cell">
-                          <button 
-                            className="btn-icon btn-edit" 
-                            onClick={() => startEdit(c)}
-                            title="Edit"
-                          >
-                            <Edit2 size={16} />
-                            <span>Edit</span>
-                          </button>
-                          <button 
-                            className="btn-icon btn-delete" 
-                            onClick={() => handleDelete(c.id)}
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                            <span>Delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" className="text-center text-muted" style={{ padding: '2rem' }}>
-                        No classrooms found. Add one to get started.
+        <div className="classroom-data-table-wrapper">
+          <table className="classroom-data-table">
+            <thead>
+              <tr><th>Room / Lab Name</th><th>Camera Source / CCTV Input</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="3" className="loading-cell">Synchronizing hardware assets...</td></tr>
+              ) : filteredRooms.length === 0 ? (
+                <tr><td colSpan="3" className="empty-cell">No classrooms found in current fleet.</td></tr>
+              ) : (
+                filteredRooms.map((room) => (
+                  <tr key={room.id}>
+                    <td><span className="room-name-badge">{room.name}</span></td>
+                    <td><span className="camera-source-text">{room.camera_source || 'No source configured'}</span></td>
+                    {isAdmin && (
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                          <button className="btn-edit" onClick={() => handleEditClick(room)}><Edit2 size={14} /></button>
+                          <button className="btn-delete" onClick={() => handleDelete(room.id)}><Trash2 size={14} /></button>
+                        </div>
                       </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* CLASSROOM INITIALIZATION MODAL */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-pop-in">
+            <div className="modal-header">
+              <h2>{isEditMode ? 'Update Classroom' : 'Initialize New Resource'}</h2>
+              <p>{isEditMode ? 'Modify hardware source and name.' : 'Define a new monitoring endpoint for the AI service.'}</p>
+            </div>
+
+            {success ? (
+              <div className="success-card-inline">
+                <CheckCircle size={48} color="#22c55e" />
+                <h3>{isEditMode ? 'Fleet Updated' : 'Resource Initialized'}</h3>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="classroom-form">
+                <div className="form-group">
+                  <label>Room / Lab Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. CS Lab 4A" 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    required 
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Camera / CCTV Input</label>
+                  <input 
+                    type="text" 
+                    placeholder="Camera ID or RTSP/Web Stream URL" 
+                    value={formData.camera_source} 
+                    onChange={e => setFormData({...formData, camera_source: e.target.value})} 
+                    required 
+                  />
+                </div>
+                <p className="form-hint">ID used by the AI monitoring microservice to capture live video frames.</p>
+
+                <div className="modal-actions-row">
+                  <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="btn-modal-submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    {submitting ? 'Connecting...' : (isEditMode ? 'Update Resource' : 'Initialize Classroom')}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

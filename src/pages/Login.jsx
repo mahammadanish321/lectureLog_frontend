@@ -40,7 +40,7 @@ const Login = () => {
     <div className="login-container">
       <div className="login-box glass animate-fade-in">
         <div className="login-header">
-          <div className="logo-icon-large">LL</div>
+          <img src="/favicon.svg" alt="LectureLog Logo" className="logo-icon-large" style={{ width: '64px', height: '64px', margin: '0 auto 1rem', display: 'block' }} />
           <h1>LectureLog</h1>
           <p>Choose your account type to continue</p>
         </div>

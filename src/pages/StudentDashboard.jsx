@@ -266,7 +266,7 @@ const StudentDashboard = () => {
       </div>
 
       {/* My Activity Panel */}
-      <section className="my-activity-section glass animate-fade-in" style={{ padding: '1.5rem', marginBottom: '2rem', borderRadius: '12px' }}>
+      <section className="my-activity-section glass animate-fade-in" style={{ padding: '1.5rem', marginBottom: '2rem', borderRadius: 'var(--radius-lg)' }}>
         <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
           <CheckCircle size={22} className="text-primary" style={{ color: 'var(--primary)' }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>My Activity</h2>
@@ -284,13 +284,13 @@ const StudentDashboard = () => {
                 : (schedule.isCustom ? '2px solid #eab308' : '1px solid rgba(28, 25, 23, 0.08)');
 
               return (
-                <div key={index} className={`activity-card ${schedule.isCancelled ? 'cancelled-card' : ''}`} style={{ padding: '1.25rem', borderRadius: '10px', background: cardBg, border: cardBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: schedule.isCancelled ? 0.6 : 1 }}>
+                <div key={index} className={`activity-card ${schedule.isCancelled ? 'cancelled-card' : ''}`} style={{ padding: '1.25rem', borderRadius: 'var(--radius-sm)', background: cardBg, border: cardBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: schedule.isCancelled ? 0.6 : 1 }}>
                   <div className="activity-details">
-                    <h4 style={{ fontWeight: 600, fontSize: '1rem', color: schedule.isCancelled ? '#ef4444' : '#1c1917', marginBottom: '4px', textDecoration: schedule.isCancelled ? 'line-through' : 'none' }}>{schedule.subject_name}</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'rgba(28, 25, 23, 0.6)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <h4 style={{ fontWeight: 600, fontSize: '1rem', color: schedule.isCancelled ? '#ef4444' : 'var(--foreground)', marginBottom: '4px', textDecoration: schedule.isCancelled ? 'line-through' : 'none' }}>{schedule.subject_name}</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <User size={12} /> {schedule.teacher_name}
                     </p>
-                    <p style={{ fontSize: '0.8rem', color: 'rgba(28, 25, 23, 0.6)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                       <Clock size={12} /> {schedule.start_time.substring(0, 5)} - {schedule.end_time.substring(0, 5)}
                     </p>
                   </div>
@@ -318,9 +318,9 @@ const StudentDashboard = () => {
                         </span>
                         <button 
                           onClick={() => handleRecheck(schedule)}
-                          style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', background: 'rgba(28, 25, 23, 0.05)', border: '1px solid rgba(28, 25, 23, 0.2)', color: '#1c1917', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={(e) => e.target.style.background = 'rgba(28, 25, 23, 0.1)'}
-                          onMouseOut={(e) => e.target.style.background = 'rgba(28, 25, 23, 0.05)'}
+                          style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseOver={(e) => e.target.style.background = 'var(--secondary)'}
+                          onMouseOut={(e) => e.target.style.background = 'var(--muted)'}
                         >
                           Request Recheck
                         </button>

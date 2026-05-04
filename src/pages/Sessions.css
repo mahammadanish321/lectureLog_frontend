@@ -106,13 +106,23 @@ tr:hover td {
 }
 
 .modal-content {
-  width: 100%;
-  max-width: 450px;
-  border-radius: var(--radius);
+  width: 76vw;
+  min-width: min(1080px, 100%);
+  max-width: 1400px;
+  height: 80vh;
+  max-height: 900px;
+  border-radius: 32px;
   border: 1px solid var(--border);
   background-color: var(--card);
   padding: 2rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.modal-content::-webkit-scrollbar {
+  display: none;
 }
 
 .modal-content h3 {

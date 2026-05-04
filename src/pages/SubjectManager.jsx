@@ -1,165 +1,212 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
+import { BookOpen, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './SubjectManager.css';
 
-const API_URL = 'http://localhost:5000/api/subjects';
-
 const SubjectManager = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({ name: '', code: '' });
-  const [editingId, setEditingId] = useState(null);
-
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal & Form State
+  const [showModal, setShowModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [formData, setFormData] = useState({
+    code: '',
+    name: ''
+  });
 
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(API_URL);
-      setSubjects(res.data);
-      setError(null);
+      const response = await api.get('/subjects');
+      setSubjects(response.data);
     } catch (err) {
-      console.error('Error fetching subjects:', err);
-      setError('Failed to load subjects.');
+      console.error('Failed to load subjects');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  useEffect(() => {
+    fetchSubjects();
+  }, []);
+
+  const handleEditClick = (subject) => {
+    setFormData({
+      code: subject.code,
+      name: subject.name
+    });
+    setCurrentEditId(subject.id);
+    setIsEditMode(true);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setIsEditMode(false);
+    setCurrentEditId(null);
+    setFormData({ code: '', name: '' });
+    setSuccess(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.code) {
-      setError('Both Subject Name and Code are required.');
-      return;
-    }
-
+    setSubmitting(true);
     try {
-      if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, formData);
+      if (isEditMode) {
+        await api.put(`/subjects/${currentEditId}`, formData);
       } else {
-        await axios.post(API_URL, formData);
+        await api.post('/subjects', formData);
       }
-      setFormData({ name: '', code: '' });
-      setEditingId(null);
-      setError(null);
-      fetchSubjects();
+      setSuccess(true);
+      setTimeout(() => {
+        closeModal();
+        fetchSubjects();
+      }, 1200);
     } catch (err) {
-      console.error('Error saving subject:', err);
-      setError(err.response?.data?.message || 'Failed to save subject.');
+      alert('Operation Error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const handleEdit = (subject) => {
-    setFormData({ name: subject.name, code: subject.code || '' });
-    setEditingId(subject.id);
-    setError(null);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this subject?')) return;
+    if (!window.confirm('Remove this subject from the curriculum?')) return;
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await api.delete(`/subjects/${id}`);
       fetchSubjects();
     } catch (err) {
-      console.error('Error deleting subject:', err);
-      setError(err.response?.data?.message || 'Failed to delete subject.');
+      alert('Delete failed.');
     }
   };
 
-  const cancelEdit = () => {
-    setFormData({ name: '', code: '' });
-    setEditingId(null);
-    setError(null);
-  };
+  const filteredSubjects = subjects.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    s.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="subject-manager-container">
-      <h1 className="page-title">Subject Management</h1>
-      <p className="page-subtitle">Manage academy subjects and codes.</p>
-
-      {error && <div className="error-message">{error}</div>}
-
-      <div className="subject-manager-content">
-        <div className="subject-form-card">
-          <h2>{editingId ? 'Edit Subject' : 'Add New Subject'}</h2>
-          <form onSubmit={handleSubmit} className="subject-form">
-            <div className="form-group">
-              <label htmlFor="name">Subject Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Advanced Mathematics"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="code">Subject Code</label>
-              <input
-                type="text"
-                id="code"
-                name="code"
-                value={formData.code}
-                onChange={handleChange}
-                placeholder="e.g. MATH-401"
-                required
-              />
-            </div>
-            <div className="form-actions">
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Update Subject' : 'Add Subject'}
-              </button>
-              {editingId && (
-                <button type="button" onClick={cancelEdit} className="btn-secondary">
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
+      <div className="management-header-row">
+        <div className="title-section">
+          <h1>Subject Management</h1>
         </div>
-
-        <div className="subject-list-card">
-          <h2>Current Subjects</h2>
-          {loading ? (
-            <p className="loading-text">Loading subjects...</p>
-          ) : subjects.length === 0 ? (
-            <p className="no-data-text">No subjects found. Add one above!</p>
-          ) : (
-            <div className="table-responsive">
-              <table className="subject-table">
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Name</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subjects.map((subject) => (
-                    <tr key={subject.id}>
-                      <td className="code-cell">{subject.code || '-'}</td>
-                      <td>{subject.name}</td>
-                      <td className="actions-cell">
-                        <button onClick={() => handleEdit(subject)} className="btn-edit">Edit</button>
-                        <button onClick={() => handleDelete(subject.id)} className="btn-delete">Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="management-context-pill">
+          <span className="meta">Admin</span>
+          <span className="title">Academic Curriculum</span>
+        </div>
+        <div className="header-actions">
+          <button className="action-btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={16} style={{ marginRight: '8px' }} />
+            Initialize Subject
+          </button>
+          <button className="action-btn-outline" onClick={fetchSubjects}>
+            Refresh Curriculum
+          </button>
         </div>
       </div>
+
+      <div className="subject-table-card">
+        <div className="table-controls">
+          <div className="search-box">
+            <Search size={18} color="#94a3b8" />
+            <input 
+              type="text" 
+              placeholder="Search by code or subject name..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="subject-data-table-wrapper">
+          <table className="subject-data-table">
+            <thead>
+              <tr><th>Code</th><th>Subject Title</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="3" className="loading-cell">Updating curriculum data...</td></tr>
+              ) : filteredSubjects.length === 0 ? (
+                <tr><td colSpan="3" className="empty-cell">No subjects found.</td></tr>
+              ) : (
+                filteredSubjects.map((subject) => (
+                  <tr key={subject.id}>
+                    <td><span className="subject-code-badge">{subject.code}</span></td>
+                    <td><span className="subject-title">{subject.name}</span></td>
+                    {isAdmin && (
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                          <button className="btn-edit" onClick={() => handleEditClick(subject)}><Edit2 size={14} /></button>
+                          <button className="btn-delete" onClick={() => handleDelete(subject.id)}><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SUBJECT INITIALIZATION MODAL */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-pop-in">
+            <div className="modal-header">
+              <h2>{isEditMode ? 'Update Subject' : 'Initialize New Subject'}</h2>
+              <p>{isEditMode ? 'Modify curriculum details.' : 'Define a new academic course entry.'}</p>
+            </div>
+
+            {success ? (
+              <div className="success-card-inline">
+                <CheckCircle size={48} color="#22c55e" />
+                <h3>{isEditMode ? 'Subject Updated' : 'Subject Initialized'}</h3>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="subject-form">
+                <div className="form-group">
+                  <label>Subject Code</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. CS101" 
+                    value={formData.code} 
+                    onChange={e => setFormData({...formData, code: e.target.value})} 
+                    required 
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Subject Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Data Structures & Algorithms" 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    required 
+                  />
+                </div>
+
+                <div className="modal-actions-row">
+                  <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="btn-modal-submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    {submitting ? 'Processing...' : (isEditMode ? 'Update Entry' : 'Initialize Subject')}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

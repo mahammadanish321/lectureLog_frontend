@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Search, Trash2, Mail, Hash, BookOpen, Edit2, Check, X, Calendar, ArrowLeft, Clock } from 'lucide-react';
+import { Users, Search, Trash2, Mail, Hash, BookOpen, Edit2, Check, X, Calendar, ArrowLeft, Filter, UserPlus, Upload, Loader2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './StudentList.css';
 
@@ -13,8 +13,19 @@ const StudentList = () => {
   const [filterYear, setFilterYear] = useState('all');
   const [filterStream, setFilterStream] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
+  
+  // Modal & Registration State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [regSuccess, setRegSuccess] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [regFile, setRegFile] = useState(null);
+  const [regData, setRegData] = useState({
+    name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE'
+  });
+
   const [viewingAttendance, setViewingAttendance] = useState(null);
   const [studentAttendanceData, setStudentAttendanceData] = useState([]);
   const [studentSchedules, setStudentSchedules] = useState([]);
@@ -28,8 +39,7 @@ const StudentList = () => {
       setStudents(response.data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching students:', err);
-      setError('Failed to load students.');
+      setError('Failed to load student directory.');
     } finally {
       setLoading(false);
     }
@@ -38,6 +48,67 @@ const StudentList = () => {
   useEffect(() => {
     fetchStudents();
   }, []);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setRegFile(file);
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleEditClick = (student) => {
+    setRegData({
+      name: student.name,
+      email: student.email,
+      roll_number: student.roll_number,
+      college_id: student.college_id,
+      year: student.year?.toString() || '1',
+      stream: student.stream || 'CSE'
+    });
+    setPreview(`http://localhost:5000/public/students/${student.id}.jpg`);
+    setCurrentEditId(student.id);
+    setIsEditMode(true);
+    setShowAddModal(true);
+  };
+
+  const closeModal = () => {
+    setShowAddModal(false);
+    setIsEditMode(false);
+    setCurrentEditId(null);
+    setRegData({ name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE' });
+    setRegFile(null);
+    setPreview(null);
+    setRegSuccess(false);
+  };
+
+  const handleRegSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    const data = new FormData();
+    Object.keys(regData).forEach(key => data.append(key, regData[key]));
+    if (regFile) data.append('image', regFile);
+
+    try {
+      if (isEditMode) {
+        await api.put(`/students/${currentEditId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        if (!regFile) { alert('Please upload a student photo.'); setSubmitting(false); return; }
+        await api.post('/students', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      }
+      
+      setRegSuccess(true);
+      setTimeout(() => {
+        closeModal();
+        fetchStudents();
+      }, 1500);
+    } catch (err) {
+      alert('Operation Error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchStudentDetails = async (student) => {
     try {
@@ -48,55 +119,25 @@ const StudentList = () => {
         api.get('/sessions'),
         api.get('/time_slots')
       ]);
-
       setStudentAttendanceData(attRes.data || []);
       setStudentSchedules(schedRes.data || []);
       setAllSessions(sessRes.data || []);
       setTimeSlots(slotRes.data || []);
       setViewingAttendance(student);
     } catch (err) {
-      console.error('Error fetching student details:', err);
-      const errorMsg = err.response?.data?.message || err.message;
-      alert(`Failed to load attendance data: ${errorMsg}`);
+      alert(`Failed to load attendance details.`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this student? All their attendance records will also be permanently deleted.')) return;
+    if (!window.confirm('Delete this student profile?')) return;
     try {
       await api.delete(`/students/${id}`);
       fetchStudents();
     } catch (err) {
-      alert('Delete failed: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleEditClick = (student) => {
-    setEditingId(student.id);
-    setEditFormData({
-      name: student.name,
-      email: student.email,
-      roll_number: student.roll_number,
-      college_id: student.college_id,
-      year: student.year,
-      stream: student.stream || 'CSE'
-    });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditFormData({});
-  };
-
-  const handleSaveEdit = async (id) => {
-    try {
-      await api.put(`/students/${id}`, editFormData);
-      setEditingId(null);
-      fetchStudents();
-    } catch (err) {
-      alert('Update failed: ' + (err.response?.data?.message || err.message));
+      alert('Delete failed.');
     }
   };
 
@@ -104,426 +145,216 @@ const StudentList = () => {
     const matchesYear = filterYear === 'all' || student.year?.toString() === filterYear;
     const matchesStream = filterStream === 'all' || student.stream === filterStream;
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    return matchesYear && matchesStream && (
       student.name.toLowerCase().includes(searchLower) || 
-      student.roll_number.toLowerCase().includes(searchLower) ||
-      student.college_id.toLowerCase().includes(searchLower) ||
-      student.email.toLowerCase().includes(searchLower);
-    
-    return matchesYear && matchesStream && matchesSearch;
+      (student.roll_number && student.roll_number.toLowerCase().includes(searchLower)) ||
+      (student.college_id && student.college_id.toLowerCase().includes(searchLower))
+    );
   });
 
   if (viewingAttendance) {
     return (
       <AttendanceWeeklyGrid 
-        student={viewingAttendance}
-        attendance={studentAttendanceData}
-        schedules={studentSchedules}
-        sessions={allSessions}
-        timeSlots={timeSlots}
-        onBack={() => setViewingAttendance(null)}
+        student={viewingAttendance} attendance={studentAttendanceData} schedules={studentSchedules} sessions={allSessions} timeSlots={timeSlots} onBack={() => setViewingAttendance(null)}
       />
     );
   }
 
   return (
-    <div className="student-list-container animate-fade-in">
-      <div className="header-actions">
-        <div>
-          <h1 className="page-title">Students Directory</h1>
-          <p className="page-subtitle">View and manage all registered student details.</p>
+    <div className="student-list-container">
+      <div className="management-header-row">
+        <div className="title-section">
+          <h1>Student Management</h1>
+        </div>
+        <div className="management-context-pill">
+          <span className="meta">Admin</span>
+          <span className="title">Student Database</span>
+        </div>
+        <div className="header-actions">
+          <button className="action-btn-primary" onClick={() => setShowAddModal(true)}>
+            <UserPlus size={16} style={{ marginRight: '8px' }} />
+            Add Student
+          </button>
+          <button className="action-btn-outline" onClick={fetchStudents}>
+            Refresh List
+          </button>
         </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-
-      <div className="table-controls card">
-        <div className="search-box">
-          <Search size={18} className="text-muted" />
-          <input 
-            type="text" 
-            placeholder="Search by name, roll no, college ID, or email..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className="student-table-card">
+        <div className="table-controls">
+          <div className="search-box">
+            <Search size={18} color="#94a3b8" />
+            <input type="text" placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
+          <div className="filter-box">
+            <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}><option value="all">All Years</option><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select>
+            <select value={filterStream} onChange={(e) => setFilterStream(e.target.value)}><option value="all">All Streams</option><option value="CSE">CSE</option><option value="CSBS">CSBS</option><option value="ECE">ECE</option><option value="ME">ME</option></select>
+          </div>
         </div>
-        
-        <div className="filter-box">
-          <span className="text-muted">Filter:</span>
-          <select 
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-          >
-            <option value="all">All Years</option>
-            <option value="1">1st Year</option>
-            <option value="2">2nd Year</option>
-            <option value="3">3rd Year</option>
-            <option value="4">4th Year</option>
-          </select>
-          <select 
-            value={filterStream}
-            onChange={(e) => setFilterStream(e.target.value)}
-          >
-            <option value="all">All Streams</option>
-            <option value="CSE">CSE</option>
-            <option value="CSBS">CSBS</option>
-            <option value="ECE">ECE</option>
-            <option value="ME">ME</option>
-            <option value="CE">CE</option>
-            <option value="EE">EE</option>
-          </select>
-        </div>
-      </div>
 
-      <div className="student-table-card card">
-        <div className="table-responsive">
+        <div className="student-data-table-wrapper">
           <table className="student-data-table">
             <thead>
-              <tr>
-                <th>Profile</th>
-                <th>Student Info</th>
-                <th>IDs</th>
-                <th>Academic Year</th>
-                <th>Attendance</th>
-                {isAdmin && <th>Actions</th>}
-              </tr>
+              <tr><th>Profile</th><th>Student Info</th><th>IDs</th><th>Academic Year</th><th>Attendance</th>{isAdmin && <th>Actions</th>}</tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="5" className="loading-cell">Loading student data...</td>
+                <tr><td colSpan="6" className="loading-cell">Loading roster...</td></tr>
+              ) : filteredStudents.map((student) => (
+                <tr key={student.id}>
+                  <td>
+                    <div className="student-avatar-large">
+                      <img src={`http://localhost:5000/public/students/${student.id}.jpg`} alt={student.name} onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + student.name; }} />
+                    </div>
+                  </td>
+                  <td>
+                    <div className="info-cell"><span className="student-name">{student.name}</span><span className="student-email">{student.email}</span></div>
+                  </td>
+                  <td>
+                    <div className="info-cell"><span className="student-id">Roll: {student.roll_number}</span><span className="student-id">Col: {student.college_id}</span></div>
+                  </td>
+                  <td>
+                    <div className="info-cell"><span className="year-badge">Year {student.year}</span><span className="student-id" style={{ marginTop: '4px' }}>{student.stream}</span></div>
+                  </td>
+                  <td>
+                    <button className="btn-edit" onClick={() => fetchStudentDetails(student)}><Calendar size={14} /> View</button>
+                  </td>
+                  {isAdmin && (
+                    <td>
+                      <div className="action-buttons">
+                        <button className="btn-edit" onClick={() => handleEditClick(student)}><Edit2 size={14} /></button>
+                        <button className="btn-delete" onClick={() => handleDelete(student.id)}><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
-              ) : filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="empty-cell">No students found matching your criteria.</td>
-                </tr>
-              ) : (
-                filteredStudents.map((student) => (
-                  <tr key={student.id}>
-                    <td>
-                      <div className="student-avatar-large">
-                        <img 
-                          src={`http://localhost:5000/public/students/${student.id}.jpg`} 
-                          alt={student.name} 
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://ui-avatars.com/api/?name=' + student.name;
-                          }}
-                        />
-                      </div>
-                    </td>
-                    <td>
-                      <div className="info-cell">
-                        {editingId === student.id ? (
-                          <>
-                            <input 
-                              type="text" 
-                              className="edit-input" 
-                              value={editFormData.name} 
-                              onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} 
-                            />
-                            <input 
-                              type="email" 
-                              className="edit-input" 
-                              value={editFormData.email} 
-                              onChange={(e) => setEditFormData({...editFormData, email: e.target.value})} 
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <span className="student-name">{student.name}</span>
-                            <span className="student-email">
-                              <Mail size={12} /> {student.email}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="info-cell">
-                        {editingId === student.id ? (
-                          <>
-                            <input 
-                              type="text" 
-                              className="edit-input" 
-                              value={editFormData.roll_number} 
-                              onChange={(e) => setEditFormData({...editFormData, roll_number: e.target.value})} 
-                            />
-                            <input 
-                              type="text" 
-                              className="edit-input" 
-                              value={editFormData.college_id} 
-                              onChange={(e) => setEditFormData({...editFormData, college_id: e.target.value})} 
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <span className="student-id">
-                              <Hash size={12} /> Roll: {student.roll_number}
-                            </span>
-                            <span className="student-id">
-                              <BookOpen size={12} /> Col: {student.college_id}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      {editingId === student.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <select 
-                            className="edit-select"
-                            value={editFormData.year}
-                            onChange={(e) => setEditFormData({...editFormData, year: e.target.value})}
-                          >
-                            <option value="1">Year 1</option>
-                            <option value="2">Year 2</option>
-                            <option value="3">Year 3</option>
-                            <option value="4">Year 4</option>
-                          </select>
-                          <select 
-                            className="edit-select"
-                            value={editFormData.stream}
-                            onChange={(e) => setEditFormData({...editFormData, stream: e.target.value})}
-                          >
-                            <option value="CSE">CSE</option>
-                            <option value="CSBS">CSBS</option>
-                            <option value="ECE">ECE</option>
-                            <option value="ME">ME</option>
-                            <option value="CE">CE</option>
-                            <option value="EE">EE</option>
-                          </select>
-                        </div>
-                      ) : (
-                        <div className="info-cell">
-                          <span className={`year-badge year-${student.year}`}>
-                            Year {student.year}
-                          </span>
-                          {student.stream && (
-                            <span className="student-id" style={{ marginTop: '4px', display: 'inline-block' }}>
-                              <BookOpen size={12} /> {student.stream}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <button 
-                        className="btn-outline" 
-                        onClick={() => fetchStudentDetails(student)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                      >
-                        <Calendar size={14} />
-                        Attendance
-                      </button>
-                    </td>
-                    {isAdmin && (
-                      <td>
-                        {editingId === student.id ? (
-                          <div className="action-buttons">
-                            <button 
-                              className="btn-save-edit"
-                              onClick={() => handleSaveEdit(student.id)}
-                              title="Save"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button 
-                              className="btn-cancel-edit"
-                              onClick={handleCancelEdit}
-                              title="Cancel"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="action-buttons">
-                            <button 
-                              className="btn-edit"
-                              onClick={() => handleEditClick(student)}
-                              title="Edit Student"
-                            >
-                              <Edit2 size={16} /> Edit
-                            </button>
-                            <button 
-                              className="btn-delete"
-                              onClick={() => handleDelete(student.id)}
-                              title="Delete Student"
-                            >
-                              <Trash2 size={16} /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* CORRECTED 2-COLUMN MODAL */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-pop-in">
+            <div className="modal-header">
+              <div className="modal-header-copy">
+                <h2>{isEditMode ? 'Update Student Profile' : 'New Student Enrollment'}</h2>
+                <p>{isEditMode ? 'Modify existing identity metadata.' : 'Initialize a secure academic identity profile.'}</p>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={closeModal} aria-label="Close student enrollment popup">
+                <X size={20} />
+              </button>
+            </div>
+
+            {regSuccess ? (
+              <div className="success-card-inline">
+                <CheckCircle size={48} color="#22c55e" />
+                <h3>{isEditMode ? 'Update Successful' : 'Enrollment Successful'}</h3>
+              </div>
+            ) : (
+              <form onSubmit={handleRegSubmit}>
+                <div className="enrollment-form-grid">
+                  {/* LEFT COLUMN: IMAGE */}
+                  <div className="image-upload-column">
+                    <label className="image-upload-square">
+                      {preview ? <img src={preview} alt="Preview" /> : <Upload size={24} />}
+                      <input type="file" onChange={handleFileChange} hidden />
+                    </label>
+                    <span className="upload-label">Identity Photo</span>
+                  </div>
+
+                  {/* RIGHT COLUMN: FIELDS */}
+                  <div className="fields-column">
+                    <div className="form-group">
+                      <label>Full Legal Name</label>
+                      <input type="text" placeholder="e.g. Mahammad Anish" value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})} required />
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Roll Number</label>
+                        <input type="text" placeholder="30" value={regData.roll_number} onChange={e => setRegData({...regData, roll_number: e.target.value})} required />
+                      </div>
+                      <div className="form-group">
+                        <label>College ID</label>
+                        <input type="text" placeholder="gmit-30" value={regData.college_id} onChange={e => setRegData({...regData, college_id: e.target.value})} required />
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Academic Year</label>
+                        <select value={regData.year} onChange={e => setRegData({...regData, year: e.target.value})}>
+                          <option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Stream / Dept</label>
+                        <select value={regData.stream} onChange={e => setRegData({...regData, stream: e.target.value})}>
+                          <option value="CSE">CSE</option><option value="CSBS">CSBS</option><option value="ECE">ECE</option><option value="ME">ME</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Institutional Email</label>
+                      <input type="email" placeholder="anish@college.edu" value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})} required />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-actions-row">
+                  <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="btn-modal-submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    {submitting ? (isEditMode ? 'Updating...' : 'Registering...') : (isEditMode ? 'Update Profile' : 'Finalize Enrollment')}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const AttendanceWeeklyGrid = ({ student, attendance, schedules, sessions, timeSlots, onBack }) => {
-  const [selectedYear, setSelectedYear] = useState(student.year?.toString() || '1');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedWeek, setSelectedWeek] = useState(1);
-
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
   const getCellStatus = (day, slot) => {
-    // 1. Find the date for this Day/Week/Month (current year)
-    const year = new Date().getFullYear();
-    const firstDayOfMonth = new Date(year, selectedMonth, 1);
-    const offset = (selectedWeek - 1) * 7;
-    
-    // Find first 'Monday' of that week-ish
-    const targetDate = new Date(year, selectedMonth, 1 + offset);
-    const dayIndex = days.indexOf(day);
-    const currentDayOfWeek = targetDate.getDay(); // 0 is Sunday
-    const diff = (dayIndex + 1) - (currentDayOfWeek === 0 ? 7 : currentDayOfWeek);
-    targetDate.setDate(targetDate.getDate() + diff);
-
-    const dateStr = targetDate.toDateString();
-    
-    // Filter sessions for this specific date and year stage
-    const daySessions = sessions.filter(s => {
-      if (!s.start_time) return false;
-      const sDate = new Date(s.start_time);
-      return sDate.toDateString() === dateStr && String(s.year) === String(selectedYear);
-    });
-
-    // Check if any session matches this time slot
-    const slotSession = daySessions.find(s => {
+    const slotSession = sessions.find(s => {
       const sTime = new Date(s.start_time).toTimeString().substring(0, 5);
-      return sTime.startsWith(slot.raw_start.substring(0, 4));
+      return sTime.startsWith(slot.start_time?.substring(0, 4)) && new Date(s.start_time).getDay() === (days.indexOf(day) + 1);
     });
-
-    if (!slotSession) {
-      // Check if there's a regular schedule for this day/slot
-      const hasSchedule = schedules.find(s => 
-        s.day_of_week === day && 
-        s.start_time.startsWith(slot.raw_start.substring(0, 4)) &&
-        String(s.year) === String(selectedYear)
-      );
-      return hasSchedule ? { color: '#f1f5f9', label: 'No Class Session', subject: hasSchedule.subject_name } : { color: 'transparent', label: '', subject: '' };
-    }
-
-    const subject = slotSession.subject_name || 'N/A';
-    if (slotSession.status === 'cancelled') return { color: '#ef4444', label: 'Cancelled', subject };
-
+    if (!slotSession) return { color: 'transparent', subject: '' };
     const wasPresent = attendance.find(a => a.session_id === slotSession.id);
-    return wasPresent ? { color: '#22c55e', label: 'Present', subject } : { color: '#cbd5e1', label: 'Absent', subject };
+    return wasPresent ? { color: '#dcfce7', text: '#166534', subject: slotSession.subject_name } : { color: '#f1f5f9', text: '#64748b', subject: slotSession.subject_name };
   };
 
   return (
     <div className="attendance-detail-view animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <button className="btn-back" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer', fontWeight: 600 }}>
-          <ArrowLeft size={18} /> Back to Directory
-        </button>
-        
-        <div className="grid-filters" style={{ display: 'flex', gap: '1rem' }}>
-          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="filter-select">
-            <option value="1">1st Year</option>
-            <option value="2">2nd Year</option>
-            <option value="3">3rd Year</option>
-            <option value="4">4th Year</option>
-          </select>
-          <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="filter-select">
-            {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
-          <select value={selectedWeek} onChange={e => setSelectedWeek(parseInt(e.target.value))} className="filter-select">
-            <option value="1">1st Week</option>
-            <option value="2">2nd Week</option>
-            <option value="3">3rd Week</option>
-            <option value="4">4th Week</option>
-          </select>
-        </div>
+      <div className="management-header-row">
+        <button className="btn-edit" onClick={onBack}><ArrowLeft size={16} /> Back</button>
+        <div className="management-context-pill"><span className="meta">Identity Monitor</span><span className="title">{student.name}</span></div>
       </div>
-
-      <div className="student-profile-header card" style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem', marginBottom: '2rem' }}>
-        <img 
-          src={`http://localhost:5000/public/students/${student.id}.jpg`} 
-          alt={student.name} 
-          style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--primary)' }}
-          onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + student.name; }}
-        />
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1c1917', margin: 0 }}>{student.name}</h2>
-          <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--muted-foreground)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            <span>Roll: {student.roll_number}</span>
-            <span>{student.stream} - Year {student.year}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="weekly-grid-container card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
-        <table className="weekly-attendance-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: '8px' }}>
-          <thead>
-            <tr>
-              <th style={{ width: '100px' }}></th>
-              {days.map(d => <th key={d} style={{ padding: '10px', fontSize: '0.85rem', color: 'var(--muted-foreground)', textAlign: 'center' }}>{d}</th>)}
-            </tr>
-          </thead>
+      <div className="student-table-card" style={{ padding: '1.5rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '8px' }}>
+          <thead><tr><th></th>{days.map(d => <th key={d} style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase' }}>{d}</th>)}</tr></thead>
           <tbody>
-            {timeSlots.map((slot, idx) => (
-              <tr key={idx}>
-                <td style={{ padding: '10px', fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
-                  {slot.start_time || slot.start}
-                </td>
+            {timeSlots.map((slot, i) => (
+              <tr key={i}>
+                <td style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8' }}>{slot.start_time}</td>
                 {days.map(day => {
                   const status = getCellStatus(day, slot);
-                  return (
-                    <td key={day} style={{ height: '60px', padding: 0 }}>
-                      <div 
-                        title={`${status.label}: ${status.subject}`}
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
-                          background: status.color, 
-                          borderRadius: '8px',
-                          border: status.color === 'transparent' ? 'none' : '1px solid rgba(0,0,0,0.05)',
-                          transition: 'all 0.2s',
-                          cursor: status.color === 'transparent' ? 'default' : 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '4px',
-                          textAlign: 'center',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          color: status.color === '#22c55e' || status.color === '#ef4444' ? 'white' : '#64748b',
-                          boxShadow: status.color !== 'transparent' ? '0 2px 4px rgba(0,0,0,0.02)' : 'none'
-                        }}
-                        onMouseEnter={(e) => { if(status.color !== 'transparent') e.target.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; }}
-                      >
-                        {status.subject && (
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                            {status.subject}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  );
+                  return <td key={day} style={{ height: '50px', background: status.color, borderRadius: '10px', fontSize: '0.6rem', textAlign: 'center', color: status.text, fontWeight: 700 }}>{status.subject}</td>
                 })}
               </tr>
             ))}
           </tbody>
         </table>
-
-        <div className="heatmap-legend" style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', fontSize: '0.8rem', color: 'var(--muted-foreground)', justifyContent: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#22c55e', borderRadius: '2px' }} /> Present</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '2px' }} /> Cancelled</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#cbd5e1', borderRadius: '2px' }} /> Absent</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#f1f5f9', borderRadius: '2px' }} /> No Session Started</div>
-        </div>
       </div>
     </div>
   );

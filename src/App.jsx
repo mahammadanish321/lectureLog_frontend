@@ -12,7 +12,7 @@ import ScheduleManager from './pages/ScheduleManager';
 import Timetable from './pages/Timetable';
 import SubjectManager from './pages/SubjectManager';
 import StudentList from './pages/StudentList';
-import RegisterTeacher from './pages/RegisterTeacher';
+import TeacherList from './pages/TeacherList';
 import ClassroomManager from './pages/ClassroomManager';
 import You from './pages/You';
 import './App.css';
@@ -92,10 +92,10 @@ function App() {
             }
           />
           <Route
-            path="/teachers/register"
+            path="/teachers"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <RegisterTeacher />
+                <TeacherList />
               </ProtectedRoute>
             }
           />

@@ -569,7 +569,7 @@ const Sessions = () => {
 
       {showAttendanceModal && (
         <div className="modal-overlay animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(28, 25, 23, 0.4)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-content animate-scale-in" style={{ padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto', background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+          <div className="modal-content animate-scale-in" style={{ padding: '2rem', background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--foreground)' }}>Attendance Records</h3>
               <button 

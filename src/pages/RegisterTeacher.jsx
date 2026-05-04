@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { UserPlus, Upload, Loader2, CheckCircle, Trash2, Users } from 'lucide-react';
+import { UserPlus, Upload, Loader2, CheckCircle, Trash2, Users, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './RegisterTeacher.css';
 
 const RegisterTeacher = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,7 +16,6 @@ const RegisterTeacher = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Teacher list state
   const [teachers, setTeachers] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
 
@@ -34,12 +35,12 @@ const RegisterTeacher = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this teacher? This may affect scheduled routines.')) return;
+    if (!window.confirm('Are you sure you want to delete this teacher?')) return;
     try {
       await api.delete(`/teachers/${id}`);
       fetchTeachers();
     } catch (err) {
-      alert('Delete failed: ' + (err.response?.data?.message || err.message));
+      alert('Delete failed');
     }
   };
 
@@ -71,23 +72,37 @@ const RegisterTeacher = () => {
       setFile(null);
       setPreview(null);
       fetchTeachers(); 
-      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      alert('Registration failed: ' + (err.response?.data?.message || err.message));
+      alert('Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="register-container animate-fade-in">
+    <div className="register-container">
+      <div className="management-header-row">
+        <div className="title-section">
+          <h1>Faculty Registration</h1>
+        </div>
+
+        <div className="management-context-pill">
+          <span className="meta">Admin</span>
+          <span className="title">Academic Staff</span>
+        </div>
+
+        <div className="header-actions">
+          <button className="action-btn-outline" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft size={16} style={{ marginRight: '8px' }} />
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+
       <div className="register-grid">
-        {/* Registration Form */}
-        <div className="register-content">
-          <div className="card-header" style={{ marginBottom: '2rem' }}>
-            <h3>Teacher Registration</h3>
-            <p>Add a new teacher to assign them to class routines.</p>
-          </div>
+        <div className="register-content animate-fade-in">
+          <h3>Teacher Registration</h3>
+          <p>Register a new faculty member to enable session management and routine assignment.</p>
           
           <form onSubmit={handleSubmit} className="register-form">
             <div className="form-sections">
@@ -98,17 +113,17 @@ const RegisterTeacher = () => {
                   ) : (
                     <div className="photo-placeholder">
                       <Upload size={32} />
-                      <span>Upload Photo</span>
+                      <span>Upload Profile Photo</span>
                     </div>
                   )}
                   <input type="file" accept="image/*" onChange={handleFileChange} hidden />
                 </label>
-                <p className="helper-text">Face must be clearly visible.</p>
+                <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '1rem', fontWeight: 600 }}>Formal identity photo required.</p>
               </div>
 
               <div className="info-section">
                 <div className="form-group">
-                  <label>Full Name</label>
+                  <label>Full Name & Title</label>
                   <input 
                     type="text" 
                     value={formData.name}
@@ -128,21 +143,21 @@ const RegisterTeacher = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>College ID (Used as default password)</label>
+                  <label>Faculty ID (Default Password)</label>
                   <input 
                     type="text" 
                     value={formData.college_id}
                     onChange={(e) => setFormData({ ...formData, college_id: e.target.value })}
-                    placeholder="TCH-1234"
+                    placeholder="TCH-101"
                     required 
                   />
                 </div>
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary submit-btn" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : <UserPlus size={18} />}
-              <span>{loading ? 'Processing...' : 'Register Teacher'}</span>
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+              <span>{loading ? 'Processing Staff Record...' : 'Initialize Faculty Member'}</span>
             </button>
           </form>
 
@@ -151,8 +166,8 @@ const RegisterTeacher = () => {
               <div className="success-card">
                 <CheckCircle size={48} className="icon-success" />
                 <h3>Teacher Registered!</h3>
-                <p className="text-muted">The teacher can now be assigned to routines.</p>
-                <button className="btn btn-secondary" onClick={() => setSuccess(false)} style={{ marginTop: '1rem' }}>
+                <p>Faculty identity has been successfully created and verified.</p>
+                <button className="submit-btn" onClick={() => setSuccess(false)} style={{ marginTop: '1rem', width: '200px' }}>
                   Add Another
                 </button>
               </div>
@@ -160,51 +175,33 @@ const RegisterTeacher = () => {
           )}
         </div>
 
-        {/* Teacher List Sidebar */}
         <div className="teacher-list-panel card">
           <div className="card-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>Registered Teachers</h3>
-              <Users size={18} className="text-muted" />
+              <h3>Current Faculty</h3>
+              <Users size={18} color="#94a3b8" />
             </div>
           </div>
 
-          <div className="teacher-scroll-list">
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
             {fetchLoading ? (
-              <div className="loader-container">
-                <Loader2 className="animate-spin" size={24} />
-              </div>
-            ) : teachers.length > 0 ? (
-              teachers.map((teacher) => (
-                <div key={teacher.id} className="teacher-item-mini">
-                  <div className="mini-image">
-                    <img 
-                      src={`http://localhost:5000/public/teachers/${teacher.id}.jpg`} 
-                      alt={teacher.name} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name;
-                      }}
-                    />
-                  </div>
-                  <div className="mini-details">
-                    <p className="name">{teacher.name}</p>
-                    <p className="sub">{teacher.college_id} • {teacher.email}</p>
-                  </div>
-                  <button 
-                    className="btn-delete-mini"
-                    onClick={() => handleDelete(teacher.id)}
-                    title="Delete Teacher"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+              <div style={{ display: 'flex', justifyContent: 'center' }}><Loader2 className="animate-spin" size={24} color="var(--primary)" /></div>
+            ) : teachers.map((teacher) => (
+              <div key={teacher.id} className="teacher-item-mini">
+                <div className="mini-image">
+                  <img 
+                    src={`http://localhost:5000/public/teachers/${teacher.id}.jpg`} 
+                    alt={teacher.name} 
+                    onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name; }}
+                  />
                 </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                <p className="text-muted">No teachers registered yet.</p>
+                <div className="mini-details">
+                  <p className="name">{teacher.name}</p>
+                  <p className="sub">{teacher.college_id} • {teacher.email}</p>
+                </div>
+                <button className="btn-delete-mini" onClick={() => handleDelete(teacher.id)}><Trash2 size={14} /></button>
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>

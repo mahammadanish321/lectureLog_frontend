@@ -12,7 +12,14 @@ import {
   Clock,
   BookOpen,
   Users,
-  MonitorPlay
+  MonitorPlay,
+  Menu,
+  X,
+  PanelLeft,
+  ChevronRight,
+  AlertCircle,
+  Info,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
@@ -21,6 +28,19 @@ const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [showNotifications, setShowNotifications] = React.useState(false);
+
+  // Close mobile menu on route change
+  React.useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
 
   const handleLogout = () => {
     logout();
@@ -30,98 +50,233 @@ const Layout = ({ children }) => {
   const isAdmin = user?.role === 'admin';
   const isTeacher = user?.role === 'teacher';
 
-  // Define navigation based on role
-  const navItems = [
+  // Group navigation items based on role
+  const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Routine', path: '/routine', icon: Calendar },
   ];
 
   if (isAdmin || isTeacher) {
-    navItems.push({ name: 'Students', path: '/students', icon: Users });
+    menuItems.push({ name: 'Students', path: '/students', icon: Users });
   }
 
   if (isAdmin) {
-    navItems.push({ name: 'Subjects', path: '/subjects', icon: BookOpen });
-    navItems.push({ name: 'Classrooms', path: '/classrooms', icon: MonitorPlay });
-    navItems.push({ name: 'Register Student', path: '/students/register', icon: UserPlus });
-    navItems.push({ name: 'Register Teacher', path: '/teachers/register', icon: ShieldCheck });
+    menuItems.push({ name: 'Teachers', path: '/teachers', icon: ShieldCheck });
+  }
+
+  const generalItems = [];
+  if (isAdmin) {
+    generalItems.push({ name: 'Subjects', path: '/subjects', icon: BookOpen });
+    generalItems.push({ name: 'Classrooms', path: '/classrooms', icon: MonitorPlay });
+    generalItems.push({ name: 'Settings', path: '/settings', icon: ShieldCheck }); // Re-purposed
   }
 
   if (isTeacher) {
-    navItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
+    generalItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
   }
 
   if (isTeacher || user?.role === 'student') {
-    navItems.push({ name: 'You', path: '/you', icon: User });
+    generalItems.push({ name: 'Profile', path: '/you', icon: User });
   }
 
-  const currentPage = navItems.find(item => item.path === location.pathname);
+  const allItems = [...menuItems, ...generalItems];
+  const currentPage = allItems.find(item => item.path === location.pathname);
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <div className="logo-icon">LL</div>
-            <span>LectureLog</span>
+            <img src="/favicon.svg" alt="LectureLog Icon" style={{ width: '32px', height: '32px', minWidth: '32px' }} />
+            {!isSidebarCollapsed && <span className="logo-text">LectureLog</span>}
           </div>
+          <button className="sidebar-toggle-btn desktop-only" onClick={toggleSidebar} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <PanelLeft size={18} />
+          </button>
+          <button className="mobile-close-btn" onClick={() => setIsMobileMenuOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
+          {!isSidebarCollapsed && <div className="nav-section-label">MENU</div>}
+          {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              title={isSidebarCollapsed ? item.name : ''}
             >
               <item.icon size={18} />
-              <span>{item.name}</span>
+              {!isSidebarCollapsed && <span>{item.name}</span>}
+            </NavLink>
+          ))}
+
+          {!isSidebarCollapsed && <div className="nav-section-label" style={{ marginTop: '1.5rem' }}>GENERAL</div>}
+          {generalItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              title={isSidebarCollapsed ? item.name : ''}
+            >
+              <item.icon size={18} />
+              {!isSidebarCollapsed && <span>{item.name}</span>}
             </NavLink>
           ))}
         </nav>
 
-        <div style={{ marginTop: 'auto', padding: '1rem 0' }}>
-          <div className="user-profile card" style={{ padding: '0.75rem', border: 'none', background: 'rgba(28, 25, 23, 0.05)' }}>
-            <div className="feed-avatar" style={{ background: isAdmin ? 'var(--primary)' : 'var(--secondary)' }}>
-              {isAdmin ? <ShieldCheck size={18} /> : <User size={18} />}
-            </div>
-            <div className="user-details">
-              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--foreground)' }}>{user?.name || user?.roll_number}</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {user?.role}
-              </p>
-            </div>
-          </div>
-          <button className="logout-btn" onClick={handleLogout} style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
+        <div className="sidebar-footer">
+          {/* Footer content removed for ultra-minimalist look */}
         </div>
       </aside>
 
       <main className="main-content">
-        <header className="top-navbar">
-          <div className="page-title">
-            <h2>{currentPage ? currentPage.name : 'Portal'}</h2>
-          </div>
-          <div className="navbar-actions">
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={16} style={{ position: 'absolute', left: '0.75rem', color: 'var(--muted-foreground)' }} />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="top-search"
-              />
+        <header className="top-navbar-container">
+          <div className="top-navbar-card">
+            <div className="top-navbar-left">
+              <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+                <Menu size={24} color="var(--primary)" />
+              </button>
+              <div className="search-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search student, session or routine..."
+                  className="top-search-input"
+                />
+                <div className="search-hint">
+                  <span>⌘ F</span>
+                </div>
+              </div>
             </div>
-            <button className="btn-icon">
-              <Bell size={18} />
-            </button>
+
+            <div className="top-navbar-right">
+              <button className="circle-btn" title="Notifications" onClick={() => setShowNotifications(true)}>
+                <Bell size={18} />
+              </button>
+              <button className="circle-btn" title="Team">
+                <Users size={18} />
+              </button>
+              <div className="user-profile-widget" onClick={() => setIsProfileOpen(!isProfileOpen)}>
+                <div className="user-avatar-wrapper">
+                  <img
+                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || 'Mahammad Anish'}&background=105934&color=fff&bold=true`}
+                    alt="User"
+                  />
+                </div>
+                <div className="user-info-text">
+                  <span className="user-name">{user?.name || 'Mahammad Anish'}</span>
+                  <span className="user-email">{user?.email || 'anish130905@gmail.com'}</span>
+                </div>
+                <ChevronRight size={18} className={`profile-chevron ${isProfileOpen ? 'open' : ''}`} />
+
+                {isProfileOpen && (
+                  <div className="profile-dropdown animate-fade-in">
+                    <div className="dropdown-header mobile-only">
+                      <strong>{user?.name}</strong>
+                      <span>{user?.email}</span>
+                    </div>
+                    <button className="dropdown-item" onClick={() => navigate('/settings')}>
+                      <User size={16} />
+                      <span>My Profile</span>
+                    </button>
+                    <button className="dropdown-item" onClick={() => navigate('/settings')}>
+                      <ShieldCheck size={16} />
+                      <span>Security</span>
+                    </button>
+                    <div className="dropdown-divider"></div>
+                    <button className="dropdown-item logout" onClick={handleLogout}>
+                      <LogOut size={16} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </header>
         <div className="content-area">
           {children}
         </div>
       </main>
+
+      {/* ==========================================================================
+         GLOBAL NOTIFICATIONS POPUP
+         ========================================================================== */}
+      {showNotifications && (
+        <div className="modal-overlay" onClick={() => setShowNotifications(false)}>
+          <div className="modal-container" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>System Notifications</h2>
+              <button className="modal-close-btn" onClick={() => setShowNotifications(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="notification-list">
+                <div className="notification-item animate-fade-in">
+                  <div className="notification-icon-wrapper success">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div className="notification-content">
+                    <p>Attendance report for <strong>Machine Learning (Lab-01)</strong> has been successfully generated.</p>
+                    <div className="notification-time">
+                      <Clock size={12} />
+                      <span>Just now</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                  <div className="notification-icon-wrapper info">
+                    <Info size={20} />
+                  </div>
+                  <div className="notification-content">
+                    <p>3 new students have registered for the <strong>CS Stream</strong> today.</p>
+                    <div className="notification-time">
+                      <Clock size={12} />
+                      <span>15 minutes ago</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  <div className="notification-icon-wrapper alert">
+                    <AlertCircle size={20} />
+                  </div>
+                  <div className="notification-content">
+                    <p>System Alert: The <strong>DeepFace AI Service</strong> experienced a momentary restart.</p>
+                    <div className="notification-time">
+                      <Clock size={12} />
+                      <span>1 hour ago</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                  <div className="notification-icon-wrapper success">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div className="notification-content">
+                    <p>Schedule Sync: Daily routine for tomorrow has been updated.</p>
+                    <div className="notification-time">
+                      <Clock size={12} />
+                      <span>3 hours ago</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
