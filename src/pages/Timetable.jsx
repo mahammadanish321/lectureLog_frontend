@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, Clock, Plus, Trash2, BookOpen, User, MapPin, ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut, Edit3, Settings } from 'lucide-react';
+import { Calendar, Clock, Plus, Trash2, BookOpen, User, MapPin, ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut, Edit3, Settings, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Timetable.css';
 
@@ -30,6 +30,27 @@ const Timetable = () => {
   const [editScheduleId, setEditScheduleId] = useState(null);
   const [selectedYear, setSelectedYear] = useState(user?.year?.toString() || '1');
   const [selectedStream, setSelectedStream] = useState(user?.stream || 'CSE');
+
+  const [availableCameras, setAvailableCameras] = useState([]);
+
+  const detectCameras = async () => {
+    try {
+      // Request permission to unlock hardware labels
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Stop the stream immediately so the camera light goes off
+      stream.getTracks().forEach(track => track.stop());
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      const formatted = videoDevices.map((dev, index) => ({
+        id: index.toString(),
+        name: dev.label || `Camera ${index + 1}`
+      }));
+      setAvailableCameras(formatted);
+    } catch (err) {
+      console.warn('Camera name resolution unavailable');
+    }
+  };
 
   const [formData, setFormData] = useState({
     subject_id: '', subject_search: '', teacher_id: '', teacher_search: '', classroom_id: '', classroom_search: '', camera_id: '0'
@@ -64,6 +85,7 @@ const Timetable = () => {
   useEffect(() => {
     fetchTimeSlots();
     fetchData();
+    detectCameras();
   }, [selectedYear, selectedStream]);
 
   // NAVIGATION ACTIONS
@@ -102,8 +124,23 @@ const Timetable = () => {
     } catch (err) { alert('Failed to add column'); }
   };
 
-  const handleCellClick = (day, slot, existingSchedule = null) => {
+  const handleCellClick = async (day, slot, existingSchedule = null) => {
     if (!editMode || !isAdmin) return;
+    
+    // Live sync resources right before opening modal
+    try {
+      const [subRes, teacherRes, classRes] = await Promise.all([
+        api.get('/subjects').catch(() => ({ data: [] })),
+        api.get('/teachers').catch(() => ({ data: [] })),
+        api.get('/classrooms').catch(() => ({ data: [] }))
+      ]);
+      setSubjects(subRes.data);
+      setTeachers(teacherRes.data);
+      setClassrooms(classRes.data);
+    } catch (err) {
+      console.warn('Resource sync failed, using cached data');
+    }
+
     setSelectedSlot({ day, slot });
     if (existingSchedule) {
       setEditScheduleId(existingSchedule.id);
@@ -117,8 +154,17 @@ const Timetable = () => {
         camera_id: existingSchedule.camera_id || '0'
       });
     } else {
+      // FORCE CLEAN SLATE
       setEditScheduleId(null);
-      setFormData({ subject_id: '', subject_search: '', teacher_id: '', teacher_search: '', classroom_id: '', classroom_search: '', camera_id: '0' });
+      setFormData({ 
+        subject_id: '', 
+        subject_search: '', 
+        teacher_id: '', 
+        teacher_search: '', 
+        classroom_id: '', 
+        classroom_search: '', 
+        camera_id: '0' 
+      });
     }
     setIsModalOpen(true);
   };
@@ -139,16 +185,30 @@ const Timetable = () => {
       }
       setIsModalOpen(false);
       fetchData();
-    } catch (err) { alert('Schedule update failed'); }
+    } catch (err) { 
+      const errorMsg = err.response?.data?.message || 'Schedule update failed';
+      alert(errorMsg); 
+    }
   };
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm('Remove this entry?')) return;
+    if (!window.confirm('PERMANENTLY delete this class from the routine?')) return;
     try {
+      console.log(`[DeepDelete] Wiping schedule ID: ${id}`);
+      
+      // 1. Forcefully end any active sessions linked to this schedule first
+      await api.post('/sessions/end-by-schedule', { schedule_id: id });
+      
+      // 2. Permanently delete the routine entry
       await api.delete(`/schedules/${id}`);
+      
+      // 3. Refresh UI
       fetchData();
-    } catch (err) { alert('Delete failed'); }
+    } catch (err) { 
+      console.error('Delete failed:', err);
+      alert('Delete failed. The routing might be linked to existing data.'); 
+    }
   };
 
   const getScheduleForCell = (day, startTime) => {
@@ -248,14 +308,55 @@ const Timetable = () => {
                     >
                       {schedule ? (
                         <div className="schedule-card animate-scale-in">
-                          <span className="subject">{schedule.subject_name}</span>
+                          <div className="card-header">
+                            <span className="subject">{schedule.subject_name}</span>
+                            {editMode && isAdmin && (
+                              <button className="delete-sched-btn" onClick={(e) => handleDelete(e, schedule.id)}>
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                           <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
                           <span className="room-camera"><MapPin size={10} /> {schedule.classroom_name}</span>
-                          {editMode && <button className="delete-btn" onClick={(e) => handleDelete(e, schedule.id)}><Trash2 size={12} /></button>}
                         </div>
                       ) : custom ? (
                         <div className="schedule-card custom animate-scale-in">
-                          <span className="subject">{custom.subject_name}</span>
+                          <div className="card-header">
+                            <span className="subject">{custom.subject_name}</span>
+                            {editMode && isAdmin && (
+                              <button 
+                                className="delete-sched-btn" 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const isRoutineLinked = custom.schedule_id;
+                                  const confirmMsg = isRoutineLinked 
+                                    ? 'PERMANENTLY delete this class from the routine and end the session?' 
+                                    : 'End this custom session?';
+                                  
+                                  if (window.confirm(confirmMsg)) {
+                                    // Optimistic UI update
+                                    setActiveSessions(prev => prev.filter(s => s.id !== custom.id));
+                                    try {
+                                      if (isRoutineLinked) {
+                                        // Deep Wipe: End session AND delete routing
+                                        await api.post('/sessions/end-by-schedule', { schedule_id: custom.schedule_id });
+                                        await api.delete(`/schedules/${custom.schedule_id}`);
+                                      } else {
+                                        // Simple End
+                                        await api.post('/sessions/end', { id: custom.id });
+                                      }
+                                      fetchData();
+                                    } catch(err) { 
+                                      alert('Failed to delete class');
+                                      fetchData();
+                                    }
+                                  }
+                                }}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                           <span className="teacher"><User size={10} /> Faculty</span>
                         </div>
                       ) : (
@@ -292,11 +393,69 @@ const Timetable = () => {
               </div>
               <div className="form-group">
                 <label>Room / Lab</label>
-                <select value={formData.classroom_id} onChange={e => setFormData({ ...formData, classroom_id: e.target.value, classroom_search: e.target.options[e.target.selectedIndex].text })} required>
+                <select 
+                  value={formData.classroom_id} 
+                  onChange={e => {
+                    const roomId = e.target.value;
+                    const room = classrooms.find(c => c.id.toString() === roomId.toString());
+                    setFormData({ 
+                      ...formData, 
+                      classroom_id: roomId, 
+                      classroom_search: room ? room.name : '',
+                      camera_id: room ? room.camera_source : '0' 
+                    });
+                  }} 
+                  required
+                >
                   <option value="">Select Room</option>
                   {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+
+              {formData.classroom_id && (
+                <div className="form-group animate-fade-in" style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800 }}>CAMERA / SENSOR LINK</label>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px', 
+                    padding: '14px', 
+                    background: 'rgba(16, 89, 52, 0.03)', 
+                    borderRadius: '16px', 
+                    border: '1.5px dashed rgba(16, 89, 52, 0.2)',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      background: 'white', 
+                      borderRadius: '10px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                    }}>
+                      <Camera size={16} color="var(--primary)" />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+                        {(() => {
+                          const room = classrooms.find(c => c.id.toString() === formData.classroom_id.toString());
+                          const rawId = room ? room.camera_url : null;
+                          if (!rawId) return 'Hardware Internal';
+                          
+                          // Resolve friendly name if possible
+                          const matchedCam = availableCameras.find(cam => cam.id === rawId);
+                          return matchedCam ? matchedCam.name : `Camera Index ${rawId}`;
+                        })()}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--primary)', opacity: 0.8 }}>
+                        Auto-detecting frames for AI analysis
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn-primary">Save Session</button>

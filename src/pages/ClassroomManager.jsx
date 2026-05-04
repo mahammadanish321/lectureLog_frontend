@@ -11,6 +11,9 @@ const ClassroomManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [useManualInput, setUseManualInput] = useState(false);
+
   // Modal & Form State
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -19,8 +22,26 @@ const ClassroomManager = () => {
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    camera_source: ''
+    camera_url: ''
   });
+
+  const detectCameras = async () => {
+    try {
+      // Request permission to get device labels
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      const formattedCameras = videoDevices.map((dev, index) => ({
+        id: index.toString(),
+        name: dev.label || `Camera ${index + 1}`
+      }));
+      
+      setAvailableCameras(formattedCameras);
+    } catch (err) {
+      console.error('Camera detection failed:', err);
+    }
+  };
 
   const fetchClassrooms = async () => {
     try {
@@ -36,12 +57,17 @@ const ClassroomManager = () => {
 
   useEffect(() => {
     fetchClassrooms();
+    detectCameras();
   }, []);
 
   const handleEditClick = (room) => {
+    // If it's a URL (contains / or :) it's manual, otherwise it's hardware
+    const isManual = room.camera_url?.includes('/') || room.camera_url?.includes(':');
+    setUseManualInput(isManual);
+    
     setFormData({
       name: room.name,
-      camera_source: room.camera_source
+      camera_url: room.camera_url || ''
     });
     setCurrentEditId(room.id);
     setIsEditMode(true);
@@ -52,7 +78,7 @@ const ClassroomManager = () => {
     setShowModal(false);
     setIsEditMode(false);
     setCurrentEditId(null);
-    setFormData({ name: '', camera_source: '' });
+    setFormData({ name: '', camera_url: '' });
     setSuccess(false);
   };
 
@@ -89,7 +115,7 @@ const ClassroomManager = () => {
 
   const filteredRooms = classrooms.filter(r => 
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (r.camera_source && r.camera_source.toLowerCase().includes(searchQuery.toLowerCase()))
+    (r.camera_url && r.camera_url.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -117,9 +143,9 @@ const ClassroomManager = () => {
         <div className="table-controls">
           <div className="search-box">
             <Search size={18} color="#94a3b8" />
-            <input 
-              type="text" 
-              placeholder="Search by room name or camera source..." 
+            <input
+              type="text"
+              placeholder="Search by room name or camera source..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -140,7 +166,21 @@ const ClassroomManager = () => {
                 filteredRooms.map((room) => (
                   <tr key={room.id}>
                     <td><span className="room-name-badge">{room.name}</span></td>
-                    <td><span className="camera-source-text">{room.camera_source || 'No source configured'}</span></td>
+                    <td>
+                      <span className="camera-url-text">
+                        {(() => {
+                          const rawId = room.camera_url;
+                          if (!rawId) return 'No URL configured';
+                          
+                          // If it's a manual URL (contains / or :) show it as is
+                          if (rawId.includes('/') || rawId.includes(':')) return rawId;
+                          
+                          // Otherwise, try to resolve friendly name from hardware list
+                          const matchedCam = availableCameras.find(cam => cam.id === rawId);
+                          return matchedCam ? matchedCam.name : `Camera Index ${rawId}`;
+                        })()}
+                      </span>
+                    </td>
                     {isAdmin && (
                       <td style={{ textAlign: 'right' }}>
                         <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
@@ -175,26 +215,54 @@ const ClassroomManager = () => {
               <form onSubmit={handleSubmit} className="classroom-form">
                 <div className="form-group">
                   <label>Room / Lab Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. CS Lab 4A" 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                    required 
+                  <input
+                    type="text"
+                    placeholder="e.g. CS Lab 4A"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    required
                   />
                 </div>
-                
+
                 <div className="form-group">
-                  <label>Camera / CCTV Input</label>
-                  <input 
-                    type="text" 
-                    placeholder="Camera ID or RTSP/Web Stream URL" 
-                    value={formData.camera_source} 
-                    onChange={e => setFormData({...formData, camera_source: e.target.value})} 
-                    required 
-                  />
+                  <div className="label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ margin: 0 }}>Camera / CCTV Input</label>
+                    <button 
+                      type="button" 
+                      className="text-toggle-btn" 
+                      onClick={() => setUseManualInput(!useManualInput)}
+                      style={{ fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {useManualInput ? 'Use Hardware List' : 'Enter Manual URL'}
+                    </button>
+                  </div>
+                  
+                  {useManualInput ? (
+                    <input 
+                      type="text" 
+                      placeholder="RTSP, Web Stream URL or Manual ID" 
+                      value={formData.camera_url} 
+                      onChange={e => setFormData({...formData, camera_url: e.target.value})} 
+                      required 
+                    />
+                  ) : (
+                    <select 
+                      value={formData.camera_url} 
+                      onChange={e => setFormData({...formData, camera_url: e.target.value})}
+                      required
+                    >
+                      <option value="">Select Connected Camera</option>
+                      {availableCameras.map(cam => (
+                        <option key={cam.id} value={cam.id}>{cam.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
-                <p className="form-hint">ID used by the AI monitoring microservice to capture live video frames.</p>
+                <p className="form-hint">
+                  {useManualInput 
+                    ? "Enter the stream URL or specific hardware index." 
+                    : "Select a physically connected device from the list above."}
+                </p>
 
                 <div className="modal-actions-row">
                   <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>

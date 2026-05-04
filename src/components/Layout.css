@@ -674,3 +674,23 @@ body {
   gap: 0.3rem;
   font-weight: 500;
 }
+.no-notifications-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+  text-align: center;
+  gap: 1rem;
+}
+
+.no-notifications-state .empty-icon {
+  opacity: 0.3;
+}
+
+.no-notifications-state p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+}

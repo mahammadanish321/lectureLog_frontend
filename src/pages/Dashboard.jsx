@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import api from '../api';
 import {
   Users,
@@ -170,15 +171,16 @@ const DEMO_PRESENT_STUDENTS = [
 ];
 
 const Dashboard = () => {
-  const [stats] = useState(DEMO_STATS);
-  const [activeSessions] = useState(DEMO_ACTIVE_SESSIONS);
-  const [liveAttendance] = useState(DEMO_ATTENDANCE);
+  const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [liveAttendance, setLiveAttendance] = useState([]);
+  const [stats, setStats] = useState({ totalStudents: 0, presentToday: 0, avgAttendance: 0 });
   const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [showPresentStudentsModal, setShowPresentStudentsModal] = useState(false);
-  const [presentStudents, setPresentStudents] = useState(DEMO_PRESENT_STUDENTS);
+  const [presentStudents, setPresentStudents] = useState([]);
   const [presentStudentsLoading, setPresentStudentsLoading] = useState(false);
   const [presentStudentsError, setPresentStudentsError] = useState('');
+  const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const scrollRef = useRef(null);
@@ -188,27 +190,145 @@ const Dashboard = () => {
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      // Allow a tiny buffer for pixel rounding
       setShowLeftArrow(scrollLeft > 8);
       setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 8);
     }
   };
 
+  const handleEndSession = async (id) => {
+    if (!window.confirm('Forcefully end this monitoring session?')) return;
+    try {
+      await api.post('/sessions/end', { id });
+      setActiveSessions(prev => prev.filter(s => s.id !== id));
+      if (selectedSessionId === id) setSelectedSessionId(null);
+    } catch (err) {
+      console.error('Failed to end session');
+    }
+  };
+
+  const formatTime = (isoString) => {
+    if (!isoString) return '--:--';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return isoString;
+    }
+  };
+
+  // Fetch initial data and setup socket
   useEffect(() => {
-    // Initial check and clear loader
-    const timer = setTimeout(() => {
-      setLoading(false);
-      checkScroll();
-    }, 800);
-
-    // Add resize listener
-    window.addEventListener('resize', checkScroll);
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', checkScroll);
+    const fetchInitialData = async () => {
+      try {
+        const response = await api.get('/sessions');
+        // Only show 'active' sessions in the horizontal bar
+        const activeOnly = response.data.filter(s => s.status === 'active');
+        setActiveSessions(activeOnly);
+        
+        // Also fetch total stats and all students
+        try {
+          const statsRes = await api.get('/students');
+          setAllStudents(statsRes.data);
+          setStats(prev => ({
+            ...prev,
+            totalStudents: statsRes.data.length
+          }));
+        } catch (e) { console.error("Stats fetch error", e); }
+        
+      } catch (err) {
+        console.error('Failed to fetch sessions:', err);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [activeSessions]); // Re-check when sessions data changes
+
+    fetchInitialData();
+
+    // Initialize Socket
+    const newSocket = io('http://localhost:5000');
+    
+    newSocket.on('session_started', (newSession) => {
+      setActiveSessions(prev => [...prev, { ...newSession, status: 'active' }]);
+    });
+
+    newSocket.on('session_ended', ({ id }) => {
+      setActiveSessions(prev => prev.filter(s => s.id !== id));
+      if (selectedSessionId === id) setSelectedSessionId(null);
+    });
+
+    newSocket.on('attendance_update', (data) => {
+      // 1. Update the sidebar feed
+      setLiveAttendance(prev => [
+        {
+          student_name: data.student_name,
+          subject_name: data.subject_name || 'Class',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'present'
+        },
+        ...prev.slice(0, 9) // Keep last 10
+      ]);
+      
+      // 2. If this hit belongs to the selected session, update the modal list
+      if (selectedSessionId === data.session_id) {
+        setPresentStudents(prev => [data, ...prev]);
+      }
+
+      // 3. Update global stats instantly
+      setStats(prev => {
+        const newPresent = prev.presentToday + 1;
+        // Simple avg recalculation (present / total registered for that class)
+        // Note: For absolute accuracy, we'd use the group count we calculated in the card
+        return { 
+          ...prev, 
+          presentToday: newPresent,
+          avgAttendance: Math.round((newPresent / (prev.totalStudents || 1)) * 100) 
+        };
+      });
+    });
+
+    newSocket.on('student_registered', (newStudent) => {
+      setAllStudents(prev => [...prev, newStudent]);
+      setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
+    });
+
+    return () => newSocket.close();
+  }, [selectedSessionId]);
+
+  // Live Attendance Sync for the selected session
+  useEffect(() => {
+    const syncAttendance = async () => {
+      const sessionId = selectedSessionId || activeSessions[0]?.id;
+      if (!sessionId) return;
+
+      try {
+        const response = await api.get(`/attendance/session/${sessionId}`);
+        const students = (response.data || []).filter((item) => {
+          const status = String(item.status || 'present').toLowerCase();
+          return ['present', 'detected', 'processing'].includes(status);
+        });
+        
+        setPresentStudents(students);
+        // Also update Recent Arrivals list (limited to top 10 most recent)
+        const sorted = [...students].sort((a, b) => 
+          new Date(b.timestamp || b.marked_at) - new Date(a.timestamp || a.marked_at)
+        );
+        setLiveAttendance(sorted.slice(0, 10));
+      } catch (err) {
+        console.warn('Attendance sync error:', err.message);
+      }
+    };
+
+    syncAttendance();
+    // Refresh every 10 seconds for real-time monitoring
+    const interval = setInterval(syncAttendance, 10000);
+    return () => clearInterval(interval);
+  }, [selectedSessionId, activeSessions]);
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [activeSessions]);
 
 
   const scroll = (direction) => {
@@ -244,7 +364,7 @@ const Dashboard = () => {
     setPresentStudentsError('');
 
     if (!sessionId) {
-      setPresentStudents(DEMO_PRESENT_STUDENTS);
+      setPresentStudents([]);
       return;
     }
 
@@ -258,8 +378,8 @@ const Dashboard = () => {
       setPresentStudents(students);
     } catch (err) {
       console.error('Failed to load present students:', err);
-      setPresentStudents(DEMO_PRESENT_STUDENTS);
-      setPresentStudentsError('Showing preview data while the attendance service is unavailable.');
+      setPresentStudents([]);
+      setPresentStudentsError('Real-time attendance data is currently unavailable.');
     } finally {
       setPresentStudentsLoading(false);
     }
@@ -267,8 +387,9 @@ const Dashboard = () => {
 
   if (loading) return <div className="loader-container"><Loader2 className="animate-spin" size={40} color="var(--primary)" /></div>;
 
-
-  const currentSession = activeSessions.find(s => s.id === selectedSessionId) || activeSessions[0];
+  const currentSession = selectedSessionId 
+    ? activeSessions.find(s => s.id === selectedSessionId) 
+    : null;
 
   return (
     <div className="dashboard-container">
@@ -277,11 +398,13 @@ const Dashboard = () => {
           <h1>Dashboard</h1>
         </div>
 
-        <div className="dashboard-context-header">
-          <span className="context-meta">Year 2</span>
-          <span className="context-meta">CS Stream</span>
-          <span className="context-teacher">Dr. Sarah Johnson</span>
-        </div>
+        {currentSession && (
+          <div className="dashboard-context-header">
+            <span className="context-meta">Year {currentSession.year || 'N/A'}</span>
+            <span className="context-meta">{currentSession.stream || 'Stream'}</span>
+            <span className="context-teacher">{currentSession.teacher_name || 'Teacher'}</span>
+          </div>
+        )}
 
         <div className="header-actions">
           <button className="view-all-btn" onClick={() => setShowSessionsModal(true)}>View All Sessions</button>
@@ -303,23 +426,29 @@ const Dashboard = () => {
           <div className="infobar-container">
             {showLeftArrow && <button className="infobar-nav-btn left" onClick={() => scroll('left')}><ChevronLeft size={20} /></button>}
             <div className="active-sessions-infobar" ref={scrollRef} onScroll={checkScroll}>
-              {activeSessions.map((session) => (
-                <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
-                  <div className="session-card-main">
-                    <div className="subject">{session.subject_name}</div>
-                    <div className="teacher">{session.teacher_name}</div>
-                  </div>
-
-                  <div className="session-card-context">
-                    <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Front Cam'}</div>
-                    <div className="time-range">{session.start_time} – {session.end_time}</div>
-                  </div>
-
-                  <div className="session-card-meta">
-                    {session.year} • {session.stream}
-                  </div>
+              {activeSessions.length === 0 ? (
+                <div className="no-active-sessions">
+                  No active sessions found
                 </div>
-              ))}
+              ) : (
+                activeSessions.map((session) => (
+                  <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
+                    <div className="session-card-main">
+                      <div className="subject">{session.subject_name}</div>
+                      <div className="teacher">{session.teacher_name}</div>
+                    </div>
+
+                    <div className="session-card-context">
+                      <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Front Cam'}</div>
+                      <div className="time-range">{formatTime(session.start_time)} – {formatTime(session.end_time)}</div>
+                    </div>
+
+                    <div className="session-card-meta">
+                      {session.year} • {session.stream}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             {showRightArrow && <button className="infobar-nav-btn right" onClick={() => scroll('right')}><ChevronRight size={20} /></button>}
           </div>
@@ -329,13 +458,31 @@ const Dashboard = () => {
           <div className="mini-stats-group">
 
             <div className="mini-stat-card animate-scale-in">
-              <h4>TOTAL STUDENTS</h4>
-              <div className="value">{stats.totalStudents}</div>
-              <div className="stat-meta-tags">
-                <span className="meta-tag">YEAR 2</span>
-                <span className="meta-tag">CS STREAM</span>
+              <h4>{currentSession ? 'STUDENTS IN CLASS' : 'TOTAL STUDENTS'}</h4>
+              <div className="value">
+                {currentSession 
+                  ? allStudents.filter(s => {
+                      const sessionYear = String(currentSession.year || '').trim();
+                      const sessionStream = String(currentSession.stream || '').trim().toLowerCase();
+                      const studentYear = String(s.year || '').trim();
+                      const studentStream = String(s.stream || '').trim().toLowerCase();
+                      
+                      return studentYear === sessionYear && studentStream === sessionStream;
+                    }).length
+                  : 0
+                }
               </div>
-              <p className="footer">Registered in system</p>
+              <div className="stat-meta-tags">
+                <span className="meta-tag">
+                  {currentSession ? `YEAR ${currentSession.year}` : 'ALL YEARS'}
+                </span>
+                <span className="meta-tag">
+                  {currentSession ? currentSession.stream : 'ALL STREAMS'}
+                </span>
+              </div>
+              <p className="footer">
+                {currentSession ? 'Registered for this group' : 'Registered in system'}
+              </p>
             </div>
 
             <div
@@ -351,18 +498,38 @@ const Dashboard = () => {
               }}
             >
               <h4>PRESENT TODAY</h4>
-              <div className="value">{stats.presentToday}</div>
+              <div className="value">
+                {currentSession ? presentStudents.length : 0}
+              </div>
               <p className="footer">Students identified</p>
             </div>
 
             <div
               className="mini-stat-card animate-scale-in attendance-progress-card"
               style={{
-                background: `linear-gradient(90deg, ${stats.avgAttendance >= 80 ? '#d1fae5' : stats.avgAttendance >= 50 ? '#fef3c7' : '#fee2e2'} 0%, ${stats.avgAttendance >= 80 ? '#d1fae5' : stats.avgAttendance >= 50 ? '#fef3c7' : '#fee2e2'} ${stats.avgAttendance}%, rgba(234, 241, 247, 0.6) ${stats.avgAttendance}%, rgba(234, 241, 247, 0.6) 100%)`,
+                background: (() => {
+                  if (!currentSession) return 'rgba(234, 241, 247, 0.6)';
+                  const groupTotal = allStudents.filter(s => 
+                    String(s.year).trim() === String(currentSession.year).trim() && 
+                    String(s.stream).trim().toLowerCase() === String(currentSession.stream).toLowerCase()
+                  ).length;
+                  const percent = groupTotal > 0 ? Math.round((presentStudents.length / groupTotal) * 100) : 0;
+                  const color = percent >= 80 ? '#d1fae5' : percent >= 50 ? '#fef3c7' : '#fee2e2';
+                  return `linear-gradient(90deg, ${color} 0%, ${color} ${percent}%, rgba(234, 241, 247, 0.6) ${percent}%, rgba(234, 241, 247, 0.6) 100%)`;
+                })()
               }}
             >
               <h4>AVG. ATTENDANCE</h4>
-              <div className="value">{stats.avgAttendance}%</div>
+              <div className="value">
+                {(() => {
+                  if (!currentSession) return '0%';
+                  const groupTotal = allStudents.filter(s => 
+                    String(s.year).trim() === String(currentSession.year).trim() && 
+                    String(s.stream).trim().toLowerCase() === String(currentSession.stream).toLowerCase()
+                  ).length;
+                  return groupTotal > 0 ? `${Math.round((presentStudents.length / groupTotal) * 100)}%` : '0%';
+                })()}
+              </div>
               <p className="footer">Overall performance</p>
             </div>
           </div>
@@ -373,13 +540,28 @@ const Dashboard = () => {
           <div className="section-header-row">
             <div>
               <h3>Live Monitor</h3>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>Feed: Classroom Lab-01</p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
+                {currentSession ? `Feed: ${currentSession.classroom_name}` : 'No active feed'}
+              </p>
             </div>
-            <div className={`status-badge-compact status-present`}><div className="dot busy"></div><span>Active</span></div>
+            <div className={`status-badge-compact ${currentSession ? 'status-present' : 'status-processing'}`}>
+              <div className={`dot ${currentSession ? 'busy' : ''}`}></div>
+              <span>{currentSession ? 'Active' : 'Idle'}</span>
+            </div>
           </div>
 
           <div className="video-stream-wrapper">
-            <img src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || 'default'}`} alt="Live Feed" className="live-video-feed" />
+            {currentSession ? (
+              <img 
+                src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`} 
+                alt="Live Feed" 
+                className="live-video-feed" 
+              />
+            ) : (
+              <div className="no-active-sessions" style={{ border: 'none', background: 'transparent' }}>
+                Select an active session to view live feed
+              </div>
+            )}
           </div>
         </div>
 
@@ -391,18 +573,39 @@ const Dashboard = () => {
           </div>
 
           <div className="arrivals-list">
-            {liveAttendance.map((item, i) => (
-              <div key={i} className="arrival-item animate-fade-in">
-                <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
-                  <img src={`https://ui-avatars.com/api/?name=${item.student_name}&background=random`} alt={item.student_name} />
+            {currentSession ? (
+              liveAttendance.length > 0 ? (
+                liveAttendance.map((item, i) => (
+                  <div key={i} className="arrival-item animate-fade-in">
+                    <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
+                      <img 
+                        src={`http://localhost:5000/public/students/${item.student_id || item.id}.jpg`} 
+                        alt={item.student_name}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.student_name)}&background=random`;
+                        }}
+                      />
+                    </div>
+                    <div className="arrival-info">
+                      <h5>{item.student_name}</h5>
+                      <p>Attended <strong>{item.subject_name}</strong></p>
+                    </div>
+                    <div className={`status-badge-compact ${item.status === 'detected' ? 'status-detected' : item.status === 'processing' ? 'status-processing' : 'status-present'}`}>
+                      {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Present'}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', textAlign: 'center', height: '100%', padding: '2rem' }}>
+                  No detections yet for this session
                 </div>
-                <div className="arrival-info">
-                  <h5>{item.student_name}</h5>
-                  <p>Attended <strong>{item.subject_name}</strong></p>
-                </div>
-                <div className="status-badge-compact status-present">Present</div>
+              )
+            ) : (
+              <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', textAlign: 'center', height: '100%', padding: '2rem' }}>
+                Select an active session to see real-time arrivals
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -417,28 +620,34 @@ const Dashboard = () => {
             </div>
 
             <div className="dashboard-modal-body explorer-grid">
-              {activeSessions.map((session) => (
-                <div key={session.id} className="explorer-card" onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}>
-                  <div className="explorer-card-header">
-                    <div className="icon-box"><MonitorPlay size={20} color="var(--primary)" /></div>
-                    <div className="header-info">
-                      <div className="subject">{session.subject_name}</div>
-                      <div className="room">{session.classroom_name}</div>
+              {activeSessions.length === 0 ? (
+                <div className="no-active-sessions" style={{ gridColumn: '1 / -1', minHeight: '200px', margin: '2rem' }}>
+                  No active sessions currently being monitored
+                </div>
+              ) : (
+                activeSessions.map((session) => (
+                  <div key={session.id} className="explorer-card" onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}>
+                    <div className="explorer-card-header">
+                      <div className="icon-box"><MonitorPlay size={20} color="var(--primary)" /></div>
+                      <div className="header-info">
+                        <div className="subject">{session.subject_name}</div>
+                        <div className="room">{session.classroom_name}</div>
+                      </div>
+                    </div>
+
+                    <div className="explorer-card-body">
+                      <div className="detail-row"><User size={14} /><span>{session.teacher_name || 'Teacher'}</span></div>
+                      <div className="detail-row"><Camera size={14} /><span>{session.camera_name || 'Front Cam'}</span></div>
+                      <div className="detail-row"><Clock size={14} /><span>{session.start_time} - {session.end_time}</span></div>
+                      <div className="detail-row" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #eef2f7' }}><span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Year {session.year} • {session.stream}</span></div>
+                    </div>
+
+                    <div className="explorer-card-footer">
+                      <div className="live-indicator"><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
                     </div>
                   </div>
-
-                  <div className="explorer-card-body">
-                    <div className="detail-row"><User size={14} /><span>{session.teacher_name || 'Teacher'}</span></div>
-                    <div className="detail-row"><Camera size={14} /><span>{session.camera_name || 'Front Cam'}</span></div>
-                    <div className="detail-row"><Clock size={14} /><span>{session.start_time} - {session.end_time}</span></div>
-                    <div className="detail-row" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #eef2f7' }}><span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>{session.year} • {session.stream}</span></div>
-                  </div>
-
-                  <div className="explorer-card-footer">
-                    <div className="live-indicator"><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -468,18 +677,29 @@ const Dashboard = () => {
                 <div className="modal-inline-note">{presentStudentsError}</div>
               )}
 
-              {!presentStudentsLoading && presentStudents.length === 0 && (
-                <div className="modal-state-message">No present students found for this session.</div>
+              {!presentStudentsLoading && (!currentSession || presentStudents.length === 0) && (
+                <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', minHeight: '300px', gridColumn: '1 / -1' }}>
+                  {!currentSession 
+                    ? "Select an active session to see present students" 
+                    : "No students have been identified for this session yet"}
+                </div>
               )}
 
-              {!presentStudentsLoading && presentStudents.map((student, index) => {
+              {!presentStudentsLoading && currentSession && presentStudents.map((student, index) => {
                 const studentName = getStudentName(student);
                 const statusLabel = formatStatusLabel(student.status);
 
                 return (
                   <div key={student.id || `${studentName}-${index}`} className="present-student-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][index % 4]}`}>
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=random`} alt={studentName} />
+                      <img 
+                        src={`http://localhost:5000/public/students/${student.student_id || student.id}.jpg`} 
+                        alt={studentName}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=random`;
+                        }}
+                      />
                     </div>
 
                     <div className="present-student-main">

@@ -225,26 +225,36 @@
   opacity: 0.9;
 }
 
-.delete-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.15);
+.schedule-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.delete-sched-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-  color: white;
+  color: white; /* Default for green cards */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.schedule-card:hover .delete-btn {
-  opacity: 1;
+.schedule-card.custom .delete-sched-btn {
+  color: #1e293b; /* Dark for yellow cards */
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.delete-sched-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+  transform: scale(1.1);
 }
 
 .add-indicator {

@@ -22,7 +22,10 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { io } from 'socket.io-client';
 import './Layout.css';
+
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -32,6 +35,26 @@ const Layout = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
+  const [notifications, setNotifications] = React.useState([]);
+
+  // Socket for real-time notifications
+  React.useEffect(() => {
+    const socket = io(SOCKET_URL);
+
+    socket.on('new_notification', (data) => {
+      setNotifications(prev => [
+        {
+          id: Date.now(),
+          message: data.message,
+          type: data.type || 'info',
+          time: 'Just now'
+        },
+        ...prev
+      ]);
+    });
+
+    return () => socket.close();
+  }, []);
 
   // Close mobile menu on route change
   React.useEffect(() => {
@@ -221,57 +244,27 @@ const Layout = ({ children }) => {
             
             <div className="modal-body">
               <div className="notification-list">
-                <div className="notification-item animate-fade-in">
-                  <div className="notification-icon-wrapper success">
-                    <CheckCircle2 size={20} />
+                {notifications.length === 0 ? (
+                  <div className="no-notifications-state">
+                    <Bell size={40} className="empty-icon" />
+                    <p>No new system notifications</p>
                   </div>
-                  <div className="notification-content">
-                    <p>Attendance report for <strong>Machine Learning (Lab-01)</strong> has been successfully generated.</p>
-                    <div className="notification-time">
-                      <Clock size={12} />
-                      <span>Just now</span>
+                ) : (
+                  notifications.map((notif, index) => (
+                    <div key={notif.id || index} className="notification-item animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                      <div className={`notification-icon-wrapper ${notif.type || 'info'}`}>
+                        {notif.type === 'success' ? <CheckCircle2 size={20} /> : notif.type === 'alert' ? <AlertCircle size={20} /> : <Info size={20} />}
+                      </div>
+                      <div className="notification-content">
+                        <p>{notif.message}</p>
+                        <div className="notification-time">
+                          <Clock size={12} />
+                          <span>{notif.time}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                  <div className="notification-icon-wrapper info">
-                    <Info size={20} />
-                  </div>
-                  <div className="notification-content">
-                    <p>3 new students have registered for the <strong>CS Stream</strong> today.</p>
-                    <div className="notification-time">
-                      <Clock size={12} />
-                      <span>15 minutes ago</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                  <div className="notification-icon-wrapper alert">
-                    <AlertCircle size={20} />
-                  </div>
-                  <div className="notification-content">
-                    <p>System Alert: The <strong>DeepFace AI Service</strong> experienced a momentary restart.</p>
-                    <div className="notification-time">
-                      <Clock size={12} />
-                      <span>1 hour ago</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="notification-item animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                  <div className="notification-icon-wrapper success">
-                    <CheckCircle2 size={20} />
-                  </div>
-                  <div className="notification-content">
-                    <p>Schedule Sync: Daily routine for tomorrow has been updated.</p>
-                    <div className="notification-time">
-                      <Clock size={12} />
-                      <span>3 hours ago</span>
-                    </div>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
