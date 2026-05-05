@@ -22,7 +22,7 @@ const Login = () => {
     setLoading(true);
     try {
       if (loginMode === 'teacher') {
-        await login(email, password);
+        await login(email, password, 'teacher');
       } else if (loginMode === 'admin') {
         await adminLogin(email, password);
       } else {

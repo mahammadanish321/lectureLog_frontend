@@ -66,7 +66,7 @@ const StudentList = () => {
       year: student.year?.toString() || '1',
       stream: student.stream || 'CSE'
     });
-    setPreview(`http://localhost:5000/public/students/${student.id}.jpg`);
+    setPreview(student.image_url || `http://localhost:5000/public/students/${student.id}.jpg`);
     setCurrentEditId(student.id);
     setIsEditMode(true);
     setShowAddModal(true);
@@ -205,7 +205,7 @@ const StudentList = () => {
                 <tr key={student.id}>
                   <td>
                     <div className="student-avatar-large">
-                      <img src={`http://localhost:5000/public/students/${student.id}.jpg`} alt={student.name} onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + student.name; }} />
+                      <img src={student.image_url || `http://localhost:5000/public/students/${student.id}.jpg`} alt={student.name} onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + student.name; }} />
                     </div>
                   </td>
                   <td>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import {
   Users,
   Calendar,
@@ -171,6 +172,7 @@ const DEMO_PRESENT_STUDENTS = [
 ];
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [liveAttendance, setLiveAttendance] = useState([]);
@@ -182,6 +184,12 @@ const Dashboard = () => {
   const [presentStudentsError, setPresentStudentsError] = useState('');
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const selectedSessionIdRef = useRef(selectedSessionId);
+
+  // Keep the ref in sync with the state
+  useEffect(() => {
+    selectedSessionIdRef.current = selectedSessionId;
+  }, [selectedSessionId]);
 
   const scrollRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -217,24 +225,72 @@ const Dashboard = () => {
   };
 
   // Fetch initial data and setup socket
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // 1. Heartbeat Timer: Update every 10 seconds to react to time changes (and testing)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getSessionStatus = (session, now) => {
+    const timeStr = now.toTimeString().split(' ')[0];
+    if (timeStr >= session.start_time && timeStr < session.end_time) return 'active';
+    if (timeStr < session.start_time) return 'upcoming';
+    return 'ended';
+  };
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const response = await api.get('/sessions');
-        // Only show 'active' sessions in the horizontal bar
-        const activeOnly = response.data.filter(s => s.status === 'active');
-        setActiveSessions(activeOnly);
+        // Filter sessions: If teacher, only show their own. If admin, show all.
+        // We now include 'scheduled' sessions to show upcoming classes.
+        let allRelevantSessions = response.data.filter(s => s.status === 'active' || s.status === 'scheduled');
         
+        if (user?.role === 'teacher') {
+          allRelevantSessions = allRelevantSessions.filter(s => 
+            String(s.teacher_name).trim().toLowerCase() === String(user.name).trim().toLowerCase()
+          );
+        }
+        
+        // DEDUPLICATION SAFETY: Ensure unique IDs only
+        const uniqueSessions = [];
+        const seenIds = new Set();
+        allRelevantSessions.forEach(s => {
+          if (!seenIds.has(s.id)) {
+            seenIds.add(s.id);
+            uniqueSessions.push(s);
+          }
+        });
+
+        setActiveSessions(uniqueSessions);
+        
+        // Auto-select the first session if available, otherwise just the first one
+        const firstActive = uniqueSessions.find(s => s.status === 'active');
+        if (firstActive && !selectedSessionId) {
+          setSelectedSessionId(firstActive.id);
+        } else if (uniqueSessions.length > 0 && !selectedSessionId) {
+          setSelectedSessionId(uniqueSessions[0].id);
+        }
+
         // Also fetch total stats and all students
         try {
           const statsRes = await api.get('/students');
           setAllStudents(statsRes.data);
+
+          let relevantStudents = statsRes.data;
+          // For teachers, we might want to filter 'Total Students' to only show their current class size
+          // but for now, we'll keep the global count or use the session-specific logic in the card.
+
           setStats(prev => ({
             ...prev,
-            totalStudents: statsRes.data.length
+            totalStudents: relevantStudents.length
           }));
         } catch (e) { console.error("Stats fetch error", e); }
-        
+
       } catch (err) {
         console.error('Failed to fetch sessions:', err);
       } finally {
@@ -246,14 +302,34 @@ const Dashboard = () => {
 
     // Initialize Socket
     const newSocket = io('http://localhost:5000');
-    
+
     newSocket.on('session_started', (newSession) => {
-      setActiveSessions(prev => [...prev, { ...newSession, status: 'active' }]);
+      console.log('Real-time: Session started', newSession.id);
+      const sessionWithStatus = { ...newSession, status: 'active' };
+
+      // Use the 'user' from the higher scope (captured by closure)
+      const isForMe = !user || user.role === 'admin' ||
+        String(newSession.teacher_name).trim().toLowerCase() === String(user.name).trim().toLowerCase();
+
+      if (isForMe) {
+        setActiveSessions(prev => {
+          if (prev.find(s => s.id === newSession.id)) return prev;
+          return [...prev, sessionWithStatus];
+        });
+
+        if (user?.role === 'teacher') {
+          setSelectedSessionId(newSession.id);
+        }
+      }
     });
 
     newSocket.on('session_ended', ({ id }) => {
+      console.log('Real-time: Session ended', id);
       setActiveSessions(prev => prev.filter(s => s.id !== id));
-      if (selectedSessionId === id) setSelectedSessionId(null);
+
+      if (selectedSessionIdRef.current === id) {
+        setSelectedSessionId(null);
+      }
     });
 
     newSocket.on('attendance_update', (data) => {
@@ -265,34 +341,29 @@ const Dashboard = () => {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: 'present'
         },
-        ...prev.slice(0, 9) // Keep last 10
+        ...prev.slice(0, 9)
       ]);
-      
-      // 2. If this hit belongs to the selected session, update the modal list
-      if (selectedSessionId === data.session_id) {
+
+      // 2. If this hit belongs to the current selected session, update the list
+      if (selectedSessionIdRef.current === data.session_id) {
         setPresentStudents(prev => [data, ...prev]);
       }
 
-      // 3. Update global stats instantly
-      setStats(prev => {
-        const newPresent = prev.presentToday + 1;
-        // Simple avg recalculation (present / total registered for that class)
-        // Note: For absolute accuracy, we'd use the group count we calculated in the card
-        return { 
-          ...prev, 
-          presentToday: newPresent,
-          avgAttendance: Math.round((newPresent / (prev.totalStudents || 1)) * 100) 
-        };
-      });
+      // 3. Update global stats
+      setStats(prev => ({
+        ...prev,
+        presentToday: prev.presentToday + 1
+      }));
     });
 
-    newSocket.on('student_registered', (newStudent) => {
-      setAllStudents(prev => [...prev, newStudent]);
-      setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
-    });
-
-    return () => newSocket.close();
-  }, [selectedSessionId]);
+    return () => {
+      console.log('Cleaning up socket connection...');
+      newSocket.off('session_started');
+      newSocket.off('session_ended');
+      newSocket.off('attendance_update');
+      newSocket.close();
+    };
+  }, []); // Run once on mount
 
   // Live Attendance Sync for the selected session
   useEffect(() => {
@@ -306,10 +377,10 @@ const Dashboard = () => {
           const status = String(item.status || 'present').toLowerCase();
           return ['present', 'detected', 'processing'].includes(status);
         });
-        
+
         setPresentStudents(students);
         // Also update Recent Arrivals list (limited to top 10 most recent)
-        const sorted = [...students].sort((a, b) => 
+        const sorted = [...students].sort((a, b) =>
           new Date(b.timestamp || b.marked_at) - new Date(a.timestamp || a.marked_at)
         );
         setLiveAttendance(sorted.slice(0, 10));
@@ -387,8 +458,8 @@ const Dashboard = () => {
 
   if (loading) return <div className="loader-container"><Loader2 className="animate-spin" size={40} color="var(--primary)" /></div>;
 
-  const currentSession = selectedSessionId 
-    ? activeSessions.find(s => s.id === selectedSessionId) 
+  const currentSession = selectedSessionId
+    ? activeSessions.find(s => s.id === selectedSessionId)
     : null;
 
   return (
@@ -408,11 +479,11 @@ const Dashboard = () => {
 
         <div className="header-actions">
           <button className="view-all-btn" onClick={() => setShowSessionsModal(true)}>View All Sessions</button>
-          <button className="refresh-btn">Refresh Data</button>
+          <button className="refresh-btn" onClick={() => window.location.reload()}>Refresh Data</button>
         </div>
       </div>
 
-      <div className="dashboard-grid-layout">
+      <div className={`dashboard-grid-layout ${user?.role !== 'admin' ? 'teacher-layout' : ''}`}>
         {/* STATS ROW */}
         <div className="stats-row-container">
           <div className="featured-stat-card animate-scale-in" onClick={() => setShowSessionsModal(true)}>
@@ -424,33 +495,58 @@ const Dashboard = () => {
           </div>
 
           <div className="infobar-container">
-            {showLeftArrow && <button className="infobar-nav-btn left" onClick={() => scroll('left')}><ChevronLeft size={20} /></button>}
-            <div className="active-sessions-infobar" ref={scrollRef} onScroll={checkScroll}>
-              {activeSessions.length === 0 ? (
-                <div className="no-active-sessions">
-                  No active sessions found
-                </div>
-              ) : (
-                activeSessions.map((session) => (
-                  <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
-                    <div className="session-card-main">
-                      <div className="subject">{session.subject_name}</div>
-                      <div className="teacher">{session.teacher_name}</div>
-                    </div>
-
-                    <div className="session-card-context">
-                      <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Front Cam'}</div>
-                      <div className="time-range">{formatTime(session.start_time)} – {formatTime(session.end_time)}</div>
-                    </div>
-
-                    <div className="session-card-meta">
-                      {session.year} • {session.stream}
+            {user?.role === 'teacher' && activeSessions.length > 0 ? (
+              <div className="teacher-hero-card animate-scale-in">
+                <div className="hero-main">
+                  <div className="hero-subject-box">
+                    <MonitorPlay size={24} color="var(--primary)" />
+                    <div>
+                      <h3>{activeSessions[0].subject_name}</h3>
+                      <p>{activeSessions[0].classroom_name} • {activeSessions[0].camera_name || 'Front Cam'}</p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-            {showRightArrow && <button className="infobar-nav-btn right" onClick={() => scroll('right')}><ChevronRight size={20} /></button>}
+                  <div className="hero-time-box">
+                    <Clock size={18} />
+                    <span>{formatTime(activeSessions[0].start_time)} – {formatTime(activeSessions[0].end_time)}</span>
+                  </div>
+                </div>
+                <div className="hero-footer">
+                  <div className="hero-tag">Year {activeSessions[0].year}</div>
+                  <div className="hero-tag">{activeSessions[0].stream}</div>
+                  <div className="hero-status-tag"><div className="dot animate-pulse"></div> LIVE MONITORING</div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {showLeftArrow && <button className="infobar-nav-btn left" onClick={() => scroll('left')}><ChevronLeft size={20} /></button>}
+                <div className="active-sessions-infobar" ref={scrollRef} onScroll={checkScroll}>
+                  {activeSessions.length === 0 ? (
+                    <div className="no-active-sessions">
+                      {user?.role === 'teacher' ? 'Ready for your next session' : 'No active sessions found'}
+                    </div>
+                  ) : (
+                    activeSessions.map((session) => (
+                      <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
+                        <div className="session-card-main">
+                          <div className="subject">{session.subject_name}</div>
+                          <div className="teacher">{session.teacher_name}</div>
+                        </div>
+
+                        <div className="session-card-context">
+                          <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Front Cam'}</div>
+                          <div className="time-range">{formatTime(session.start_time)} – {formatTime(session.end_time)}</div>
+                        </div>
+
+                        <div className="session-card-meta">
+                          {session.year} • {session.stream}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {showRightArrow && <button className="infobar-nav-btn right" onClick={() => scroll('right')}><ChevronRight size={20} /></button>}
+              </>
+            )}
           </div>
 
           <div className="stats-separator"></div>
@@ -460,15 +556,15 @@ const Dashboard = () => {
             <div className="mini-stat-card animate-scale-in">
               <h4>{currentSession ? 'STUDENTS IN CLASS' : 'TOTAL STUDENTS'}</h4>
               <div className="value">
-                {currentSession 
+                {currentSession
                   ? allStudents.filter(s => {
-                      const sessionYear = String(currentSession.year || '').trim();
-                      const sessionStream = String(currentSession.stream || '').trim().toLowerCase();
-                      const studentYear = String(s.year || '').trim();
-                      const studentStream = String(s.stream || '').trim().toLowerCase();
-                      
-                      return studentYear === sessionYear && studentStream === sessionStream;
-                    }).length
+                    const sessionYear = String(currentSession.year || '').trim();
+                    const sessionStream = String(currentSession.stream || '').trim().toLowerCase();
+                    const studentYear = String(s.year || '').trim();
+                    const studentStream = String(s.stream || '').trim().toLowerCase();
+
+                    return studentYear === sessionYear && studentStream === sessionStream;
+                  }).length
                   : 0
                 }
               </div>
@@ -509,8 +605,8 @@ const Dashboard = () => {
               style={{
                 background: (() => {
                   if (!currentSession) return 'rgba(234, 241, 247, 0.6)';
-                  const groupTotal = allStudents.filter(s => 
-                    String(s.year).trim() === String(currentSession.year).trim() && 
+                  const groupTotal = allStudents.filter(s =>
+                    String(s.year).trim() === String(currentSession.year).trim() &&
                     String(s.stream).trim().toLowerCase() === String(currentSession.stream).toLowerCase()
                   ).length;
                   const percent = groupTotal > 0 ? Math.round((presentStudents.length / groupTotal) * 100) : 0;
@@ -523,8 +619,8 @@ const Dashboard = () => {
               <div className="value">
                 {(() => {
                   if (!currentSession) return '0%';
-                  const groupTotal = allStudents.filter(s => 
-                    String(s.year).trim() === String(currentSession.year).trim() && 
+                  const groupTotal = allStudents.filter(s =>
+                    String(s.year).trim() === String(currentSession.year).trim() &&
                     String(s.stream).trim().toLowerCase() === String(currentSession.stream).toLowerCase()
                   ).length;
                   return groupTotal > 0 ? `${Math.round((presentStudents.length / groupTotal) * 100)}%` : '0%';
@@ -535,35 +631,37 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* MONITORING VIEW */}
-        <div className="analytics-section animate-fade-in">
-          <div className="section-header-row">
-            <div>
-              <h3>Live Monitor</h3>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
-                {currentSession ? `Feed: ${currentSession.classroom_name}` : 'No active feed'}
-              </p>
-            </div>
-            <div className={`status-badge-compact ${currentSession ? 'status-present' : 'status-processing'}`}>
-              <div className={`dot ${currentSession ? 'busy' : ''}`}></div>
-              <span>{currentSession ? 'Active' : 'Idle'}</span>
-            </div>
-          </div>
-
-          <div className="video-stream-wrapper">
-            {currentSession ? (
-              <img 
-                src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`} 
-                alt="Live Feed" 
-                className="live-video-feed" 
-              />
-            ) : (
-              <div className="no-active-sessions" style={{ border: 'none', background: 'transparent' }}>
-                Select an active session to view live feed
+        {/* MONITORING VIEW - ADMIN ONLY */}
+        {user?.role === 'admin' && (
+          <div className="analytics-section animate-fade-in">
+            <div className="section-header-row">
+              <div>
+                <h3>Live Monitor</h3>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
+                  {currentSession ? `Feed: ${currentSession.classroom_name}` : 'No active feed'}
+                </p>
               </div>
-            )}
+              <div className={`status-badge-compact ${currentSession ? 'status-present' : 'status-processing'}`}>
+                <div className={`dot ${currentSession ? 'busy' : ''}`}></div>
+                <span>{currentSession ? 'Active' : 'Idle'}</span>
+              </div>
+            </div>
+
+            <div className="video-stream-wrapper">
+              {currentSession ? (
+                <img
+                  src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`}
+                  alt="Live Feed"
+                  className="live-video-feed"
+                />
+              ) : (
+                <div className="no-active-sessions" style={{ border: 'none', background: 'transparent' }}>
+                  Select an active session to view live feed
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* RECENT ARRIVALS */}
         <div className="recent-arrivals-section animate-fade-in">
@@ -578,11 +676,11 @@ const Dashboard = () => {
                 liveAttendance.map((item, i) => (
                   <div key={i} className="arrival-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
-                      <img 
-                        src={`http://localhost:5000/public/students/${item.student_id || item.id}.jpg`} 
+                      <img
+                        src={item.image_url || `http://localhost:5000/public/students/${item.student_id || item.id}.jpg`}
                         alt={item.student_name}
                         onError={(e) => {
-                          e.target.onerror = null; 
+                          e.target.onerror = null;
                           e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.student_name)}&background=random`;
                         }}
                       />
@@ -626,9 +724,15 @@ const Dashboard = () => {
                 </div>
               ) : (
                 activeSessions.map((session) => (
-                  <div key={session.id} className="explorer-card" onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}>
+                  <div 
+                    key={session.id} 
+                    className={`explorer-card ${session.status === 'scheduled' ? 'upcoming' : ''}`} 
+                    onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}
+                  >
                     <div className="explorer-card-header">
-                      <div className="icon-box"><MonitorPlay size={20} color="var(--primary)" /></div>
+                      <div className="icon-box" style={{ background: session.status === 'scheduled' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 89, 52, 0.1)' }}>
+                        <MonitorPlay size={20} color={session.status === 'scheduled' ? '#3b82f6' : 'var(--primary)'} />
+                      </div>
                       <div className="header-info">
                         <div className="subject">{session.subject_name}</div>
                         <div className="room">{session.classroom_name}</div>
@@ -643,7 +747,11 @@ const Dashboard = () => {
                     </div>
 
                     <div className="explorer-card-footer">
-                      <div className="live-indicator"><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
+                      {session.status === 'scheduled' ? (
+                        <div className="live-indicator scheduled"><div className="dot"></div><span>Scheduled Session</span></div>
+                      ) : (
+                        <div className="live-indicator"><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -679,8 +787,8 @@ const Dashboard = () => {
 
               {!presentStudentsLoading && (!currentSession || presentStudents.length === 0) && (
                 <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', minHeight: '300px', gridColumn: '1 / -1' }}>
-                  {!currentSession 
-                    ? "Select an active session to see present students" 
+                  {!currentSession
+                    ? "Select an active session to see present students"
                     : "No students have been identified for this session yet"}
                 </div>
               )}
@@ -692,11 +800,11 @@ const Dashboard = () => {
                 return (
                   <div key={student.id || `${studentName}-${index}`} className="present-student-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][index % 4]}`}>
-                      <img 
-                        src={`http://localhost:5000/public/students/${student.student_id || student.id}.jpg`} 
+                      <img
+                        src={`http://localhost:5000/public/students/${student.student_id || student.id}.jpg`}
                         alt={studentName}
                         onError={(e) => {
-                          e.target.onerror = null; 
+                          e.target.onerror = null;
                           e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=random`;
                         }}
                       />

@@ -55,7 +55,7 @@ const TeacherList = () => {
       email: teacher.email,
       college_id: teacher.college_id
     });
-    setPreview(`http://localhost:5000/public/teachers/${teacher.id}.jpg`);
+    setPreview(teacher.image_url || `http://localhost:5000/public/teachers/${teacher.id}.jpg`);
     setCurrentEditId(teacher.id);
     setIsEditMode(true);
     setShowAddModal(true);
@@ -156,7 +156,7 @@ const TeacherList = () => {
                 <tr key={teacher.id}>
                   <td>
                     <div className="teacher-avatar-large">
-                      <img src={`http://localhost:5000/public/teachers/${teacher.id}.jpg`} alt={teacher.name} onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name; }} />
+                      <img src={teacher.image_url || `http://localhost:5000/public/teachers/${teacher.id}.jpg`} alt={teacher.name} onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name; }} />
                     </div>
                   </td>
                   <td>

@@ -68,7 +68,7 @@ const You = () => {
   };
 
   const imageUrl = user?.role === 'student'
-    ? `http://localhost:5000/public/students/${profileData?.id}.jpg`
+    ? (profileData?.image_url || `http://localhost:5000/public/students/${profileData?.id}.jpg`)
     : `http://localhost:5000/public/teachers/${profileData?.id}.jpg`;
 
   return (
