@@ -214,14 +214,48 @@ const Dashboard = () => {
     }
   };
 
-  const formatTime = (isoString) => {
-    if (!isoString) return '--:--';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return isoString;
+  const formatTime = (time) => {
+    if (!time) return '--:--';
+    const timeStr = String(time);
+    
+    // ISO string
+    if (timeStr.includes('T') || timeStr.length > 15) {
+      try {
+        const date = new Date(timeStr);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (e) { return timeStr; }
     }
+    
+    // Time string "10:15:00"
+    if (timeStr.includes(':')) {
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        let hours = parseInt(parts[0]);
+        const minutes = parts[1];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minutes} ${ampm}`;
+      }
+    }
+    return timeStr;
+  };
+
+  const getTimeRemaining = (startTime) => {
+    if (!startTime) return null;
+    const now = new Date();
+    const [h, m] = startTime.split(':');
+    const target = new Date();
+    target.setHours(parseInt(h), parseInt(m), 0, 0);
+    
+    const diff = target - now;
+    if (diff <= 0) return "Starting now";
+    
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `in ${mins} mins`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `in ${hours}h ${remMins}m`;
   };
 
   // Fetch initial data and setup socket
@@ -249,13 +283,13 @@ const Dashboard = () => {
         // Filter sessions: If teacher, only show their own. If admin, show all.
         // We now include 'scheduled' sessions to show upcoming classes.
         let allRelevantSessions = response.data.filter(s => s.status === 'active' || s.status === 'scheduled');
-        
+
         if (user?.role === 'teacher') {
-          allRelevantSessions = allRelevantSessions.filter(s => 
+          allRelevantSessions = allRelevantSessions.filter(s =>
             String(s.teacher_name).trim().toLowerCase() === String(user.name).trim().toLowerCase()
           );
         }
-        
+
         // DEDUPLICATION SAFETY: Ensure unique IDs only
         const uniqueSessions = [];
         const seenIds = new Set();
@@ -267,7 +301,7 @@ const Dashboard = () => {
         });
 
         setActiveSessions(uniqueSessions);
-        
+
         // Auto-select the first session if available, otherwise just the first one
         const firstActive = uniqueSessions.find(s => s.status === 'active');
         if (firstActive && !selectedSessionId) {
@@ -356,8 +390,12 @@ const Dashboard = () => {
       }));
     });
 
+    // Refresh sessions every 60 seconds as a final automation guard
+    const sessionRefreshInterval = setInterval(fetchInitialData, 60000);
+
     return () => {
       console.log('Cleaning up socket connection...');
+      clearInterval(sessionRefreshInterval);
       newSocket.off('session_started');
       newSocket.off('session_ended');
       newSocket.off('attendance_update');
@@ -458,9 +496,13 @@ const Dashboard = () => {
 
   if (loading) return <div className="loader-container"><Loader2 className="animate-spin" size={40} color="var(--primary)" /></div>;
 
+  const activeSession = activeSessions.find(s => s.status === 'active');
+  const upcomingSessions = activeSessions.filter(s => s.status === 'scheduled');
+  const nextSession = upcomingSessions[0];
+
   const currentSession = selectedSessionId
     ? activeSessions.find(s => s.id === selectedSessionId)
-    : null;
+    : activeSession || nextSession || null;
 
   return (
     <div className="dashboard-container">
@@ -495,38 +537,67 @@ const Dashboard = () => {
           </div>
 
           <div className="infobar-container">
-            {user?.role === 'teacher' && activeSessions.length > 0 ? (
-              <div className="teacher-hero-card animate-scale-in">
-                <div className="hero-main">
-                  <div className="hero-subject-box">
-                    <MonitorPlay size={24} color="var(--primary)" />
-                    <div>
-                      <h3>{activeSessions[0].subject_name}</h3>
-                      <p>{activeSessions[0].classroom_name} • {activeSessions[0].camera_name || 'Front Cam'}</p>
+            {user?.role === 'teacher' ? (
+              activeSession ? (
+                <div className="teacher-hero-card animate-scale-in">
+                  <div className="hero-main">
+                    <div className="hero-subject-box">
+                      <MonitorPlay size={24} color="var(--primary)" />
+                      <div>
+                        <h3>{activeSession.subject_name}</h3>
+                        <p>{activeSession.classroom_name} • {activeSession.camera_name || 'Front Cam'}</p>
+                      </div>
+                    </div>
+                    <div className="hero-time-box">
+                      <Clock size={18} />
+                      <span>{formatTime(activeSession.start_time)} – {formatTime(activeSession.end_time)}</span>
                     </div>
                   </div>
-                  <div className="hero-time-box">
-                    <Clock size={18} />
-                    <span>{formatTime(activeSessions[0].start_time)} – {formatTime(activeSessions[0].end_time)}</span>
+                  <div className="hero-footer">
+                    <div className="hero-tag">Year {activeSession.year}</div>
+                    <div className="hero-tag">{activeSession.stream}</div>
+                    <div className="hero-status-tag"><div className="dot animate-pulse"></div> LIVE MONITORING</div>
                   </div>
                 </div>
-                <div className="hero-footer">
-                  <div className="hero-tag">Year {activeSessions[0].year}</div>
-                  <div className="hero-tag">{activeSessions[0].stream}</div>
-                  <div className="hero-status-tag"><div className="dot animate-pulse"></div> LIVE MONITORING</div>
+              ) : nextSession ? (
+                <div className="teacher-hero-card upcoming-hero animate-scale-in">
+                   <div className="hero-main">
+                    <div className="hero-subject-box">
+                      <Calendar size={24} color="#3b82f6" />
+                      <div>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#3b82f6', fontWeight: 800 }}>YOU HAVE NO CLASS RIGHT NOW</p>
+                        <h3>Next: {nextSession.subject_name}</h3>
+                        <p>{nextSession.classroom_name} • {getTimeRemaining(nextSession.start_time)}</p>
+                      </div>
+                    </div>
+                    <div className="hero-time-box upcoming">
+                      <Clock size={18} />
+                      <span>{formatTime(nextSession.start_time)} – {formatTime(nextSession.end_time)}</span>
+                    </div>
+                  </div>
+                  <div className="hero-footer">
+                    <div className="hero-tag">Year {nextSession.year}</div>
+                    <div className="hero-tag">{nextSession.stream}</div>
+                    <div className="hero-status-tag upcoming"><div className="dot"></div> UPCOMING CLASS</div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="no-active-sessions">
+                   <CheckCircle size={20} color="var(--primary)" />
+                   <span>No more classes scheduled for today. Ready to relax!</span>
+                </div>
+              )
             ) : (
               <>
                 {showLeftArrow && <button className="infobar-nav-btn left" onClick={() => scroll('left')}><ChevronLeft size={20} /></button>}
                 <div className="active-sessions-infobar" ref={scrollRef} onScroll={checkScroll}>
-                  {activeSessions.length === 0 ? (
+                  {activeSessions.filter(s => s.status === 'active').length === 0 ? (
                     <div className="no-active-sessions">
-                      {user?.role === 'teacher' ? 'Ready for your next session' : 'No active sessions found'}
+                      {user?.role === 'teacher' ? 'Ready for your next session' : 'No active sessions currently being monitored'}
                     </div>
                   ) : (
-                    activeSessions.map((session) => (
-                      <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
+                    activeSessions.filter(s => s.status === 'active').map((session) => (
+                      <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''} ${session.status === 'scheduled' ? 'upcoming-mini' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
                         <div className="session-card-main">
                           <div className="subject">{session.subject_name}</div>
                           <div className="teacher">{session.teacher_name}</div>
@@ -724,9 +795,9 @@ const Dashboard = () => {
                 </div>
               ) : (
                 activeSessions.map((session) => (
-                  <div 
-                    key={session.id} 
-                    className={`explorer-card ${session.status === 'scheduled' ? 'upcoming' : ''}`} 
+                  <div
+                    key={session.id}
+                    className={`explorer-card ${session.status === 'scheduled' ? 'upcoming' : ''}`}
                     onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}
                   >
                     <div className="explorer-card-header">
@@ -742,7 +813,7 @@ const Dashboard = () => {
                     <div className="explorer-card-body">
                       <div className="detail-row"><User size={14} /><span>{session.teacher_name || 'Teacher'}</span></div>
                       <div className="detail-row"><Camera size={14} /><span>{session.camera_name || 'Front Cam'}</span></div>
-                      <div className="detail-row"><Clock size={14} /><span>{session.start_time} - {session.end_time}</span></div>
+                      <div className="detail-row"><Clock size={14} /><span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span></div>
                       <div className="detail-row" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #eef2f7' }}><span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Year {session.year} • {session.stream}</span></div>
                     </div>
 

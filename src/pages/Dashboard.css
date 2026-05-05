@@ -175,6 +175,14 @@
   background: var(--primary);
 }
 
+.teacher-hero-card.upcoming-hero {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.teacher-hero-card.upcoming-hero::before {
+  background: #3b82f6;
+}
+
 .hero-main {
   display: flex;
   justify-content: space-between;
@@ -214,6 +222,11 @@
   font-size: 0.85rem;
 }
 
+.hero-time-box.upcoming {
+  background: rgba(59, 130, 246, 0.05);
+  color: #3b82f6;
+}
+
 .hero-footer {
   display: flex;
   gap: 0.75rem;
@@ -247,6 +260,14 @@
   height: 8px;
   border-radius: 50%;
   background: #105934;
+}
+
+.hero-status-tag.upcoming {
+  color: #3b82f6;
+}
+
+.hero-status-tag.upcoming .dot {
+  background: #3b82f6;
 }
 
 .infobar-nav-btn {
@@ -317,6 +338,14 @@
   border-color: var(--primary);
   background-color: rgba(16, 89, 52, 0.04);
   border-width: 2px;
+}
+
+.session-mini-card.upcoming-mini {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.session-mini-card.upcoming-mini:hover {
+  background-color: rgba(59, 130, 246, 0.03);
 }
 
 .session-card-main {
@@ -1164,17 +1193,18 @@
 }
 
 .explorer-card.upcoming:hover {
+  background: rgba(59, 130, 246, 0.02);
   border-color: #3b82f6;
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.08);
 }
 
 .live-indicator.scheduled {
+  background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
 }
 
 .live-indicator.scheduled .dot {
   background: #3b82f6;
-  animation: none !important;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
 }
 
 @media (max-width: 1400px) {
