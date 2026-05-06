@@ -183,6 +183,15 @@
   background: #3b82f6;
 }
 
+/* Yellow accent for custom sessions */
+.teacher-hero-card.custom-hero::before {
+  background: #eab308;
+}
+
+.teacher-hero-card.custom-hero {
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
 .hero-main {
   display: flex;
   justify-content: space-between;
@@ -1205,6 +1214,25 @@
 .live-indicator.scheduled .dot {
   background: #3b82f6;
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.explorer-card.is-custom {
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.explorer-card.is-custom:hover {
+  background: rgba(234, 179, 8, 0.02);
+  border-color: #eab308;
+}
+
+.live-indicator.custom-yellow {
+  background: rgba(234, 179, 8, 0.1);
+  color: #854d0e;
+}
+
+.live-indicator.custom-yellow .dot {
+  background: #eab308;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
 }
 
 @media (max-width: 1400px) {

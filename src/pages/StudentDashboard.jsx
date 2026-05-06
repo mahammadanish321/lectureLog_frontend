@@ -11,6 +11,8 @@ const StudentDashboard = () => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentProfileId, setStudentProfileId] = useState(null);
+  const [activityFilter, setActivityFilter] = useState('all');
+  const [scheduleFilter, setScheduleFilter] = useState('all');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,6 +53,7 @@ const StudentDashboard = () => {
               classroom_name: s.classroom_name,
               camera_id: s.camera_url || 'N/A',
               isCustom: s.is_custom,
+              status: s.status,
               isCancelled: s.status === 'cancelled'
             }));
 
@@ -58,20 +61,25 @@ const StudentDashboard = () => {
             const toMins = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
 
             // Deduplicate: If a session exists for a scheduled class, prefer the session
+            // EXCEPTION: If the regular class is CANCELLED, always keep it to show the status
             const filteredRegular = todayRegular.filter(reg => {
-              return !todaySessions.some(sess =>
+              const hasConflict = todaySessions.some(sess =>
                 String(sess.subject_id) === String(reg.subject_id) &&
                 Math.abs(toMins(sess.start_time) - toMins(reg.start_time)) <= 20
               );
+              return !hasConflict || reg.isCancelled;
             });
 
-            // Combine, then final dedup pass (prefer sessions over schedules)
+            // Combine, then final dedup pass (prefer sessions over schedules, but preserve cancelled status)
             const combinedRaw = [...todaySessions, ...filteredRegular];
             const seenKeys = new Set();
             const deduped = combinedRaw.filter(item => {
               const bucket = Math.floor(toMins(item.start_time) / 50);
               const key = `${item.subject_id}-${bucket}`;
-              if (seenKeys.has(key)) return false;
+              if (seenKeys.has(key)) {
+                // If the current item is cancelled, allow it to stay as a separate entry
+                return item.isCancelled;
+              }
               seenKeys.add(key);
               return true;
             });
@@ -105,50 +113,57 @@ const StudentDashboard = () => {
               classroom_name: s.classroom_name,
               camera_id: s.camera_url || 'N/A',
               isCustom: s.is_custom,
+              status: s.status,
               isCancelled: s.status === 'cancelled'
             }));
 
-            const toMins2 = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
+            // Helper: convert HH:MM:SS to total minutes
+            const toMins = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
 
+            // Deduplicate: Preserve cancelled classes even if a session exists
             const filteredRegular = todayRegular.filter(reg => {
-              return !todaySessions.some(sess =>
+              const hasConflict = todaySessions.some(sess =>
                 String(sess.subject_id) === String(reg.subject_id) &&
-                Math.abs(toMins2(sess.start_time) - toMins2(reg.start_time)) <= 20
+                Math.abs(toMins(sess.start_time) - toMins(reg.start_time)) <= 20
               );
+              return !hasConflict || reg.isCancelled;
             });
 
-            const combinedRaw2 = [...todaySessions, ...filteredRegular];
-            const seenKeys2 = new Set();
-            const deduped2 = combinedRaw2.filter(item => {
-              const bucket = Math.floor(toMins2(item.start_time) / 50);
-              const key = `${item.subject_id}-${bucket}`;
-              if (seenKeys2.has(key)) return false;
-              seenKeys2.add(key);
-              return true;
-            });
-
-            const combinedSchedules = deduped2.sort((a, b) =>
+            const combinedSchedules = [...todaySessions, ...filteredRegular].sort((a, b) =>
               a.start_time.localeCompare(b.start_time)
             );
             setSchedules(combinedSchedules);
           }
         }
       } catch (err) {
-        console.error('Failed to fetch student data:', err);
+        console.error('Dashboard data fetch error:', err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
   }, [user]);
 
-  if (loading) return <div className="loading-state">Loading your dashboard...</div>;
-
-  const getClassActivityStatus = (classItem) => {
+  const getClassActivityStatus = (schedule) => {
     const now = new Date();
     
-    const [startH, startM] = classItem.start_time.split(':');
-    const [endH, endM] = classItem.end_time.split(':');
+    // Check attendance status first
+    const isAttended = attendance.some(att => 
+      String(att.subject_id) === String(schedule.subject_id) && 
+      new Date(att.marked_at).toDateString() === now.toDateString()
+    );
+
+    // If attended, always show as Present regardless of time/status
+    if (isAttended) return { type: 'attended', text: 'Present' };
+
+    // If cancelled, return early
+    if (schedule.status === 'cancelled' || schedule.isCancelled) return { type: 'cancelled', text: 'Cancelled' };
+    
+    const [startH, startM] = schedule.start_time.split(':');
+    const [endH, endM] = schedule.end_time.split(':');
     
     const classStart = new Date();
     classStart.setHours(parseInt(startH, 10), parseInt(startM, 10), 0, 0);
@@ -156,18 +171,9 @@ const StudentDashboard = () => {
     const classEnd = new Date();
     classEnd.setHours(parseInt(endH, 10), parseInt(endM, 10), 0, 0);
 
-    const isAttended = attendance.some(att => 
-      att.subject_name.toLowerCase() === classItem.subject_name.toLowerCase() && 
-      new Date(att.start_time).toDateString() === now.toDateString() &&
-      att.status === 'present'
-    );
-
-    if (classItem.isCancelled) {
-      return { type: 'cancelled', text: 'Cancelled' };
-    }
-
-    if (isAttended) {
-      return { type: 'attended', text: 'Attended' };
+    // If the session is explicitly marked as ended or the time has passed
+    if (schedule.status === 'ended' || now > classEnd) {
+      return { type: 'missed', text: 'Absent' };
     }
 
     if (now < classStart) {
@@ -184,25 +190,18 @@ const StudentDashboard = () => {
       return { type: 'pending', text: timeStr };
     }
 
-    if (now > classEnd) {
-      return { type: 'missed', text: 'Missed' };
-    }
-
-    return { type: 'ongoing', text: 'Ongoing Class' };
+    // If it's within time and not ended, it's ongoing (unless it was explicitly started)
+    return { type: 'ongoing', text: 'Live Now' };
   };
 
-  const attendedToday = schedules.filter(s => getClassActivityStatus(s).type === 'attended').length;
-  const completedToday = schedules.filter(s => getClassActivityStatus(s).type !== 'pending').length;
-  const attendancePercentage = completedToday > 0 ? Math.round((attendedToday / completedToday) * 100) : 0;
-
-  const handleRecheck = async (classItem) => {
+  const handleRecheck = async (schedule) => {
     try {
-      let sessionId = classItem.isCustom ? classItem.id : null;
+      let sessionId = schedule.isCustom ? schedule.id : null;
       
       if (!sessionId) {
         const sessionRes = await api.get('/sessions');
         const match = sessionRes.data.find(s => 
-          s.subject_name.toLowerCase() === classItem.subject_name.toLowerCase() && 
+          s.subject_name.toLowerCase() === schedule.subject_name.toLowerCase() && 
           new Date(s.start_time).toDateString() === new Date().toDateString()
         );
         if (match) {
@@ -211,177 +210,270 @@ const StudentDashboard = () => {
       }
 
       if (!sessionId) {
-        alert('No active/ended session record was found for this class. Attendance cannot be rechecked.');
+        alert('No active/ended session record was found for this class.');
         return;
       }
 
       await api.post('/recheck', {
         student_id: studentProfileId,
         session_id: sessionId,
-        message: `Student requested recheck for ${classItem.subject_name}`
+        message: `Student requested recheck for ${schedule.subject_name}`
       });
-      alert('Recheck request submitted successfully!');
+      alert('Recheck request submitted successfully.');
     } catch (err) {
-      console.error(err);
+      console.error('Recheck error:', err);
       alert('Failed to submit recheck request.');
     }
   };
 
+  const attendedToday = schedules.filter(s => getClassActivityStatus(s).type === 'attended').length;
+  
+  // Calculate unique class slots for the day (deduplicating cancelled + replacement sessions)
+  const uniqueSlots = new Set();
+  schedules.forEach(s => {
+    const [h, m] = s.start_time.split(':');
+    const mins = parseInt(h) * 60 + parseInt(m);
+    const bucket = Math.floor(mins / 50);
+    uniqueSlots.add(`${s.subject_id}-${bucket}`);
+  });
+  
+  const totalSlots = uniqueSlots.size;
+  const completedToday = schedules.filter(s => {
+    const status = getClassActivityStatus(s);
+    return status.type === 'attended' || status.type === 'missed';
+  }).length;
+  
+  const attendancePercentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="loading-screen" style={{ background: 'transparent', height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+        <p style={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '0.05em' }}>PREPARING YOUR DASHBOARD...</p>
+      </div>
+    );
+  }
+
+  const filteredActivity = schedules.filter(schedule => {
+    // Hide cancelled classes from the activity feed (they belong in Today's Schedule only)
+    if (schedule.isCancelled) return false;
+    
+    const status = getClassActivityStatus(schedule);
+    // Only show completed classes in activity feed
+    const isCompleted = status.type === 'attended' || status.type === 'missed';
+    if (!isCompleted) return false;
+    
+    if (activityFilter === 'all') return true;
+    if (activityFilter === 'present') return status.type === 'attended';
+    if (activityFilter === 'absent') return status.type === 'missed';
+    return true;
+  });
+
+  const filteredSchedule = schedules.filter(schedule => {
+    if (scheduleFilter === 'all') return true;
+    if (scheduleFilter === 'custom') return schedule.isCustom;
+    if (scheduleFilter === 'regular') return !schedule.isCustom;
+    if (scheduleFilter === 'cancelled') return schedule.isCancelled;
+    return true;
+  });
+
   return (
     <div className="student-dashboard animate-fade-in">
 
+
       <div className="stats-grid">
         <div className="stat-card glass">
-          <div className="stat-icon-wrapper blue">
-            <CheckCircle size={24} />
+          <div className="stat-top">
+            <div className="stat-icon-wrapper blue">
+              <CheckCircle size={22} />
+            </div>
           </div>
           <div className="stat-info">
-            <h3>{schedules.filter(s => getClassActivityStatus(s).type === 'attended').length}</h3>
+            <h3>{attendedToday}</h3>
             <p>Classes Present</p>
           </div>
         </div>
 
         <div className="stat-card glass">
-          <div className="stat-icon-wrapper purple">
-            <BookOpen size={24} />
+          <div className="stat-top">
+            <div className="stat-icon-wrapper purple">
+              <BookOpen size={22} />
+            </div>
           </div>
           <div className="stat-info">
-            <h3>{schedules.length > 0 ? `${schedules.filter(s => getClassActivityStatus(s).type !== 'pending').length} / ${schedules.length}` : '0'}</h3>
+            <h3>{totalSlots > 0 ? `${completedToday} / ${totalSlots}` : '0'}</h3>
             <p>Total Classes</p>
           </div>
         </div>
 
-        <div className="stat-card glass">
-          <div className="stat-icon-wrapper orange">
-            <Clock size={24} />
+        <div 
+          className="stat-card glass attendance-progress-card" 
+          style={{
+            background: (() => {
+              const percent = attendancePercentage;
+              const color = percent >= 80 ? 'rgba(16, 89, 52, 0.15)' : percent >= 50 ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+              return `linear-gradient(90deg, ${color} 0%, ${color} ${percent}%, transparent ${percent}%, transparent 100%)`;
+            })()
+          }}
+        >
+          <div className="stat-top">
+            <div className="stat-icon-wrapper orange">
+              <Clock size={22} />
+            </div>
           </div>
           <div className="stat-info">
             <h3>{attendancePercentage}%</h3>
             <p>Attendance Rate</p>
           </div>
-          <div className="stat-progress">
-            <div className="progress-bar" style={{ width: `${attendancePercentage}%` }}></div>
-          </div>
         </div>
       </div>
 
-      {/* My Activity Panel */}
-      <section className="my-activity-section glass animate-fade-in" style={{ padding: '1.5rem', marginBottom: '2rem', borderRadius: 'var(--radius-lg)' }}>
-        <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
-          <CheckCircle size={22} className="text-primary" style={{ color: 'var(--primary)' }} />
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>My Activity</h2>
-        </div>
-        
-        <div className="activity-list" style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-          {schedules.length > 0 ? (
-            schedules.map((schedule, index) => {
-              const status = getClassActivityStatus(schedule);
-              const cardBg = schedule.isCancelled 
-                ? 'rgba(239, 68, 68, 0.05)' 
-                : (schedule.isCustom ? 'rgba(234, 179, 8, 0.12)' : 'rgba(28, 25, 23, 0.03)');
-              const cardBorder = schedule.isCancelled 
-                ? '1px dashed #ef4444' 
-                : (schedule.isCustom ? '2px solid #eab308' : '1px solid rgba(28, 25, 23, 0.08)');
-
-              return (
-                <div key={index} className={`activity-card ${schedule.isCancelled ? 'cancelled-card' : ''}`} style={{ padding: '1.25rem', borderRadius: 'var(--radius-sm)', background: cardBg, border: cardBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: schedule.isCancelled ? 0.6 : 1 }}>
-                  <div className="activity-details">
-                    <h4 style={{ fontWeight: 600, fontSize: '1rem', color: schedule.isCancelled ? '#ef4444' : 'var(--foreground)', marginBottom: '4px', textDecoration: schedule.isCancelled ? 'line-through' : 'none' }}>{schedule.subject_name}</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <User size={12} /> {schedule.teacher_name}
-                    </p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                      <Clock size={12} /> {schedule.start_time.substring(0, 5)} - {schedule.end_time.substring(0, 5)}
-                    </p>
-                  </div>
-                  
-                  <div className="activity-action" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                    {status.type === 'cancelled' && (
-                      <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.9rem' }}>
-                        <XCircle size={20} /> Cancelled
-                      </span>
-                    )}
-                    {status.type === 'attended' && (
-                      <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.9rem' }}>
-                        <CheckCircle size={20} /> Attended
-                      </span>
-                    )}
-                    {status.type === 'pending' && (
-                      <span style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500, fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.1)', padding: '4px 8px', borderRadius: '6px' }}>
-                        <Clock size={16} /> {status.text}
-                      </span>
-                    )}
-                    {status.type === 'missed' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                        <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.9rem' }}>
-                          <XCircle size={20} /> Missed
+      <div className="dashboard-main-content">
+        {/* My Activity Section */}
+        <section className="section-card glass animate-fade-in">
+          <div className="section-header" style={{ justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="header-icon-pill" style={{ background: 'rgba(16, 89, 52, 0.08)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
+                <CheckCircle size={18} />
+              </div>
+              <h2>My Activity</h2>
+            </div>
+            <div className="filter-group">
+              <button className={`filter-pill ${activityFilter === 'all' ? 'active' : ''}`} onClick={() => setActivityFilter('all')}>All</button>
+              <button className={`filter-pill ${activityFilter === 'present' ? 'active' : ''}`} onClick={() => setActivityFilter('present')}>Present</button>
+              <button className={`filter-pill ${activityFilter === 'absent' ? 'active' : ''}`} onClick={() => setActivityFilter('absent')}>Absent</button>
+            </div>
+          </div>
+          
+          <div className="activity-list">
+            {filteredActivity.length > 0 ? (
+              filteredActivity.map((schedule, index) => {
+                const status = getClassActivityStatus(schedule);
+                
+                return (
+                  <div key={index} className={`activity-card ${schedule.isCancelled ? 'cancelled' : ''}`}>
+                    <div className="activity-details">
+                      <h4 style={{ 
+                        textDecoration: schedule.isCancelled ? 'line-through' : 'none', 
+                        color: schedule.isCancelled ? '#ef4444' : '#1e293b' 
+                      }}>
+                        {schedule.subject_name}
+                      </h4>
+                      <div className="activity-meta" style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                          <User size={12} /> {schedule.teacher_name}
                         </span>
-                        <button 
-                          onClick={() => handleRecheck(schedule)}
-                          style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={(e) => e.target.style.background = 'var(--secondary)'}
-                          onMouseOut={(e) => e.target.style.background = 'var(--muted)'}
-                        >
-                          Request Recheck
-                        </button>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                          <Clock size={12} /> {schedule.start_time.substring(0, 5)} - {schedule.end_time.substring(0, 5)}
+                        </span>
                       </div>
-                    )}
-                    {status.type === 'ongoing' && (
-                      <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.9rem' }}>
-                        Live Now
-                      </span>
-                    )}
+                    </div>
+                    
+                    <div className="activity-action" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                      {status.type === 'cancelled' && (
+                        <span className="status-label status-cancelled">
+                          <XCircle size={14} /> Cancelled
+                        </span>
+                      )}
+                      {status.type === 'attended' && (
+                        <span className="status-label status-attended">
+                          <CheckCircle size={14} /> Present
+                        </span>
+                      )}
+                      {status.type === 'pending' && (
+                        <span className="status-label status-pending">
+                          <Clock size={14} /> {status.text}
+                        </span>
+                      )}
+                      {status.type === 'missed' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                          <span className="status-label status-missed">
+                            <XCircle size={14} /> Absent
+                          </span>
+                          <button 
+                            onClick={() => handleRecheck(schedule)}
+                            className="recheck-btn"
+                            style={{ 
+                              padding: '4px 10px', 
+                              fontSize: '0.65rem', 
+                              fontWeight: '700',
+                              borderRadius: '6px', 
+                              background: '#fff', 
+                              border: '1px solid var(--primary)', 
+                              color: 'var(--primary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            RECHECK
+                          </button>
+                        </div>
+                      )}
+                      {status.type === 'ongoing' && (
+                        <span className="status-label status-ongoing">
+                          Live Now
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          ) : (
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', gridColumn: '1/-1' }}>No activities mapped for today.</p>
-          )}
-        </div>
-      </section>
+                );
+              })
+            ) : (
+              <div className="empty-state">
+                <p>No {activityFilter !== 'all' ? activityFilter : 'activities'} recorded for today.</p>
+              </div>
+            )}
+          </div>
+        </section>
 
-      <div className="dashboard-sections" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-
-        <section className="upcoming-section glass">
-          <div className="section-header">
-            <Clock size={20} />
-            <h2>Scheduled Classes Today</h2>
+        <section className="section-card glass">
+          <div className="section-header" style={{ justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="header-icon-pill" style={{ background: 'rgba(16, 89, 52, 0.08)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
+                <Clock size={18} />
+              </div>
+              <h2>Today's Schedule</h2>
+            </div>
+            <div className="filter-group">
+              <button className={`filter-pill ${scheduleFilter === 'all' ? 'active' : ''}`} onClick={() => setScheduleFilter('all')}>All</button>
+              <button className={`filter-pill ${scheduleFilter === 'regular' ? 'active' : ''}`} onClick={() => setScheduleFilter('regular')}>Regular</button>
+              <button className={`filter-pill ${scheduleFilter === 'custom' ? 'active' : ''}`} onClick={() => setScheduleFilter('custom')}>Custom</button>
+              <button className={`filter-pill ${scheduleFilter === 'cancelled' ? 'active' : ''}`} onClick={() => setScheduleFilter('cancelled')}>Cancelled</button>
+            </div>
           </div>
           <div className="upcoming-list">
-            {schedules.length > 0 ? (
-              schedules.map((schedule, index) => (
-                <div key={index} className="schedule-row" style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  padding: '1rem', 
-                  borderBottom: '1px solid var(--border)', 
-                  background: schedule.isCancelled ? 'rgba(239, 68, 68, 0.02)' : (schedule.isCustom ? 'rgba(234, 179, 8, 0.08)' : 'transparent'), 
-                  borderLeft: schedule.isCancelled ? '4px solid #ef4444' : (schedule.isCustom ? '4px solid #eab308' : 'none'),
-                  opacity: schedule.isCancelled ? 0.7 : 1
-                }}>
+            {filteredSchedule.length > 0 ? (
+              filteredSchedule.map((schedule, index) => (
+                <div key={index} className={`schedule-row ${schedule.isCustom ? 'custom-session' : ''} ${schedule.isCancelled ? 'cancelled-session' : ''} ${getClassActivityStatus(schedule).type === 'attended' || getClassActivityStatus(schedule).type === 'missed' ? 'is-ended' : ''}`}>
                   <div className="class-main-info">
-                    <span className="subject-name" style={{ fontWeight: 600, display: 'block', textDecoration: schedule.isCancelled ? 'line-through' : 'none', color: schedule.isCancelled ? '#ef4444' : 'inherit' }}>
-                      {schedule.subject_name} {schedule.isCancelled && <span style={{ fontSize: '0.7rem', fontWeight: 400, marginLeft: '8px' }}>(CANCELLED)</span>}
-                    </span>
-                    <span className="teacher-name" style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                    {schedule.isCustom && (
+                      <div className="custom-badge">
+                        ★ CUSTOM
+                      </div>
+                    )}
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
+                      {schedule.subject_name} 
+                      {schedule.isCancelled && <span style={{ fontSize: '0.65rem', color: '#ef4444', marginLeft: '6px', fontWeight: '800' }}>[CANCELLED]</span>}
+                      {(getClassActivityStatus(schedule).type === 'attended' || getClassActivityStatus(schedule).type === 'missed') && !schedule.isCancelled && (
+                        <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: '6px', fontWeight: '800', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>[ENDED]</span>
+                      )}
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                       <User size={12} /> {schedule.teacher_name}
-                    </span>
+                    </p>
                   </div>
                   <div className="class-meta-info" style={{ textAlign: 'right' }}>
-                    <span className="time-range" style={{ fontSize: '0.85rem', fontWeight: 500, color: schedule.isCancelled ? '#ef4444' : 'var(--primary)', display: 'block' }}>
+                    <span className="time-badge" style={schedule.isCustom ? { background: 'rgba(234, 179, 8, 0.15)', color: '#854d0e' } : {}}>
                       {schedule.start_time.substring(0, 5)} - {schedule.end_time.substring(0, 5)}
                     </span>
-                    <span className="room-camera" style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', justifyContent: 'flex-end' }}>
-                      <MapPin size={12} /> {schedule.classroom_name} (Cam: {schedule.camera_id})
-                    </span>
+                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', justifyContent: 'flex-end', fontWeight: '600' }}>
+                      <MapPin size={10} /> {schedule.classroom_name}
+                    </p>
                   </div>
                 </div>
               ))
             ) : (
               <div className="empty-state">
-                <p>No classes scheduled for today.</p>
+                <p>No {scheduleFilter !== 'all' ? scheduleFilter : 'classes'} scheduled for today.</p>
               </div>
             )}
           </div>

@@ -214,10 +214,20 @@ const Dashboard = () => {
     }
   };
 
+  const extractTimeForSort = (val) => {
+    if (!val) return '23:59:59';
+    const str = String(val);
+    if (str.includes('T')) {
+      try { return new Date(str).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } 
+      catch { return str; }
+    }
+    return str;
+  };
+
   const formatTime = (time) => {
     if (!time) return '--:--';
     const timeStr = String(time);
-    
+
     // ISO string
     if (timeStr.includes('T') || timeStr.length > 15) {
       try {
@@ -225,7 +235,7 @@ const Dashboard = () => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } catch (e) { return timeStr; }
     }
-    
+
     // Time string "10:15:00"
     if (timeStr.includes(':')) {
       const parts = timeStr.split(':');
@@ -244,13 +254,14 @@ const Dashboard = () => {
   const getTimeRemaining = (startTime) => {
     if (!startTime) return null;
     const now = new Date();
-    const [h, m] = startTime.split(':');
+    const timeOnly = extractTimeForSort(startTime);
+    const [h, m] = timeOnly.split(':');
     const target = new Date();
     target.setHours(parseInt(h), parseInt(m), 0, 0);
-    
+
     const diff = target - now;
     if (diff <= 0) return "Starting now";
-    
+
     const mins = Math.floor(diff / 60000);
     if (mins < 60) return `in ${mins} mins`;
     const hours = Math.floor(mins / 60);
@@ -300,14 +311,15 @@ const Dashboard = () => {
           }
         });
 
+        // Sort sessions chronologically by start time, handling both ISO strings (custom) and HH:MM:SS (routine)
+        uniqueSessions.sort((a, b) => extractTimeForSort(a.start_time).localeCompare(extractTimeForSort(b.start_time)));
+
         setActiveSessions(uniqueSessions);
 
-        // Auto-select the first session if available, otherwise just the first one
+        // Auto-select the first session only if it is active
         const firstActive = uniqueSessions.find(s => s.status === 'active');
         if (firstActive && !selectedSessionId) {
           setSelectedSessionId(firstActive.id);
-        } else if (uniqueSessions.length > 0 && !selectedSessionId) {
-          setSelectedSessionId(uniqueSessions[0].id);
         }
 
         // Also fetch total stats and all students
@@ -348,7 +360,8 @@ const Dashboard = () => {
       if (isForMe) {
         setActiveSessions(prev => {
           if (prev.find(s => s.id === newSession.id)) return prev;
-          return [...prev, sessionWithStatus];
+          const updated = [...prev, sessionWithStatus];
+          return updated.sort((a, b) => extractTimeForSort(a.start_time).localeCompare(extractTimeForSort(b.start_time)));
         });
 
         if (user?.role === 'teacher') {
@@ -502,7 +515,7 @@ const Dashboard = () => {
 
   const currentSession = selectedSessionId
     ? activeSessions.find(s => s.id === selectedSessionId)
-    : activeSession || nextSession || null;
+    : activeSession || null; // Only auto-select if it's currently ACTIVE, require click for scheduled
 
   return (
     <div className="dashboard-container">
@@ -539,10 +552,15 @@ const Dashboard = () => {
           <div className="infobar-container">
             {user?.role === 'teacher' ? (
               activeSession ? (
-                <div className="teacher-hero-card animate-scale-in">
+                <div className={`teacher-hero-card animate-scale-in ${activeSession.is_custom ? 'custom-hero' : ''}`} style={activeSession.is_custom ? { background: 'rgba(254, 252, 232, 0.4)' } : {}}>
+                  {activeSession.is_custom && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(234, 179, 8, 0.15)', color: '#854d0e', borderRadius: '6px', padding: '0.2rem 0.6rem', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.25rem', width: 'fit-content' }}>
+                      ★ CUSTOM SESSION
+                    </div>
+                  )}
                   <div className="hero-main">
                     <div className="hero-subject-box">
-                      <MonitorPlay size={24} color="var(--primary)" />
+                      <MonitorPlay size={24} color={activeSession.is_custom ? '#eab308' : 'var(--primary)'} />
                       <div>
                         <h3>{activeSession.subject_name}</h3>
                         <p>{activeSession.classroom_name} • {activeSession.camera_name || 'Front Cam'}</p>
@@ -556,21 +574,29 @@ const Dashboard = () => {
                   <div className="hero-footer">
                     <div className="hero-tag">Year {activeSession.year}</div>
                     <div className="hero-tag">{activeSession.stream}</div>
-                    <div className="hero-status-tag"><div className="dot animate-pulse"></div> LIVE MONITORING</div>
+                    <div className="hero-status-tag" style={activeSession.is_custom ? { color: '#854d0e' } : {}}>
+                      <div className="dot animate-pulse" style={activeSession.is_custom ? { background: '#eab308' } : {}}></div>
+                      {activeSession.is_custom ? 'CUSTOM LIVE' : 'LIVE MONITORING'}
+                    </div>
                   </div>
                 </div>
               ) : nextSession ? (
-                <div className="teacher-hero-card upcoming-hero animate-scale-in">
-                   <div className="hero-main">
+                <div className={`teacher-hero-card upcoming-hero animate-scale-in ${nextSession.is_custom ? 'custom-hero' : ''}`} style={nextSession.is_custom ? { background: 'rgba(254, 252, 232, 0.3)' } : {}}>
+                  {nextSession.is_custom && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(234, 179, 8, 0.15)', color: '#854d0e', borderRadius: '6px', padding: '0.2rem 0.6rem', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.25rem', width: 'fit-content' }}>
+                      ★ CUSTOM SESSION
+                    </div>
+                  )}
+                  <div className="hero-main">
                     <div className="hero-subject-box">
-                      <Calendar size={24} color="#3b82f6" />
+                      <Calendar size={24} color={nextSession.is_custom ? '#eab308' : '#3b82f6'} />
                       <div>
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#3b82f6', fontWeight: 800 }}>YOU HAVE NO CLASS RIGHT NOW</p>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: nextSession.is_custom ? '#854d0e' : '#3b82f6', fontWeight: 800 }}>YOU HAVE NO CLASS RIGHT NOW</p>
                         <h3>Next: {nextSession.subject_name}</h3>
                         <p>{nextSession.classroom_name} • {getTimeRemaining(nextSession.start_time)}</p>
                       </div>
                     </div>
-                    <div className="hero-time-box upcoming">
+                    <div className={`hero-time-box ${nextSession.is_custom ? '' : 'upcoming'}`} style={nextSession.is_custom ? { background: 'rgba(234, 179, 8, 0.08)', color: '#854d0e' } : {}}>
                       <Clock size={18} />
                       <span>{formatTime(nextSession.start_time)} – {formatTime(nextSession.end_time)}</span>
                     </div>
@@ -578,13 +604,16 @@ const Dashboard = () => {
                   <div className="hero-footer">
                     <div className="hero-tag">Year {nextSession.year}</div>
                     <div className="hero-tag">{nextSession.stream}</div>
-                    <div className="hero-status-tag upcoming"><div className="dot"></div> UPCOMING CLASS</div>
+                    <div className={`hero-status-tag ${nextSession.is_custom ? '' : 'upcoming'}`} style={nextSession.is_custom ? { color: '#854d0e' } : {}}>
+                      <div className="dot" style={nextSession.is_custom ? { background: '#eab308' } : {}}></div>
+                      {nextSession.is_custom ? 'CUSTOM UPCOMING' : 'UPCOMING CLASS'}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="no-active-sessions">
-                   <CheckCircle size={20} color="var(--primary)" />
-                   <span>No more classes scheduled for today. Ready to relax!</span>
+                  <CheckCircle size={20} color="var(--primary)" />
+                  <span>No more classes scheduled for today. Ready to relax!</span>
                 </div>
               )
             ) : (
@@ -597,7 +626,7 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     activeSessions.filter(s => s.status === 'active').map((session) => (
-                      <div key={session.id} className={`session-mini-card ${selectedSessionId === session.id ? 'active' : ''} ${session.status === 'scheduled' ? 'upcoming-mini' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
+                      <div key={session.id} className={`session-mini-card ${currentSession?.id === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
                         <div className="session-card-main">
                           <div className="subject">{session.subject_name}</div>
                           <div className="teacher">{session.teacher_name}</div>
@@ -712,19 +741,26 @@ const Dashboard = () => {
                   {currentSession ? `Feed: ${currentSession.classroom_name}` : 'No active feed'}
                 </p>
               </div>
-              <div className={`status-badge-compact ${currentSession ? 'status-present' : 'status-processing'}`}>
-                <div className={`dot ${currentSession ? 'busy' : ''}`}></div>
-                <span>{currentSession ? 'Active' : 'Idle'}</span>
+              <div className={`status-badge-compact ${currentSession ? (currentSession.status === 'scheduled' ? 'status-processing' : 'status-present') : 'status-processing'}`}>
+                <div className={`dot ${currentSession?.status === 'active' ? 'busy' : ''}`}></div>
+                <span>{currentSession ? (currentSession.status === 'scheduled' ? 'Scheduled' : 'Active') : 'Idle'}</span>
               </div>
             </div>
 
             <div className="video-stream-wrapper">
               {currentSession ? (
-                <img
-                  src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`}
-                  alt="Live Feed"
-                  className="live-video-feed"
-                />
+                currentSession.status === 'scheduled' ? (
+                  <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem' }}>
+                    <Calendar size={48} color="#3b82f6" opacity={0.5} />
+                    <span style={{ fontWeight: 600, color: '#475569' }}>Feed will go live at {formatTime(currentSession.start_time)}</span>
+                  </div>
+                ) : (
+                  <img
+                    src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`}
+                    alt="Live Feed"
+                    className="live-video-feed"
+                  />
+                )
               ) : (
                 <div className="no-active-sessions" style={{ border: 'none', background: 'transparent' }}>
                   Select an active session to view live feed
@@ -797,12 +833,13 @@ const Dashboard = () => {
                 activeSessions.map((session) => (
                   <div
                     key={session.id}
-                    className={`explorer-card ${session.status === 'scheduled' ? 'upcoming' : ''}`}
+                    className={`explorer-card ${session.status === 'scheduled' ? 'upcoming' : ''} ${session.status === 'ended' ? 'is-ended' : ''} ${session.is_custom ? 'is-custom' : ''}`}
                     onClick={() => { setSelectedSessionId(session.id); setShowSessionsModal(false); }}
+                    style={session.status === 'ended' ? { opacity: 0.8 } : {}}
                   >
                     <div className="explorer-card-header">
-                      <div className="icon-box" style={{ background: session.status === 'scheduled' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 89, 52, 0.1)' }}>
-                        <MonitorPlay size={20} color={session.status === 'scheduled' ? '#3b82f6' : 'var(--primary)'} />
+                      <div className="icon-box" style={{ background: session.status === 'scheduled' ? 'rgba(59, 130, 246, 0.1)' : session.status === 'ended' ? 'rgba(100, 116, 139, 0.1)' : 'rgba(16, 89, 52, 0.1)' }}>
+                        <MonitorPlay size={20} color={session.status === 'scheduled' ? '#3b82f6' : session.status === 'ended' ? '#64748b' : 'var(--primary)'} />
                       </div>
                       <div className="header-info">
                         <div className="subject">{session.subject_name}</div>
@@ -819,9 +856,11 @@ const Dashboard = () => {
 
                     <div className="explorer-card-footer">
                       {session.status === 'scheduled' ? (
-                        <div className="live-indicator scheduled"><div className="dot"></div><span>Scheduled Session</span></div>
+                        <div className={`live-indicator scheduled ${session.is_custom ? 'custom-yellow' : ''}`}><div className="dot"></div><span>Scheduled Session</span></div>
+                      ) : session.status === 'ended' ? (
+                        <div className="live-indicator ended"><div className="dot" style={{ background: '#64748b' }}></div><span>Session Concluded</span></div>
                       ) : (
-                        <div className="live-indicator"><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
+                        <div className={`live-indicator ${session.is_custom ? 'custom-yellow' : ''}`}><div className="dot active animate-pulse"></div><span>Live Feed Active</span></div>
                       )}
                     </div>
                   </div>
