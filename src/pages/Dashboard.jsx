@@ -23,10 +23,12 @@ import {
   Mail,
   X,
   ChevronLeft,
+  RefreshCw,
 } from 'lucide-react';
 import './Dashboard.css';
 
 const AI_SERVICE_URL = 'http://127.0.0.1:8001';
+const CAMERA_BACKEND_URL = 'http://127.0.0.1:8002';
 
 const DEMO_STATS = {
   totalStudents: 142,
@@ -178,12 +180,15 @@ const Dashboard = () => {
   const [liveAttendance, setLiveAttendance] = useState([]);
   const [stats, setStats] = useState({ totalStudents: 0, presentToday: 0, avgAttendance: 0 });
   const [showSessionsModal, setShowSessionsModal] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const videoContainerRef = useRef(null);
   const [showPresentStudentsModal, setShowPresentStudentsModal] = useState(false);
   const [presentStudents, setPresentStudents] = useState([]);
   const [presentStudentsLoading, setPresentStudentsLoading] = useState(false);
   const [presentStudentsError, setPresentStudentsError] = useState('');
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [aiStatus, setAiStatus] = useState({ online: false, displayStatus: 'Connecting...', isError: false });
   const selectedSessionIdRef = useRef(selectedSessionId);
 
   // Keep the ref in sync with the state
@@ -218,7 +223,7 @@ const Dashboard = () => {
     if (!val) return '23:59:59';
     const str = String(val);
     if (str.includes('T')) {
-      try { return new Date(str).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } 
+      try { return new Date(str).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
       catch { return str; }
     }
     return str;
@@ -403,6 +408,11 @@ const Dashboard = () => {
       }));
     });
 
+    newSocket.on('ai_status_update', (data) => {
+      console.log('AI Status Update:', data.displayStatus);
+      setAiStatus(data);
+    });
+
     // Refresh sessions every 60 seconds as a final automation guard
     const sessionRefreshInterval = setInterval(fetchInitialData, 60000);
 
@@ -445,6 +455,34 @@ const Dashboard = () => {
     const interval = setInterval(syncAttendance, 10000);
     return () => clearInterval(interval);
   }, [selectedSessionId, activeSessions]);
+
+  const toggleFullscreen = () => {
+    if (!videoContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      videoContainerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const refreshFeed = () => {
+    const img = document.querySelector('.live-video-feed');
+    if (img) {
+      const currentSrc = img.src.split('&refresh=')[0];
+      img.src = `${currentSrc}&refresh=${Date.now()}`;
+    }
+  };
 
   useEffect(() => {
     checkScroll();
@@ -579,6 +617,12 @@ const Dashboard = () => {
                       {activeSession.is_custom ? 'CUSTOM LIVE' : 'LIVE MONITORING'}
                     </div>
                   </div>
+                  {aiStatus && (
+                    <div className={`hero-ai-status ${aiStatus.isError ? 'error' : 'active'}`}>
+                      <Activity size={12} className={aiStatus.isError ? '' : 'animate-pulse'} />
+                      <span>AI Scanner: {aiStatus.displayStatus}</span>
+                    </div>
+                  )}
                 </div>
               ) : nextSession ? (
                 <div className={`teacher-hero-card upcoming-hero animate-scale-in ${nextSession.is_custom ? 'custom-hero' : ''}`} style={nextSession.is_custom ? { background: 'rgba(254, 252, 232, 0.3)' } : {}}>
@@ -755,11 +799,44 @@ const Dashboard = () => {
                     <span style={{ fontWeight: 600, color: '#475569' }}>Feed will go live at {formatTime(currentSession.start_time)}</span>
                   </div>
                 ) : (
-                  <img
-                    src={`${AI_SERVICE_URL}/video_feed?v=${selectedSessionId || currentSession.id}`}
-                    alt="Live Feed"
-                    className="live-video-feed"
-                  />
+                  <div className={`video-feed-container ${isFullscreen ? 'is-fullscreen' : ''}`} ref={videoContainerRef}>
+                    <img
+                      src={`${AI_SERVICE_URL}/video_feed?cam=${(selectedSessionId ? activeSessions.find(s => s.id === selectedSessionId) : currentSession)?.camera_url || '0'}`}
+                      alt="Live Feed"
+                      className="live-video-feed"
+                    />
+                    
+                    <div className="video-controls-overlay">
+                      <button className="control-btn" onClick={refreshFeed} title="Refresh Feed">
+                        <RefreshCw size={14} />
+                      </button>
+                      <button className="control-btn" onClick={toggleFullscreen} title="Toggle Fullscreen">
+                        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      </button>
+                    </div>
+
+                    {isFullscreen && liveAttendance.length > 0 && (
+                      <div className="fullscreen-arrivals-overlay animate-fade-in">
+                        <div className="overlay-header">Recent Arrivals</div>
+                        <div className="overlay-list">
+                          {liveAttendance.slice(0, 6).map((item, i) => (
+                            <div key={i} className="overlay-item animate-slide-right" style={{ animationDelay: `${i * 0.1}s` }}>
+                              <Avatar src={item.image_url} name={item.student_name} size="sm" />
+                              <div className="item-info">
+                                <h6>{item.student_name}</h6>
+                                <span>{item.timestamp || 'Just now'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`ai-status-overlay ${aiStatus.isError ? 'error' : 'active'}`}>
+                      <div className={`status-dot ${aiStatus.isError ? 'offline' : 'online animate-pulse'}`}></div>
+                      <span>{aiStatus.displayStatus}</span>
+                    </div>
+                  </div>
                 )
               ) : (
                 <div className="no-active-sessions" style={{ border: 'none', background: 'transparent' }}>

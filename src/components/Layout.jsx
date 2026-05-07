@@ -241,7 +241,7 @@ const Layout = ({ children }) => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="notification-list">
                 {notifications.length === 0 ? (
