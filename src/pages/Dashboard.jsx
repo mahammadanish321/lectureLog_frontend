@@ -222,9 +222,11 @@ const Dashboard = () => {
   const extractTimeForSort = (val) => {
     if (!val) return '23:59:59';
     const str = String(val);
+    if (str.includes('Z')) {
+      return new Date(str).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
     if (str.includes('T')) {
-      try { return new Date(str).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
-      catch { return str; }
+      return str.split('T')[1].split('.')[0];
     }
     return str;
   };
@@ -233,23 +235,24 @@ const Dashboard = () => {
     if (!time) return '--:--';
     const timeStr = String(time);
 
-    // ISO string
-    if (timeStr.includes('T') || timeStr.length > 15) {
+    // 1. Real Timestamp (UTC) -> Convert to local
+    if (timeStr.includes('Z')) {
       try {
-        const date = new Date(timeStr);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return new Date(timeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } catch (e) { return timeStr; }
     }
 
-    // Time string "10:15:00"
-    if (timeStr.includes(':')) {
-      const parts = timeStr.split(':');
+    // 2. Wall Clock ISO or Raw Time
+    let t = timeStr;
+    if (timeStr.includes('T')) t = timeStr.split('T')[1].split('.')[0];
+
+    if (t.includes(':')) {
+      const parts = t.split(':');
       if (parts.length >= 2) {
         let hours = parseInt(parts[0]);
         const minutes = parts[1];
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
+        hours = hours % 12 || 12;
         return `${hours}:${minutes} ${ampm}`;
       }
     }
@@ -805,7 +808,7 @@ const Dashboard = () => {
                       alt="Live Feed"
                       className="live-video-feed"
                     />
-                    
+
                     <div className="video-controls-overlay">
                       <button className="control-btn" onClick={refreshFeed} title="Refresh Feed">
                         <RefreshCw size={14} />
@@ -1023,3 +1026,5 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+// export default Dashboard;

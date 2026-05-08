@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckCircle, XCircle, Clock, BookOpen, MapPin, User } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, BookOpen, MapPin, User, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import './StudentDashboard.css';
@@ -11,11 +11,13 @@ const StudentDashboard = () => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentProfileId, setStudentProfileId] = useState(null);
+  const [error, setError] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
   const [scheduleFilter, setScheduleFilter] = useState('all');
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('StudentDashboard: Fetching data...');
       try {
         const [attRes, statsRes] = await Promise.all([
           api.get('/students/my-attendance'),
@@ -23,120 +25,91 @@ const StudentDashboard = () => {
         ]);
         setAttendance(attRes.data);
         setStats(statsRes.data);
+        console.log('StudentDashboard: Attendance and Stats fetched');
 
-        // Fetch routines for student using live data
+        // Get student info from profile API or fallback to AuthContext
+        let liveYear, liveStream;
         try {
           const profileRes = await api.get('/students/me');
+          console.log('StudentDashboard: Profile fetched', profileRes.data);
           setStudentProfileId(profileRes.data.id);
-          const liveYear = profileRes.data.year;
-          const liveStream = profileRes.data.stream;
-          
-          if (liveYear && liveStream) {
-            const [schedRes, sessionRes] = await Promise.all([
-              api.get(`/schedules?year=${liveYear}&stream=${liveStream}`),
-              api.get(`/sessions?year=${liveYear}&stream=${liveStream}`)
-            ]);
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const today = days[new Date().getDay()];
-            
-            const todayRegular = schedRes.data.filter(s => s.day_of_week === today).map(s => ({ ...s, isCustom: false, isCancelled: s.is_cancelled }));
-            const todaySessions = sessionRes.data.filter(s => {
-              const sessDate = new Date(s.start_time);
-              return sessDate.toDateString() === new Date().toDateString();
-            }).map(s => ({
-              id: s.id,
-              subject_id: s.subject_id,
-              subject_name: s.subject_name,
-              teacher_name: s.teacher_name || 'Teacher',
-              start_time: new Date(s.start_time).toTimeString().split(' ')[0],
-              end_time: new Date(s.end_time).toTimeString().split(' ')[0],
-              classroom_name: s.classroom_name,
-              camera_id: s.camera_url || 'N/A',
-              isCustom: s.is_custom,
-              status: s.status,
-              isCancelled: s.status === 'cancelled'
-            }));
-
-            // Helper: convert HH:MM:SS to total minutes
-            const toMins = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
-
-            // Deduplicate: If a session exists for a scheduled class, prefer the session
-            // EXCEPTION: If the regular class is CANCELLED, always keep it to show the status
-            const filteredRegular = todayRegular.filter(reg => {
-              const hasConflict = todaySessions.some(sess =>
-                String(sess.subject_id) === String(reg.subject_id) &&
-                Math.abs(toMins(sess.start_time) - toMins(reg.start_time)) <= 20
-              );
-              return !hasConflict || reg.isCancelled;
-            });
-
-            // Combine, then final dedup pass (prefer sessions over schedules, but preserve cancelled status)
-            const combinedRaw = [...todaySessions, ...filteredRegular];
-            const seenKeys = new Set();
-            const deduped = combinedRaw.filter(item => {
-              const bucket = Math.floor(toMins(item.start_time) / 50);
-              const key = `${item.subject_id}-${bucket}`;
-              if (seenKeys.has(key)) {
-                // If the current item is cancelled, allow it to stay as a separate entry
-                return item.isCancelled;
-              }
-              seenKeys.add(key);
-              return true;
-            });
-
-            const combinedSchedules = deduped.sort((a, b) =>
-              a.start_time.localeCompare(b.start_time)
-            );
-            setSchedules(combinedSchedules);
-          }
+          liveYear = profileRes.data.year;
+          liveStream = profileRes.data.stream;
         } catch (profileErr) {
-          console.error('Profile fetch failed, using fallback:', profileErr);
-          if (user?.year && user?.stream) {
-            const [schedRes, sessionRes] = await Promise.all([
-              api.get(`/schedules?year=${user.year}&stream=${user.stream}`),
-              api.get(`/sessions?year=${user.year}&stream=${user.stream}`)
-            ]);
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const today = days[new Date().getDay()];
-            
-            const todayRegular = schedRes.data.filter(s => s.day_of_week === today).map(s => ({ ...s, isCustom: false, isCancelled: s.is_cancelled }));
-            const todaySessions = sessionRes.data.filter(s => {
-              const sessDate = new Date(s.start_time);
-              return sessDate.toDateString() === new Date().toDateString();
-            }).map(s => ({
+          console.warn('StudentDashboard: Profile fetch failed, using context fallback', profileErr);
+        }
+
+        // Use context user if profile API didn't provide info
+        const finalYear = liveYear || user?.year;
+        const finalStream = liveStream || user?.stream;
+
+        if (finalYear && finalStream) {
+          console.log(`StudentDashboard: Fetching schedules for Year ${finalYear}, Stream ${finalStream}`);
+          const [schedRes, sessionRes] = await Promise.all([
+            api.get(`/schedules?year=${finalYear}&stream=${finalStream}`),
+            api.get(`/sessions?year=${finalYear}&stream=${finalStream}`)
+          ]);
+
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const today = days[new Date().getDay()];
+
+          const todayRegular = schedRes.data.filter(s => s.day_of_week === today).map(s => ({ ...s, isCustom: false, isCancelled: s.is_cancelled }));
+          const todaySessions = sessionRes.data.filter(s => {
+            const sessDate = new Date(s.start_time);
+            return sessDate.toDateString() === new Date().toDateString();
+          }).map(s => {
+            const formatSTime = (isoStr) => {
+              if (!isoStr) return '00:00:00';
+              if (isoStr.includes('Z')) {
+                return new Date(isoStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+              }
+              return isoStr.includes('T') ? isoStr.split('T')[1].split('.')[0] : isoStr;
+            };
+
+            return {
               id: s.id,
+              session_id: s.id,
+              isSessionRecord: true,
               subject_id: s.subject_id,
               subject_name: s.subject_name,
-              teacher_name: s.teacher_name || 'Teacher',
-              start_time: new Date(s.start_time).toTimeString().split(' ')[0],
-              end_time: new Date(s.end_time).toTimeString().split(' ')[0],
+              teacher_name: s.teacher_name,
               classroom_name: s.classroom_name,
-              camera_id: s.camera_url || 'N/A',
-              isCustom: s.is_custom,
+              start_time: formatSTime(s.start_time),
+              end_time: formatSTime(s.end_time),
               status: s.status,
-              isCancelled: s.status === 'cancelled'
-            }));
+              isCustom: s.is_custom,
+              isCancelled: false
+            };
+          });
 
-            // Helper: convert HH:MM:SS to total minutes
-            const toMins = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
+          const filteredRegular = todayRegular.filter(reg =>
+            !todaySessions.some(sess => !sess.isCustom && sess.subject_id === reg.subject_id)
+          );
 
-            // Deduplicate: Preserve cancelled classes even if a session exists
-            const filteredRegular = todayRegular.filter(reg => {
-              const hasConflict = todaySessions.some(sess =>
-                String(sess.subject_id) === String(reg.subject_id) &&
-                Math.abs(toMins(sess.start_time) - toMins(reg.start_time)) <= 20
-              );
-              return !hasConflict || reg.isCancelled;
-            });
+          const toMins = (t) => { const p = (t || '00:00').split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); };
+          const combinedRaw = [...todaySessions, ...filteredRegular];
+          const seenKeys = new Set();
+          const deduped = combinedRaw.filter(item => {
+            const bucket = Math.floor(toMins(item.start_time) / 50);
+            const key = `${item.subject_id}-${bucket}`;
+            if (seenKeys.has(key)) {
+              return item.isCancelled;
+            }
+            seenKeys.add(key);
+            return true;
+          });
 
-            const combinedSchedules = [...todaySessions, ...filteredRegular].sort((a, b) =>
-              a.start_time.localeCompare(b.start_time)
-            );
-            setSchedules(combinedSchedules);
-          }
+          const combinedSchedules = deduped.sort((a, b) => toMins(a.start_time) - toMins(b.start_time));
+          setSchedules(combinedSchedules);
+          console.log('StudentDashboard: Schedules set', combinedSchedules);
+          setError(null);
+        } else {
+          console.error('StudentDashboard: Missing year or stream info', { finalYear, finalStream, user });
+          setError('Profile information (Year/Stream) is missing. Please contact admin.');
         }
       } catch (err) {
-        console.error('Dashboard data fetch error:', err);
+        console.error('StudentDashboard: Data fetch error:', err);
+        setError('Failed to connect to the server. Please check your connection.');
       } finally {
         setLoading(false);
       }
@@ -149,25 +122,29 @@ const StudentDashboard = () => {
 
   const getClassActivityStatus = (schedule) => {
     const now = new Date();
-    
+
     // Check attendance status first
-    const isAttended = attendance.some(att => 
-      String(att.subject_id) === String(schedule.subject_id) && 
-      new Date(att.marked_at).toDateString() === now.toDateString()
-    );
+    const isAttended = attendance.some(att => {
+      if (schedule.session_id && String(att.session_id) === String(schedule.session_id)) {
+        return att.status === 'present';
+      }
+      return String(att.subject_id) === String(schedule.subject_id) &&
+        new Date(att.start_time || att.marked_at).toDateString() === now.toDateString() &&
+        att.status === 'present';
+    });
 
     // If attended, always show as Present regardless of time/status
     if (isAttended) return { type: 'attended', text: 'Present' };
 
     // If cancelled, return early
     if (schedule.status === 'cancelled' || schedule.isCancelled) return { type: 'cancelled', text: 'Cancelled' };
-    
+
     const [startH, startM] = schedule.start_time.split(':');
     const [endH, endM] = schedule.end_time.split(':');
-    
+
     const classStart = new Date();
     classStart.setHours(parseInt(startH, 10), parseInt(startM, 10), 0, 0);
-    
+
     const classEnd = new Date();
     classEnd.setHours(parseInt(endH, 10), parseInt(endM, 10), 0, 0);
 
@@ -180,7 +157,7 @@ const StudentDashboard = () => {
       const diffMs = classStart - now;
       const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
       const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      
+
       let timeStr = '';
       if (diffHrs > 0) {
         timeStr = `${diffHrs} hour${diffHrs > 1 ? 's' : ''} later`;
@@ -196,12 +173,12 @@ const StudentDashboard = () => {
 
   const handleRecheck = async (schedule) => {
     try {
-      let sessionId = schedule.isCustom ? schedule.id : null;
-      
+      let sessionId = schedule.session_id || (schedule.isCustom ? schedule.id : null);
+
       if (!sessionId) {
         const sessionRes = await api.get('/sessions');
-        const match = sessionRes.data.find(s => 
-          s.subject_name.toLowerCase() === schedule.subject_name.toLowerCase() && 
+        const match = sessionRes.data.find(s =>
+          s.subject_name.toLowerCase() === schedule.subject_name.toLowerCase() &&
           new Date(s.start_time).toDateString() === new Date().toDateString()
         );
         if (match) {
@@ -227,7 +204,7 @@ const StudentDashboard = () => {
   };
 
   const attendedToday = schedules.filter(s => getClassActivityStatus(s).type === 'attended').length;
-  
+
   // Calculate unique class slots for the day (deduplicating cancelled + replacement sessions)
   const uniqueSlots = new Set();
   schedules.forEach(s => {
@@ -236,19 +213,31 @@ const StudentDashboard = () => {
     const bucket = Math.floor(mins / 50);
     uniqueSlots.add(`${s.subject_id}-${bucket}`);
   });
-  
+
   const totalSlots = uniqueSlots.size;
   const completedToday = schedules.filter(s => {
     const status = getClassActivityStatus(s);
     return status.type === 'attended' || status.type === 'missed';
   }).length;
-  
+
   const attendancePercentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
 
   if (loading) {
     return (
-      <div className="loading-screen" style={{ background: 'transparent', height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-        <p style={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '0.05em' }}>PREPARING YOUR DASHBOARD...</p>
+      <div className="loading-screen" style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: 'var(--primary)' }}>
+        <Loader2 className="animate-spin" size={48} style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+        <p style={{ fontWeight: 800, letterSpacing: '0.1em', fontSize: '0.9rem' }}>PREPARING YOUR DASHBOARD...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-screen" style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fef2f2', color: '#b91c1c', padding: '2rem', textAlign: 'center' }}>
+        <AlertCircle size={64} style={{ marginBottom: '1.5rem' }} />
+        <h2 style={{ marginBottom: '0.5rem' }}>Connection Error</h2>
+        <p style={{ marginBottom: '2rem', maxWidth: '400px' }}>{error}</p>
+        <button onClick={() => window.location.reload()} className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>Retry Connection</button>
       </div>
     );
   }
@@ -256,12 +245,12 @@ const StudentDashboard = () => {
   const filteredActivity = schedules.filter(schedule => {
     // Hide cancelled classes from the activity feed (they belong in Today's Schedule only)
     if (schedule.isCancelled) return false;
-    
+
     const status = getClassActivityStatus(schedule);
     // Only show completed classes in activity feed
     const isCompleted = status.type === 'attended' || status.type === 'missed';
     if (!isCompleted) return false;
-    
+
     if (activityFilter === 'all') return true;
     if (activityFilter === 'present') return status.type === 'attended';
     if (activityFilter === 'absent') return status.type === 'missed';
@@ -305,8 +294,8 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        <div 
-          className="stat-card glass attendance-progress-card" 
+        <div
+          className="stat-card glass attendance-progress-card"
           style={{
             background: (() => {
               const percent = attendancePercentage;
@@ -343,18 +332,18 @@ const StudentDashboard = () => {
               <button className={`filter-pill ${activityFilter === 'absent' ? 'active' : ''}`} onClick={() => setActivityFilter('absent')}>Absent</button>
             </div>
           </div>
-          
+
           <div className="activity-list">
             {filteredActivity.length > 0 ? (
               filteredActivity.map((schedule, index) => {
                 const status = getClassActivityStatus(schedule);
-                
+
                 return (
                   <div key={index} className={`activity-card ${schedule.isCancelled ? 'cancelled' : ''}`}>
                     <div className="activity-details">
-                      <h4 style={{ 
-                        textDecoration: schedule.isCancelled ? 'line-through' : 'none', 
-                        color: schedule.isCancelled ? '#ef4444' : '#1e293b' 
+                      <h4 style={{
+                        textDecoration: schedule.isCancelled ? 'line-through' : 'none',
+                        color: schedule.isCancelled ? '#ef4444' : '#1e293b'
                       }}>
                         {schedule.subject_name}
                       </h4>
@@ -367,7 +356,7 @@ const StudentDashboard = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="activity-action" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                       {status.type === 'cancelled' && (
                         <span className="status-label status-cancelled">
@@ -389,16 +378,16 @@ const StudentDashboard = () => {
                           <span className="status-label status-missed">
                             <XCircle size={14} /> Absent
                           </span>
-                          <button 
+                          <button
                             onClick={() => handleRecheck(schedule)}
                             className="recheck-btn"
-                            style={{ 
-                              padding: '4px 10px', 
-                              fontSize: '0.65rem', 
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '0.65rem',
                               fontWeight: '700',
-                              borderRadius: '6px', 
-                              background: '#fff', 
-                              border: '1px solid var(--primary)', 
+                              borderRadius: '6px',
+                              background: '#fff',
+                              border: '1px solid var(--primary)',
                               color: 'var(--primary)',
                               cursor: 'pointer',
                               transition: 'all 0.2s'
@@ -451,7 +440,7 @@ const StudentDashboard = () => {
                       </div>
                     )}
                     <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
-                      {schedule.subject_name} 
+                      {schedule.subject_name}
                       {schedule.isCancelled && <span style={{ fontSize: '0.65rem', color: '#ef4444', marginLeft: '6px', fontWeight: '800' }}>[CANCELLED]</span>}
                       {(getClassActivityStatus(schedule).type === 'attended' || getClassActivityStatus(schedule).type === 'missed') && !schedule.isCancelled && (
                         <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: '6px', fontWeight: '800', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>[ENDED]</span>

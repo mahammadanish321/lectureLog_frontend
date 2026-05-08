@@ -15,6 +15,7 @@ import StudentList from './pages/StudentList';
 import TeacherList from './pages/TeacherList';
 import ClassroomManager from './pages/ClassroomManager';
 import You from './pages/You';
+import GetStarted from './pages/GetStarted';
 import './App.css';
 
 // Protected Route Component
@@ -43,6 +44,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/get-started" element={<GetStarted />} />
           <Route
             path="/"
             element={

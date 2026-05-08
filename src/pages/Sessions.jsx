@@ -168,10 +168,10 @@ const Sessions = () => {
       const targetDate = new Date(now);
       targetDate.setDate(now.getDate() + diff);
       const dateStr = targetDate.toLocaleDateString('en-GB');
-      
+
       let status = 'scheduled';
       let done = false;
-      
+
       if (s.is_cancelled) {
         status = 'cancelled';
         done = true;
@@ -193,9 +193,9 @@ const Sessions = () => {
       .filter(s => {
         const { dateStr } = getScheduleInfo(s);
         // Do not show routine if there's already a DB session for this subject on this date
-        return !sessions.some(db => 
-          !db.is_custom && 
-          db.subject_id === s.subject_id && 
+        return !sessions.some(db =>
+          !db.is_custom &&
+          db.subject_id === s.subject_id &&
           new Date(db.start_time).toLocaleDateString('en-GB') === dateStr
         );
       })
@@ -212,20 +212,41 @@ const Sessions = () => {
         };
       });
 
-    const fromSessions = sessions.map(s => ({
-      id: `db_${s.id}`, originalId: s.id,
-      subject_name: s.subject_name, type: s.is_custom ? 'Custom' : 'Regular',
-      year: s.year, stream: s.stream || 'N/A',
-      room: s.classroom_name || s.camera_url || '—',
-      time_range: `${new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(s.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      status: s.status, isCustom: !!s.is_custom, isDone: s.status === 'ended',
-      date: (() => {
-        const d = new Date(s.start_time);
-        if (isNaN(d.getTime())) return new Date().toLocaleDateString('en-GB');
-        return d.toLocaleDateString('en-GB');
-      })(),
-      raw: s,
-    }));
+    const fromSessions = sessions.map(s => {
+      const formatWallTime = (isoStr) => {
+        if (!isoStr) return '--:--';
+        
+        // 1. Real Timestamp (UTC) -> Convert to local
+        if (isoStr.includes('Z')) {
+          try {
+            return new Date(isoStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } catch (e) { return isoStr; }
+        }
+
+        // 2. Wall Clock ISO
+        const timePart = isoStr.includes('T') ? isoStr.split('T')[1].split('.')[0] : isoStr;
+        const [h, m] = timePart.split(':');
+        const hh = parseInt(h);
+        const ampm = hh >= 12 ? 'PM' : 'AM';
+        const h12 = hh % 12 || 12;
+        return `${String(h12).padStart(2, '0')}:${m} ${ampm}`;
+      };
+
+      return {
+        id: `db_${s.id}`, originalId: s.id,
+        subject_name: s.subject_name, type: s.is_custom ? 'Custom' : 'Regular',
+        year: s.year, stream: s.stream || 'N/A',
+        room: s.classroom_name || s.camera_url || '—',
+        time_range: `${formatWallTime(s.start_time)} – ${formatWallTime(s.end_time)}`,
+        status: s.status, isCustom: !!s.is_custom, isDone: s.status === 'ended',
+        date: (() => {
+          if (!s.start_time || !s.start_time.includes('T')) return new Date().toLocaleDateString('en-GB');
+          const [yyyy, mm, dd] = s.start_time.split('T')[0].split('-');
+          return `${dd}/${mm}/${yyyy}`;
+        })(),
+        raw: s,
+      };
+    });
 
     return [...fromSchedules, ...fromSessions];
   };

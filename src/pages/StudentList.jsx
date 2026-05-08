@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Search, Trash2, Mail, Hash, BookOpen, Edit2, Check, X, Calendar, ArrowLeft, Filter, UserPlus, Upload, Loader2, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './StudentList.css';
 
@@ -25,12 +25,6 @@ const StudentList = () => {
   const [regData, setRegData] = useState({
     name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE'
   });
-
-  const [viewingAttendance, setViewingAttendance] = useState(null);
-  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
-  const [studentSchedules, setStudentSchedules] = useState([]);
-  const [allSessions, setAllSessions] = useState([]);
-  const [timeSlots, setTimeSlots] = useState([]);
 
   const fetchStudents = async () => {
     try {
@@ -110,27 +104,6 @@ const StudentList = () => {
     }
   };
 
-  const fetchStudentDetails = async (student) => {
-    try {
-      setLoading(true);
-      const [attRes, schedRes, sessRes, slotRes] = await Promise.all([
-        api.get(`/attendance/student/${student.id}`),
-        api.get('/schedules'),
-        api.get('/sessions'),
-        api.get('/time_slots')
-      ]);
-      setStudentAttendanceData(attRes.data || []);
-      setStudentSchedules(schedRes.data || []);
-      setAllSessions(sessRes.data || []);
-      setTimeSlots(slotRes.data || []);
-      setViewingAttendance(student);
-    } catch (err) {
-      alert(`Failed to load attendance details.`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this student profile?')) return;
     try {
@@ -151,14 +124,6 @@ const StudentList = () => {
       (student.college_id && student.college_id.toLowerCase().includes(searchLower))
     );
   });
-
-  if (viewingAttendance) {
-    return (
-      <AttendanceWeeklyGrid 
-        student={viewingAttendance} attendance={studentAttendanceData} schedules={studentSchedules} sessions={allSessions} timeSlots={timeSlots} onBack={() => setViewingAttendance(null)}
-      />
-    );
-  }
 
   return (
     <div className="student-list-container">
@@ -196,11 +161,11 @@ const StudentList = () => {
         <div className="student-data-table-wrapper">
           <table className="student-data-table">
             <thead>
-              <tr><th>Profile</th><th>Student Info</th><th>IDs</th><th>Academic Year</th><th>Attendance</th>{isAdmin && <th>Actions</th>}</tr>
+              <tr><th>Profile</th><th>Student Info</th><th>IDs</th><th>Academic Year</th>{isAdmin && <th>Actions</th>}</tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="6" className="loading-cell">Loading roster...</td></tr>
+                <tr><td colSpan={isAdmin ? 5 : 4} className="loading-cell">Loading roster...</td></tr>
               ) : filteredStudents.map((student) => (
                 <tr key={student.id}>
                   <td>
@@ -216,9 +181,6 @@ const StudentList = () => {
                   </td>
                   <td>
                     <div className="info-cell"><span className="year-badge">Year {student.year}</span><span className="student-id" style={{ marginTop: '4px' }}>{student.stream}</span></div>
-                  </td>
-                  <td>
-                    <button className="btn-edit" onClick={() => fetchStudentDetails(student)}><Calendar size={14} /> View</button>
                   </td>
                   {isAdmin && (
                     <td>
@@ -318,44 +280,6 @@ const StudentList = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-const AttendanceWeeklyGrid = ({ student, attendance, schedules, sessions, timeSlots, onBack }) => {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const getCellStatus = (day, slot) => {
-    const slotSession = sessions.find(s => {
-      const sTime = new Date(s.start_time).toTimeString().substring(0, 5);
-      return sTime.startsWith(slot.start_time?.substring(0, 4)) && new Date(s.start_time).getDay() === (days.indexOf(day) + 1);
-    });
-    if (!slotSession) return { color: 'transparent', subject: '' };
-    const wasPresent = attendance.find(a => a.session_id === slotSession.id);
-    return wasPresent ? { color: '#dcfce7', text: '#166534', subject: slotSession.subject_name } : { color: '#f1f5f9', text: '#64748b', subject: slotSession.subject_name };
-  };
-
-  return (
-    <div className="attendance-detail-view animate-fade-in">
-      <div className="management-header-row">
-        <button className="btn-edit" onClick={onBack}><ArrowLeft size={16} /> Back</button>
-        <div className="management-context-pill"><span className="meta">Identity Monitor</span><span className="title">{student.name}</span></div>
-      </div>
-      <div className="student-table-card" style={{ padding: '1.5rem' }}>
-        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '8px' }}>
-          <thead><tr><th></th>{days.map(d => <th key={d} style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase' }}>{d}</th>)}</tr></thead>
-          <tbody>
-            {timeSlots.map((slot, i) => (
-              <tr key={i}>
-                <td style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8' }}>{slot.start_time}</td>
-                {days.map(day => {
-                  const status = getCellStatus(day, slot);
-                  return <td key={day} style={{ height: '50px', background: status.color, borderRadius: '10px', fontSize: '0.6rem', textAlign: 'center', color: status.text, fontWeight: 700 }}>{status.subject}</td>
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };

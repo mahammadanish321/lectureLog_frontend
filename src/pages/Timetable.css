@@ -336,7 +336,7 @@
 
 /* ─── SCHEDULE CARD ───────────────────────── */
 .schedule-card {
-  height: 100%;
+  min-height: 64px;
   background: var(--primary);
   border-radius: 12px;
   padding: 7px 8px;
@@ -367,6 +367,15 @@
   border: 1px solid #fde68a;
   border-left: 3px solid #eab308;
   box-shadow: 0 3px 10px rgba(234,179,8,0.12);
+}
+
+.schedule-card.cancelled-routine,
+.schedule-card.custom.cancelled-routine {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #ef4444;
+  box-shadow: 0 3px 10px rgba(239,68,68,0.12);
 }
 
 .schedule-card .subject {
@@ -407,6 +416,51 @@
   margin-top: auto;
   width: fit-content;
 }
+
+.attendance-hover-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translate(-50%, 6px);
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 8px 20px rgba(15,23,42,0.16);
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 6px 9px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 5;
+}
+
+.slot-cell:hover .attendance-hover-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.student-attendance-chip {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 3px 10px rgba(15,23,42,0.12);
+}
+
+.student-attendance-chip.present { color: #16a34a; }
+.student-attendance-chip.absent { color: #dc2626; }
+.student-attendance-chip.cancelled { color: #dc2626; }
 
 /* Delete button */
 .delete-sched-btn {
@@ -470,6 +524,7 @@
 
 .dot.busy   { background: var(--primary); }
 .dot.custom { background: #eab308; }
+.dot.cancelled { background: #ef4444; }
 .dot.free   { background: #e2e8f0; border: 1px solid #cbd5e1; }
 
 /* ─── MODAL ───────────────────────────────── */
@@ -503,6 +558,118 @@
   color: #1e293b;
   margin-bottom: 0.5rem;
 }
+
+.attendance-modal {
+  max-width: 760px !important;
+}
+
+.attendance-modal-header,
+.attendance-filter-row,
+.attendance-roster-row {
+  display: flex;
+  align-items: center;
+}
+
+.attendance-modal-header {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal-icon-close {
+  border: none;
+  background: #f8fafc;
+  color: #64748b;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.attendance-filter-row {
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.attendance-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 10px;
+  height: 34px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.attendance-filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.attendance-loading,
+.attendance-empty {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.attendance-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.attendance-roster-row {
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.attendance-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.attendance-student-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendance-student-info strong {
+  font-size: 0.86rem;
+  color: #1e293b;
+}
+
+.attendance-student-info span,
+.attendance-time {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.attendance-status-icon.present { color: #16a34a; }
+.attendance-status-icon.absent { color: #dc2626; }
 
 .slot-info {
   font-size: 0.78rem;
