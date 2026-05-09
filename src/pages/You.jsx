@@ -68,8 +68,8 @@ const You = () => {
   };
 
   const imageUrl = user?.role === 'student'
-    ? (profileData?.image_url || `http://localhost:5000/public/students/${profileData?.id}.jpg`)
-    : `http://localhost:5000/public/teachers/${profileData?.id}.jpg`;
+    ? (profileData?.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${profileData?.id}.jpg`)
+    : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/teachers/${profileData?.id}.jpg`;
 
   return (
     <div className="you-container">

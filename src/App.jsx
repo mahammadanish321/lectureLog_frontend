@@ -48,9 +48,7 @@ function App() {
           <Route
             path="/"
             element={
-              <ProtectedRoute>
-                <HomeRedirect />
-              </ProtectedRoute>
+              <HomeOrLanding />
             }
           />
           <Route
@@ -139,6 +137,25 @@ function App() {
     </AuthProvider>
   );
 }
+
+// Decide whether to show Landing Page or Dashboard
+const HomeOrLanding = () => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return (
+    <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
+      <p>Loading LectureLog...</p>
+    </div>
+  );
+
+  if (!user) return <GetStarted />;
+  
+  return (
+    <Layout>
+      <HomeRedirect />
+    </Layout>
+  );
+};
 
 // Helper to decide where to go on home page
 const HomeRedirect = () => {

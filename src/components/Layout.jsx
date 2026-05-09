@@ -25,7 +25,7 @@ import { useAuth } from '../context/AuthContext';
 import { io } from 'socket.io-client';
 import './Layout.css';
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();

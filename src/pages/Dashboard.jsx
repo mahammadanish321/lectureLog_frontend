@@ -355,7 +355,7 @@ const Dashboard = () => {
     fetchInitialData();
 
     // Initialize Socket
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
 
     newSocket.on('session_started', (newSession) => {
       console.log('Real-time: Session started', newSession.id);
@@ -872,7 +872,7 @@ const Dashboard = () => {
                   <div key={i} className="arrival-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
                       <img
-                        src={item.image_url || `http://localhost:5000/public/students/${item.student_id || item.id}.jpg`}
+                        src={item.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${item.student_id || item.id}.jpg`}
                         alt={item.student_name}
                         onError={(e) => {
                           e.target.onerror = null;
@@ -999,7 +999,7 @@ const Dashboard = () => {
                   <div key={student.id || `${studentName}-${index}`} className="present-student-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][index % 4]}`}>
                       <img
-                        src={`http://localhost:5000/public/students/${student.student_id || student.id}.jpg`}
+                        src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.student_id || student.id}.jpg`}
                         alt={studentName}
                         onError={(e) => {
                           e.target.onerror = null;

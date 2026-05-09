@@ -190,7 +190,7 @@ const RegisterTeacher = () => {
               <div key={teacher.id} className="teacher-item-mini">
                 <div className="mini-image">
                   <img 
-                    src={teacher.image_url || `http://localhost:5000/public/teachers/${teacher.id}.jpg`} 
+                    src={teacher.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/teachers/${teacher.id}.jpg`} 
                     alt={teacher.name} 
                     onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + teacher.name; }}
                   />
