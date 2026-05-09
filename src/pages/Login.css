@@ -1,8 +1,9 @@
 .login-screen-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  min-height: 100vh;
+  height: 100vh;
   background-color: var(--background);
+  overflow: hidden;
 }
 
 /* ── Visual Section ────────────────────────────────────────── */
@@ -159,7 +160,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem;
+  overflow-y: hidden;
+  max-height: 100vh;
 }
 
 .form-wrapper {
@@ -169,14 +172,14 @@
 
 .form-header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .welcome-text {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 800;
   color: #111827;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .admin-portal-link {
@@ -228,10 +231,10 @@
 .login-tabs-unified {
   display: flex;
   background-color: #f3f4f6;
-  padding: 0.4rem;
+  padding: 0.3rem;
   border-radius: 12px;
-  gap: 0.4rem;
-  margin-bottom: 2.5rem;
+  gap: 0.3rem;
+  margin-bottom: 1.5rem;
 }
 
 .mode-tab {
@@ -256,7 +259,7 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .field-group {
@@ -285,11 +288,11 @@
 
 .input-with-icon input {
   width: 100%;
-  height: 3.5rem;
+  height: 3.2rem;
   padding: 0 1rem 0 3rem;
   border: 1.5px solid #e5e7eb;
   border-radius: 12px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   transition: all 0.2s;
 }
 
@@ -339,12 +342,12 @@
 }
 
 .submit-btn {
-  height: 3.5rem;
+  height: 3.2rem;
   background-color: var(--primary);
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -376,8 +379,8 @@
 
 .form-footer {
   text-align: center;
-  margin-top: 2rem;
-  font-size: 0.9rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -405,4 +408,84 @@
   20%, 80% { transform: translate3d(2px, 0, 0); }
   30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
   40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* ── Web Admin Restriction ── */
+.admin-web-restriction {
+  text-align: center;
+  padding: 2rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.restriction-icon {
+  width: 80px;
+  height: 80px;
+  background: #ecfdf5;
+  color: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.admin-web-restriction h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin-web-restriction p {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.download-btn-wide {
+  width: 100%;
+  height: 3.2rem;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 8px 20px rgba(16, 89, 52, 0.2);
+}
+
+.download-btn-wide:hover {
+  background-color: #0d4a2b;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(16, 89, 52, 0.3);
+}
+
+.secondary-link {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.secondary-link:hover {
+  color: var(--primary);
+  opacity: 1;
 }

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, ShieldCheck, Zap, BarChart3, Users,
   LayoutDashboard, CalendarDays, BookOpen, GraduationCap,
-  School, MonitorPlay, UserCircle, BookMarked
+  School, MonitorPlay, UserCircle, BookMarked, Monitor, Smartphone
 } from "lucide-react";
 import "./GetStarted.css";
 
@@ -66,12 +66,20 @@ export default function GetStarted() {
               variants={fadeUp} initial="hidden" animate="visible" custom={3}
               className="gs-cta-row"
             >
-              <button onClick={() => navigate("/login")} className="gs-cta-primary">
-                Launch Dashboard <ChevronRight size={18} />
-              </button>
-              <button onClick={() => navigate("/signup")} className="gs-cta-outline">
-                Register Institution
-              </button>
+              <div className="gs-cta-group">
+                <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
+                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
+                  Download for Windows
+                </a>
+              </div>
+              <div className="gs-cta-group">
+                <span className="gs-cta-note">Students & Teachers</span>
+                <a href="#" className="gs-cta-outline">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg" alt="Android" style={{ width: '22px', height: '22px' }} />
+                  Download for Android
+                </a>
+              </div>
             </motion.div>
           </div>
         }

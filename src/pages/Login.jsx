@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor } from 'lucide-react';
 import api from '../api';
 import './Login.css';
 
@@ -89,6 +89,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
 };
 
 const Login = () => {
+  const isElectron = window.navigator.userAgent.includes('Electron');
   const [loginMode, setLoginMode] = useState('teacher'); // 'teacher', 'admin', 'student'
   const [view, setView] = useState('login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
   const [organizations, setOrganizations] = useState([]);
@@ -290,7 +291,7 @@ const Login = () => {
       <div className="login-visual-section">
         <div className="visual-header">
           <div className="brand-logo">
-            <img src="/favicon.svg" alt="LectureLog" className="logo-img-small" />
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog" className="logo-img-small" style={{ borderRadius: '8px' }} />
             <span>LectureLog</span>
           </div>
           <h1>Intelligent Classroom Monitoring</h1>
@@ -404,104 +405,123 @@ const Login = () => {
 
           {view === 'login' ? (
             <form onSubmit={handleLogin} className="auth-form">
-              <div className="form-fields">
-
-                {loginMode !== 'student' ? (
-                  <>
-                    <div className="field-group">
-                      <label>Email Address</label>
-                      <div className="input-with-icon">
-                        <Mail size={18} />
-                        <input
-                          type="email"
-                          placeholder="e.g. professor@college.edu"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onFocus={() => setIsTyping(true)}
-                          onBlur={() => setIsTyping(false)}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label>{loginMode === 'teacher' ? 'Password / College ID' : 'Password'}</label>
-                      <div className="input-with-icon">
-                        <Lock size={18} />
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onFocus={() => setIsTyping(true)}
-                          onBlur={() => setIsTyping(false)}
-                          required
-                        />
-                        <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="field-group">
-                      <label>Institutional Email</label>
-                      <div className="input-with-icon">
-                        <Mail size={18} />
-                        <input
-                          type="email"
-                          placeholder="e.g. student@college.edu"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onFocus={() => setIsTyping(true)}
-                          onBlur={() => setIsTyping(false)}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label>Password</label>
-                      <div className="input-with-icon">
-                        <Lock size={18} />
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onFocus={() => setIsTyping(true)}
-                          onBlur={() => setIsTyping(false)}
-                          required
-                        />
-                        <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="form-utils">
-                <label className="remember-me">
-                  <input type="checkbox" />
-                  <span>Keep me logged in</span>
-                </label>
-                <a href="#" className="forgot-pass">Forgot Password?</a>
-              </div>
-
-              <button type="submit" className="submit-btn" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : <span>Sign In to {loginMode}</span>}
-                {!loading && <ChevronRight size={18} />}
-              </button>
-
-              {loginMode !== 'admin' && (
-                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                  <button type="button" onClick={() => setView('verify-email')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}>
-                    First time logging in? Activate account
+              {loginMode === 'admin' && !isElectron ? (
+                <div className="admin-web-restriction animate-fade-in">
+                  <div className="restriction-icon">
+                    <Monitor size={48} />
+                  </div>
+                  <h3>Admin Desktop Required</h3>
+                  <p>To manage your institution and use AI features, please use the LectureLog Windows application.</p>
+                  <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
+                    <ChevronRight size={18} />
+                    <span>Download for Windows</span>
+                  </a>
+                  <button type="button" onClick={() => setView('login')} className="secondary-link">
+                    Already have the app? Open it now
                   </button>
                 </div>
+              ) : (
+                <>
+                  <div className="form-fields">
+
+                    {loginMode !== 'student' ? (
+                      <>
+                        <div className="field-group">
+                          <label>Email Address</label>
+                          <div className="input-with-icon">
+                            <Mail size={18} />
+                            <input
+                              type="email"
+                              placeholder="e.g. professor@college.edu"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              onFocus={() => setIsTyping(true)}
+                              onBlur={() => setIsTyping(false)}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="field-group">
+                          <label>{loginMode === 'teacher' ? 'Password / College ID' : 'Password'}</label>
+                          <div className="input-with-icon">
+                            <Lock size={18} />
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              onFocus={() => setIsTyping(true)}
+                              onBlur={() => setIsTyping(false)}
+                              required
+                            />
+                            <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="field-group">
+                          <label>Institutional Email</label>
+                          <div className="input-with-icon">
+                            <Mail size={18} />
+                            <input
+                              type="email"
+                              placeholder="e.g. student@college.edu"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              onFocus={() => setIsTyping(true)}
+                              onBlur={() => setIsTyping(false)}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="field-group">
+                          <label>Password</label>
+                          <div className="input-with-icon">
+                            <Lock size={18} />
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              onFocus={() => setIsTyping(true)}
+                              onBlur={() => setIsTyping(false)}
+                              required
+                            />
+                            <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="form-utils">
+                    <label className="remember-me">
+                      <input type="checkbox" />
+                      <span>Keep me logged in</span>
+                    </label>
+                    <a href="#" className="forgot-pass">Forgot Password?</a>
+                  </div>
+
+                  <button type="submit" className="submit-btn" disabled={loading}>
+                    {loading ? <Loader2 className="animate-spin" /> : <span>Sign In to {loginMode}</span>}
+                    {!loading && <ChevronRight size={18} />}
+                  </button>
+
+                  {loginMode !== 'admin' && (
+                    <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                      <button type="button" onClick={() => setView('verify-email')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}>
+                        First time logging in? Activate account
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </form>
           ) : (

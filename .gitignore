@@ -15,6 +15,15 @@ node_modules/
 # production
 /build
 /dist
+/dist-electron
+/out
+
+# electron-builder
+*.blockmap
+*.exe
+*.zip
+*.dmg
+*.AppImage
 
 # misc
 .DS_Store

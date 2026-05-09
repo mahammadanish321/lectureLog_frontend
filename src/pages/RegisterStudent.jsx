@@ -60,15 +60,63 @@ const RegisterStudent = () => {
     e.preventDefault();
     if (!file) return alert('Please upload a student photo');
 
+    // Reliable Electron detection — works in both dev and packaged builds
+    const isElectron = (
+      navigator.userAgent.toLowerCase().includes('electron') ||
+      (typeof process !== 'undefined' && process.versions?.electron)
+    );
+    const AI_SERVICE_URL = 'http://127.0.0.1:8001';
+
     setLoading(true);
-    const data = new FormData();
-    Object.keys(formData).forEach(key => data.append(key, formData[key]));
-    data.append('image', file);
 
     try {
+      let embedding = null;
+
+      // 1. Always try local AI first when in Electron
+      if (isElectron) {
+        try {
+          const aiFormData = new FormData();
+          aiFormData.append('file', file);
+
+          const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
+            method: 'POST',
+            body: aiFormData,
+          });
+
+          if (!aiResponse.ok) throw new Error(`AI responded with status ${aiResponse.status}`);
+
+          const aiData = await aiResponse.json();
+          embedding = aiData.embedding;
+
+          if (!embedding || !Array.isArray(embedding)) {
+            throw new Error('AI returned an invalid embedding.');
+          }
+
+          console.log('[Electron] Local embedding generated successfully.');
+        } catch (aiErr) {
+          console.error('[Electron] Local AI Error:', aiErr);
+          alert(
+            '⚠️ The AI face recognition service is still warming up.\n\n' +
+            'Please wait 30 seconds for it to fully start, then try again.\n\n' +
+            'If this keeps happening, restart the application.'
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Send data to backend (with local embedding if available)
+      const data = new FormData();
+      Object.keys(formData).forEach(key => data.append(key, formData[key]));
+      data.append('image', file);
+      if (embedding) {
+        data.append('face_embedding', JSON.stringify(embedding));
+      }
+
       await api.post('/students', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+
       setSuccess(true);
       setFormData({ name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE' });
       setFile(null);

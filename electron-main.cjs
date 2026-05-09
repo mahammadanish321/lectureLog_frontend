@@ -1,6 +1,7 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
@@ -15,13 +16,20 @@ function createWindow() {
       contextIsolation: false,
     },
     title: "LectureLog Admin Desktop",
-    icon: path.join(__dirname, 'public', 'favicon.svg')
+    icon: path.join(__dirname, isDev ? 'public' : 'dist', isDev ? 'log.ico' : 'web-app-manifest-512x512.png'),
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#ffffff',
+      symbolColor: '#105934',
+      height: 35
+    }
   });
 
-  // In development, load from Vite dev server
+  // In development, load from Vite dev server and open DevTools
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools(); // See all console.log output here
   } else {
     // In production, load the built index.html
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
@@ -33,29 +41,68 @@ function createWindow() {
 }
 
 function startAI() {
-  console.log('Starting AI Service...');
+  const isPackaged = app.isPackaged;
+  const aiPath = isPackaged 
+    ? path.join(process.resourcesPath, 'AI', 'main.py')
+    : path.resolve(__dirname, '..', 'LectureLog_AI', 'main.py');
+
+  const fs = require('fs');
+  if (!fs.existsSync(aiPath)) {
+    console.error(`[ELECTRON] ❌ AI script NOT FOUND at: ${aiPath}`);
+    console.error('[ELECTRON] Check extraResources config in package.json');
+    return;
+  }
+
+  console.log(`[ELECTRON] ✅ AI script found at: ${aiPath}`);
+  console.log(`[ELECTRON] Starting AI Service...`);
   
-  // Path to the python script (adjust based on your structure)
-  // During development, we look at the sibling folder
-  const scriptPath = path.resolve(__dirname, '..', 'LectureLog_AI', 'camera_backend.py');
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
   
-  pythonProcess = spawn('python', [scriptPath], {
+  pythonProcess = spawn(pythonCmd, [aiPath], {
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });
 
   pythonProcess.on('error', (err) => {
-    console.error('Failed to start AI process:', err);
+    console.error('[ELECTRON] ❌ Failed to start AI process:', err.message);
+    console.error('[ELECTRON] Make sure Python is installed and in your PATH');
   });
 
   pythonProcess.on('close', (code) => {
-    console.log(`AI process exited with code ${code}`);
+    if (code === 0) {
+      console.log('[ELECTRON] AI process exited cleanly.');
+    } else {
+      console.error(`[ELECTRON] ⚠️ AI process exited with code ${code}. It may have crashed.`);
+    }
   });
 }
 
 app.on('ready', () => {
   createWindow();
   startAI();
+  
+  if (!isDev) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+});
+
+// Update Events
+autoUpdater.on('update-available', () => {
+  console.log('Update available.');
+});
+
+autoUpdater.on('update-downloaded', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Ready',
+    message: 'A new version of LectureLog Admin is ready. Restart now to update?',
+    buttons: ['Restart', 'Later']
+  }).then((result) => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
 });
 
 app.on('window-all-closed', () => {

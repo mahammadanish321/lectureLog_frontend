@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Loader2, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, ChevronRight, AlertCircle, Monitor } from 'lucide-react';
 import api from '../api';
 import './Login.css'; // Reusing Login.css for identical styling
 
@@ -74,6 +74,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
 };
 
 export default function Signup() {
+  const isElectron = window.navigator.userAgent.includes('Electron');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -205,7 +206,7 @@ export default function Signup() {
       <div className="login-visual-section">
         <div className="visual-header">
           <div className="brand-logo">
-            <img src="/favicon.svg" alt="LectureLog" className="logo-img-small" />
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog" className="logo-img-small" style={{ borderRadius: '8px' }} />
             <span>LectureLog</span>
           </div>
           <h1>Bring your institution to the future.</h1>
@@ -386,9 +387,24 @@ export default function Signup() {
               <div style={{ width: '5rem', height: '5rem', backgroundColor: '#ecfdf5', color: '#105934', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '2px solid #bbf7d0' }}>
                 <CheckCircle2 size={48} />
               </div>
-              <h2 className="welcome-text">Registration Complete!</h2>
-              <p className="subtitle" style={{ marginBottom: '2.5rem' }}>Your institution has been created successfully. You can now log in to your admin dashboard.</p>
-              <button onClick={() => navigate('/login')} className="submit-btn">Go to Login</button>
+              <h2 className="welcome-text">Institution Created!</h2>
+              <p className="subtitle" style={{ marginBottom: '2.5rem' }}>
+                Registration successful! {!isElectron ? "To manage your institution, please download and install the LectureLog Windows application." : "You can now log in to your admin dashboard."}
+              </p>
+              
+              {!isElectron ? (
+                <div className="admin-web-restriction" style={{ background: 'white', border: 'none', padding: 0 }}>
+                  <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
+                    <ChevronRight size={18} />
+                    <span>Download for Windows</span>
+                  </a>
+                  <button onClick={() => navigate('/login')} className="secondary-link" style={{ marginTop: '1rem' }}>
+                    Go to Login
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => navigate('/login')} className="submit-btn">Go to Login</button>
+              )}
             </div>
           )}
 

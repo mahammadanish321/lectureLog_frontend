@@ -313,6 +313,11 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: margin-right 0.3s ease;
+}
+
+.top-navbar-right.electron-controls-offset {
+  margin-right: 140px; /* Space for Minimize/Maximize/Close */
 }
 
 .circle-btn {

@@ -105,8 +105,10 @@ const Layout = ({ children }) => {
   const allItems = [...menuItems, ...generalItems];
   const currentPage = allItems.find(item => item.path === location.pathname);
 
+  const isElectron = window.navigator.userAgent.includes('Electron');
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${isElectron ? 'is-electron' : ''}`}>
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)} />
@@ -115,7 +117,7 @@ const Layout = ({ children }) => {
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <img src="/favicon.svg" alt="LectureLog Icon" style={{ width: '32px', height: '32px', minWidth: '32px' }} />
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog Icon" style={{ width: '32px', height: '32px', minWidth: '32px', borderRadius: '8px' }} />
             {!isSidebarCollapsed && <span className="logo-text">LectureLog</span>}
           </div>
           <button className="sidebar-toggle-btn desktop-only" onClick={toggleSidebar} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
@@ -179,7 +181,7 @@ const Layout = ({ children }) => {
               </div>
             </div>
 
-            <div className="top-navbar-right">
+            <div className={`top-navbar-right ${isElectron ? 'electron-controls-offset' : ''}`}>
               <button className="circle-btn" title="Notifications" onClick={() => setShowNotifications(true)}>
                 <Bell size={18} />
               </button>

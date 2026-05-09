@@ -79,12 +79,49 @@ const StudentList = () => {
   const handleRegSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    
-    const data = new FormData();
-    Object.keys(regData).forEach(key => data.append(key, regData[key]));
-    if (regFile) data.append('image', regFile);
+
+    // Reliable Electron detection
+    const isElectron = (
+      navigator.userAgent.toLowerCase().includes('electron') ||
+      (typeof process !== 'undefined' && process.versions?.electron)
+    );
+    const AI_SERVICE_URL = 'http://127.0.0.1:8001';
 
     try {
+      let embedding = null;
+
+      // If in Electron, generate face embedding locally FIRST
+      if (isElectron && regFile && !isEditMode) {
+        console.log('[Electron] Generating local face embedding...');
+        try {
+          const aiFormData = new FormData();
+          aiFormData.append('file', regFile);
+          const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
+            method: 'POST',
+            body: aiFormData,
+          });
+          if (!aiResponse.ok) throw new Error(`AI responded with status ${aiResponse.status}`);
+          const aiData = await aiResponse.json();
+          embedding = aiData.embedding;
+          if (!embedding || !Array.isArray(embedding)) throw new Error('Invalid embedding returned.');
+          console.log('[Electron] ✅ Local embedding generated successfully!');
+        } catch (aiErr) {
+          console.error('[Electron] ❌ Local AI Error:', aiErr.message);
+          alert(
+            '⚠️ The AI face recognition service is still warming up.\n\n' +
+            'Please wait 30-60 seconds after opening the app, then try again.\n\n' +
+            'If this keeps happening, restart the application.'
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      const data = new FormData();
+      Object.keys(regData).forEach(key => data.append(key, regData[key]));
+      if (regFile) data.append('image', regFile);
+      if (embedding) data.append('face_embedding', JSON.stringify(embedding));
+
       if (isEditMode) {
         await api.put(`/students/${currentEditId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {

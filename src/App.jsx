@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -21,6 +21,7 @@ import './App.css';
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
+  const isElectron = window.navigator.userAgent.includes('Electron');
 
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
@@ -30,6 +31,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (!user) return <Navigate to="/login" />;
 
+  // Admin Web Restriction
+  if (user.role === 'admin' && !isElectron) {
+    return <Navigate to="/login" />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" />;
   }
@@ -38,6 +44,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 function App() {
+  const isElectron = window.navigator.userAgent.includes('Electron');
+  const Router = isElectron ? HashRouter : BrowserRouter;
+
   return (
     <AuthProvider>
       <Router>
@@ -149,6 +158,11 @@ const HomeOrLanding = () => {
   );
 
   if (!user) return <GetStarted />;
+
+  const isElectron = window.navigator.userAgent.includes('Electron');
+  if (user.role === 'admin' && !isElectron) {
+    return <Navigate to="/login" />;
+  }
   
   return (
     <Layout>
