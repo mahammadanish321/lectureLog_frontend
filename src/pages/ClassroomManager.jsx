@@ -22,7 +22,8 @@ const ClassroomManager = () => {
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    camera_url: ''
+    camera_url: '',
+    camera_name: ''
   });
 
   const detectCameras = async () => {
@@ -67,7 +68,8 @@ const ClassroomManager = () => {
     
     setFormData({
       name: room.name,
-      camera_url: room.camera_url || ''
+      camera_url: room.camera_url || '',
+      camera_name: room.camera_name || ''
     });
     setCurrentEditId(room.id);
     setIsEditMode(true);
@@ -78,7 +80,7 @@ const ClassroomManager = () => {
     setShowModal(false);
     setIsEditMode(false);
     setCurrentEditId(null);
-    setFormData({ name: '', camera_url: '' });
+    setFormData({ name: '', camera_url: '', camera_name: '' });
     setSuccess(false);
   };
 
@@ -175,7 +177,10 @@ const ClassroomManager = () => {
                           // If it's a manual URL (contains / or :) show it as is
                           if (rawId.includes('/') || rawId.includes(':')) return rawId;
                           
-                          // Otherwise, try to resolve friendly name from hardware list
+                          // Use stored camera_name if available
+                          if (room.camera_name) return room.camera_name;
+
+                          // Otherwise, try to resolve friendly name from hardware list (fallback)
                           const matchedCam = availableCameras.find(cam => cam.id === rawId);
                           return matchedCam ? matchedCam.name : `Camera Index ${rawId}`;
                         })()}
@@ -248,7 +253,15 @@ const ClassroomManager = () => {
                   ) : (
                     <select 
                       value={formData.camera_url} 
-                      onChange={e => setFormData({...formData, camera_url: e.target.value})}
+                      onChange={e => {
+                        const selectedId = e.target.value;
+                        const cam = availableCameras.find(c => c.id === selectedId);
+                        setFormData({
+                          ...formData, 
+                          camera_url: selectedId,
+                          camera_name: cam ? cam.name : ''
+                        });
+                      }}
                       required
                     >
                       <option value="">Select Connected Camera</option>
@@ -263,6 +276,32 @@ const ClassroomManager = () => {
                     ? "Enter the stream URL or specific hardware index." 
                     : "Select a physically connected device from the list above."}
                 </p>
+
+                {formData.camera_url && !useManualInput && (
+                  <div className="camera-preview-box" style={{ marginTop: '1.5rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                    <div style={{ padding: '0.6rem 1rem', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Hardware Preview (Backend Index: {formData.camera_url})</span>
+                      <span style={{ color: '#22c55e' }}>● Live</span>
+                    </div>
+                    <img 
+                      src={`http://localhost:8002/video_feed/${formData.camera_url}`} 
+                      alt="Hardware Preview" 
+                      style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        const msg = document.createElement('div');
+                        msg.style.padding = '2rem';
+                        msg.style.textAlign = 'center';
+                        msg.style.color = '#94a3b8';
+                        msg.style.fontSize = '0.8rem';
+                        msg.innerHTML = "Backend preview unavailable. Please ensure Camera Backend (Port 8002) is running.";
+                        parent.appendChild(msg);
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="modal-actions-row">
                   <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>

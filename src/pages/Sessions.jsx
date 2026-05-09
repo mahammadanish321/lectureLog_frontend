@@ -62,7 +62,7 @@ const Sessions = () => {
       const role = user?.role?.toLowerCase();
       const uid = user?.id;
       if (role === 'teacher') {
-        setSessions(res.data.filter(s => s.teacher_id === uid));
+        setSessions(res.data.filter(s => String(s.teacher_id) === String(uid)));
         const schRes = await api.get('/schedules/my');
         setTeacherSchedules(schRes.data);
       } else {
@@ -129,16 +129,17 @@ const Sessions = () => {
       alert('This session belongs to a future week and cannot be deleted until that week becomes active.');
       return;
     }
-    if (!window.confirm('Delete this custom session?')) return;
-    try { await api.post('/sessions/cancel', { id }); fetchSessions(); }
+    const pass = window.prompt('Enter your Password to delete this custom session:');
+    if (!pass) return;
+    try { await api.post('/sessions/cancel', { id, password: pass }); fetchSessions(); }
     catch (err) { alert(err.response?.data?.message || 'Failed'); }
   };
 
   const handleCancelRoutine = async (id) => {
-    const cid = window.prompt('Enter your College ID to cancel this class:');
-    if (!cid) return;
+    const pass = window.prompt('Enter your Password to cancel this class:');
+    if (!pass) return;
     try {
-      await api.post(`/schedules/${id}/cancel`, { college_id: cid.trim() });
+      await api.post(`/schedules/${id}/cancel`, { password: pass });
       const r = await api.get('/schedules/my');
       setTeacherSchedules(r.data);
     } catch (err) { alert('Failed: ' + (err.response?.data?.message || err.message)); }

@@ -1,477 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 :root {
-  --background: #f4f6f5;
-  /* Light grayish-green background */
-  --foreground: #111827;
-  /* Dark text */
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
+  --background: #ffffff;
+  --foreground: #1c1917;
   --primary: #105934;
-  /* Dark Forest Green from inspiration */
   --primary-foreground: #ffffff;
-  --secondary: #e5e7eb;
-  --secondary-foreground: #1f2937;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #dcfce7;
-  /* Light green accent */
-  --accent-foreground: #166534;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
   --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
+  --destructive-foreground: #fafafa;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
   --ring: #105934;
-  --radius: 16px;
-  /* Larger border radius for modern feel */
-  --radius-sm: 8px;
-  --radius-lg: 24px;
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --spacing: 1rem;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --radius: 0.5rem;
 }
 
-/* Base resets */
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
-  border-color: var(--border);
 }
 
 body {
-  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
   background-color: var(--background);
   color: var(--foreground);
-  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  color: var(--foreground);
+}
+
+.text-white {
+  color: #ffffff !important;
+}
+
 h6 {
   font-weight: 700;
   color: var(--foreground);
   letter-spacing: -0.025em;
 }
 
-/* Button System */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  /* Pill-shaped buttons based on inspiration */
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  border: 1px solid transparent;
-  gap: 0.5rem;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-secondary {
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
-  border-color: var(--border);
-}
-
-.btn-secondary:hover {
-  background-color: var(--accent);
-}
-
-.btn-outline {
-  background-color: transparent;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-}
-
-.btn-outline:hover {
-  background-color: var(--accent);
-}
-
-/* Card System */
-.card {
-  background-color: var(--card);
-  border: none;
-  /* Removing border in favor of shadow */
-  border-radius: var(--radius-lg);
-  color: var(--card-foreground);
-  box-shadow: var(--shadow);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-/* Input System */
-input,
-select,
-textarea {
-  display: flex;
-  height: 2.75rem;
-  width: 100%;
-  border-radius: 9999px;
-  /* Pill shaped inputs */
-  border: 1px solid var(--input);
-  background-color: var(--background);
-  padding: 0.5rem 1.25rem;
-  font-size: 0.875rem;
-  color: var(--foreground);
-  transition: all 0.2s ease;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--ring);
-}
-
-/* Utilities */
-.text-muted {
-  color: var(--muted-foreground);
-}
-
-.badge-danger {
-  background-color: var(--destructive);
-  color: var(--destructive-foreground);
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-}
-
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* ==========================================================================
-   GLOBAL UNIFIED MODAL SYSTEM
-   ========================================================================== */
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 2rem;
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-.modal-container {
-  background: white;
-  width: 76vw;
-  min-width: min(1080px, 100%);
-  max-width: 1400px;
-  height: 80vh;
-  max-height: 900px;
-  border-radius: 28px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  position: relative;
-  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes modalSlideIn {
-  from {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.modal-header {
-  padding: 1.5rem 1.75rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.modal-header h2 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.modal-close-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid #e2e8f0;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #64748b;
-  transition: all 0.2s;
-}
-
-.modal-close-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  transform: rotate(90deg);
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.75rem 1.5rem 1.5rem 1.5rem;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE/Edge */
-}
-
-.modal-body::-webkit-scrollbar {
-  display: none;
-  /* Chrome/Safari */
-}
-
-/* Detailed Student Item Styling - Restored */
-.student-detailed-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.student-item-rich {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background: #fff;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  transition: all 0.2s ease;
-  gap: 1.5rem;
-}
-
-.student-item-rich:hover {
-  background: #f8fafc;
-  border-color: rgba(16, 89, 52, 0.1);
-  transform: scale(1.005);
-}
-
-.student-main-profile {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.student-text-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.student-text-group h5 {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.student-roll {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 600;
-}
-
-.student-contact-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.student-email {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.student-meta-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
-.present-time {
-  font-size: 0.7rem;
-  color: #64748b;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: #f1f5f9;
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-}
-
-/* Sessions Explorer Grid */
-.sessions-explorer-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  padding: 0.5rem;
-}
-
-.session-explorer-card {
-  background: white;
-  border-radius: 24px;
-  padding: 1.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.session-explorer-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--primary);
-  box-shadow: 0 20px 40px rgba(16, 89, 52, 0.08);
-}
-
-.session-explorer-card.active {
-  background: rgba(16, 89, 52, 0.02);
-  border-color: var(--primary);
-  border-width: 2px;
-}
-
-.session-card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.session-card-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: rgba(16, 89, 52, 0.1);
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.session-card-title {
-  display: flex;
-  flex-direction: column;
-}
-
-.session-card-title h5 {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #1e293b;
-  font-weight: 800;
-}
-
-.session-card-title .teacher-name {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.session-card-title .room-name {
-  font-size: 0.7rem;
-  color: var(--primary);
-  font-weight: 700;
-  margin-top: 0.1rem;
-}
-
-.session-card-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.03);
-}
-
-.session-detail-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: #475569;
-}
-
-.session-detail-item.meta-line {
-  font-size: 0.7rem;
-  color: #94a3b8;
-  font-weight: 600;
-  margin-top: 0.2rem;
-}
-
-.session-detail-item svg {
-  color: #94a3b8;
-}
-
-@media (max-width: 1200px) {
-  .sessions-explorer-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
-  .sessions-explorer-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
 }

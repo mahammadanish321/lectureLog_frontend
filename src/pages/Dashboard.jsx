@@ -604,7 +604,7 @@ const Dashboard = () => {
                       <MonitorPlay size={24} color={activeSession.is_custom ? '#eab308' : 'var(--primary)'} />
                       <div>
                         <h3>{activeSession.subject_name}</h3>
-                        <p>{activeSession.classroom_name} • {activeSession.camera_name || 'Front Cam'}</p>
+                        <p>{activeSession.classroom_name} • {activeSession.camera_name || 'Camera'}</p>
                       </div>
                     </div>
                     <div className="hero-time-box">
@@ -680,7 +680,7 @@ const Dashboard = () => {
                         </div>
 
                         <div className="session-card-context">
-                          <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Front Cam'}</div>
+                          <div className="location-cam">{session.classroom_name} • {session.camera_name || 'Camera'}</div>
                           <div className="time-range">{formatTime(session.start_time)} – {formatTime(session.end_time)}</div>
                         </div>
 
@@ -804,9 +804,17 @@ const Dashboard = () => {
                 ) : (
                   <div className={`video-feed-container ${isFullscreen ? 'is-fullscreen' : ''}`} ref={videoContainerRef}>
                     <img
-                      src={`${AI_SERVICE_URL}/video_feed?cam=${(selectedSessionId ? activeSessions.find(s => s.id === selectedSessionId) : currentSession)?.camera_url || '0'}`}
+                      src={aiStatus.online 
+                        ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}` 
+                        : `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}`}
                       alt="Live Feed"
                       className="live-video-feed"
+                      onError={(e) => {
+                        // Secondary fallback if AI URL fails despite online status
+                        if (aiStatus.online) {
+                           e.target.src = `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}`;
+                        }
+                      }}
                     />
 
                     <div className="video-controls-overlay">
@@ -929,7 +937,7 @@ const Dashboard = () => {
 
                     <div className="explorer-card-body">
                       <div className="detail-row"><User size={14} /><span>{session.teacher_name || 'Teacher'}</span></div>
-                      <div className="detail-row"><Camera size={14} /><span>{session.camera_name || 'Front Cam'}</span></div>
+                      <div className="detail-row"><Camera size={14} /><span>{session.camera_name || 'Camera'}</span></div>
                       <div className="detail-row"><Clock size={14} /><span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span></div>
                       <div className="detail-row" style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #eef2f7' }}><span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Year {session.year} • {session.stream}</span></div>
                     </div>

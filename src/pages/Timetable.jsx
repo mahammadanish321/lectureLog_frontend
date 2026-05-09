@@ -83,6 +83,12 @@ const Timetable = () => {
     classroom_id: '', classroom_search: '', camera_id: '0'
   });
 
+  // Sync with user profile once loaded
+  useEffect(() => {
+    if (user?.year) setSelectedYear(user.year.toString());
+    if (user?.stream) setSelectedStream(user.stream);
+  }, [user]);
+
   const wrapperRef = useRef(null);
 
   /* ── Visible counts (only used when not auto-fitting) ──────── */
@@ -251,9 +257,18 @@ const Timetable = () => {
     const session = getAttendanceSession(schedule, custom, day, slot);
     const targetDate = getDateForDay(day).toDateString();
     const present = studentAttendance.some(att => {
-      if (session && String(att.session_id) === String(session.id)) return true;
-      const attDate = att.start_time ? new Date(att.start_time).toDateString() : new Date(att.marked_at).toDateString();
-      return String(att.subject_id) === String((custom || schedule)?.subject_id) && attDate === targetDate && att.status === 'present';
+      if (session && String(att.session_id) === String(session.id)) return att.status === 'present';
+      
+      const attFullDate = new Date(att.start_time || att.marked_at);
+      if (attFullDate.toDateString() !== targetDate) return false;
+      if (String(att.subject_id) !== String((custom || schedule)?.subject_id)) return false;
+      if (att.status !== 'present') return false;
+
+      // Time matching fallback (within 45 minutes of slot start)
+      const [slotH, slotM] = slot.raw_start.split(':');
+      const slotMins = parseInt(slotH) * 60 + parseInt(slotM);
+      const attMins = attFullDate.getHours() * 60 + attFullDate.getMinutes();
+      return Math.abs(slotMins - attMins) < 45;
     });
     return { status: present ? 'present' : 'absent' };
   };
@@ -324,10 +339,10 @@ const Timetable = () => {
     const isFreeOrCancelled = !existing || existing.is_cancelled || existing.is_deleted_history;
 
     // Allow clicking if:
-    // 1. Admin is in Edit Mode (to manage routine)
-    // 2. Admin/Teacher clicks a FREE or CANCELLED slot (to add a custom session for today/specific date)
-    if (isTeacher) return;
-    if (!canEditRoutine && !(isAdmin && isFreeOrCancelled)) return;
+    // 1. Admin is in Edit Mode (to manage routine template)
+    // 2. Teacher clicks a FREE or CANCELLED slot (to add a one-off custom session)
+    // 3. Admin clicks a FREE/CANCELLED slot (to either add a routine or a custom session)
+    if (!canEditRoutine && !isFreeOrCancelled) return;
 
     try {
       const [sr, tr, cr] = await Promise.all([
@@ -415,17 +430,26 @@ const Timetable = () => {
     }
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDelete = async (e, schedule) => {
     e.stopPropagation();
+    const id = schedule.id;
     const isTeacher = user?.role === 'teacher';
     const isAdmin = user?.role === 'admin';
     
     if (isTeacher) {
-      if (!window.confirm('Cancel your class for today?')) return;
+      const pass = window.prompt('Enter your Password to cancel this class for this week:');
+      if (!pass) return;
       try {
-        await api.post(`/schedules/${id}/cancel`, { college_id: user.college_id });
+        const cancelDate = formatISODate(getDateForDay(schedule.day_of_week));
+        await api.post(`/schedules/${id}/cancel`, { 
+          password: pass,
+          cancel_date: cancelDate,
+          week_start: formatISODate(weekStart)
+        });
         fetchData();
-      } catch { alert('Cancel failed.'); }
+      } catch (err) { 
+        alert(err.response?.data?.message || 'Cancel failed.'); 
+      }
     } else if (isAdmin) {
       if (!window.confirm('Delete this class from the routine? This week will keep a cancelled history card.')) return;
       try {
@@ -600,7 +624,7 @@ const Timetable = () => {
                                   <div className="card-header">
                                     <span className="subject" style={{ textDecoration: schedule.is_cancelled || schedule.is_deleted_history ? 'line-through' : 'none' }}>{truncate(schedule.subject_name)}</span>
                                     {editMode && !schedule.is_snapshot_history && !schedule.is_deleted_history && (isAdmin || (isTeacher && schedule.teacher_id === user?.id)) && (
-                                      <button className="delete-sched-btn" onClick={e => handleDelete(e, schedule.id)}><Trash2 size={12} /></button>
+                                      <button className="delete-sched-btn" onClick={e => handleDelete(e, schedule)}><Trash2 size={12} /></button>
                                     )}
                                   </div>
                                   <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
@@ -714,7 +738,13 @@ const Timetable = () => {
                       <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
                         {(() => {
                           const room = classrooms.find(c => c.id.toString() === formData.classroom_id.toString());
-                          const rawId = room?.camera_url;
+                          if (!room) return 'Select a classroom';
+                          
+                          // Prioritize the name saved in the database during initialization
+                          if (room.camera_name) return room.camera_name;
+                          
+                          // Fallback to browser detection if database name is missing
+                          const rawId = room.camera_url;
                           if (!rawId) return 'Hardware Internal';
                           const cam = availableCams.find(c => c.id === rawId);
                           return cam ? cam.name : `Camera Index ${rawId}`;

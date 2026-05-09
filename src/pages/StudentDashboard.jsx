@@ -125,12 +125,32 @@ const StudentDashboard = () => {
 
     // Check attendance status first
     const isAttended = attendance.some(att => {
+      // 1. Strict match by session_id
       if (schedule.session_id && String(att.session_id) === String(schedule.session_id)) {
         return att.status === 'present';
       }
-      return String(att.subject_id) === String(schedule.subject_id) &&
-        new Date(att.start_time || att.marked_at).toDateString() === now.toDateString() &&
-        att.status === 'present';
+
+      // 2. Fallback match by subject_id + Date + Time Range (to prevent leakage between same-subject classes)
+      const attDate = new Date(att.start_time || att.marked_at);
+      const isSameDay = attDate.toDateString() === now.toDateString();
+      const isSameSubject = String(att.subject_id) === String(schedule.subject_id);
+      
+      if (isSameDay && isSameSubject) {
+        // Parse class start time (HH:MM)
+        const [classH, classM] = schedule.start_time.split(':');
+        const attH = attDate.getHours();
+        const attM = attDate.getMinutes();
+        
+        // Match if attendance session started within 1 hour of the scheduled time
+        const classMins = parseInt(classH) * 60 + parseInt(classM);
+        const attMins = attH * 60 + attM;
+        const diff = Math.abs(classMins - attMins);
+        
+        if (diff < 45) { // 45 minute window for matching
+          return att.status === 'present';
+        }
+      }
+      return false;
     });
 
     // If attended, always show as Present regardless of time/status

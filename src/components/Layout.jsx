@@ -189,13 +189,13 @@ const Layout = ({ children }) => {
               <div className="user-profile-widget" onClick={() => setIsProfileOpen(!isProfileOpen)}>
                 <div className="user-avatar-wrapper">
                   <img
-                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || 'Mahammad Anish'}&background=105934&color=fff&bold=true`}
+                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=105934&color=fff&bold=true`}
                     alt="User"
                   />
                 </div>
                 <div className="user-info-text">
-                  <span className="user-name">{user?.name || 'Mahammad Anish'}</span>
-                  <span className="user-email">{user?.email || 'anish130905@gmail.com'}</span>
+                  <span className="user-name">{user?.name}</span>
+                  <span className="user-email">{user?.email}</span>
                 </div>
                 <ChevronRight size={18} className={`profile-chevron ${isProfileOpen ? 'open' : ''}`} />
 

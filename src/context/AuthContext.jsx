@@ -15,8 +15,8 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password, role) => {
-    const response = await api.post('/auth/login', { email, password, role });
+  const login = async (email, password, role, organization_id) => {
+    const response = await api.post('/auth/login', { email, password, role, organization_id });
     const { token, user } = response.data;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
@@ -33,8 +33,8 @@ export const AuthProvider = ({ children }) => {
     return user;
   };
 
-  const studentLogin = async (roll_number, college_id) => {
-    const response = await api.post('/auth/student/login', { roll_number, college_id });
+  const studentLogin = async (email, password, organization_id) => {
+    const response = await api.post('/auth/student/login', { email, password, organization_id });
     const { token, user } = response.data;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
