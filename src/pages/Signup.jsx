@@ -150,7 +150,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/register-init', {
+      await api.post('/auth/admin-signup-init', {
         name: formData.name,
         email: formData.email,
         orgName: formData.orgName,
@@ -169,7 +169,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/register-verify', { email: formData.email, otp: formData.otp });
+      await api.post('/auth/admin-signup-verify', { email: formData.email, otp: formData.otp });
       setStep(3);
     } catch (err) {
       setError('Invalid verification code.');
@@ -187,7 +187,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/register-finalize', {
+      await api.post('/auth/claim-finalize', {
         email: formData.email,
         password: formData.password
       });
