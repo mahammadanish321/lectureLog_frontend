@@ -806,13 +806,15 @@ const Dashboard = () => {
                     <img
                       src={aiStatus.online 
                         ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}` 
-                        : `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}`}
+                        : `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}?label=${encodeURIComponent(currentSession.camera_name || '')}`}
                       alt="Live Feed"
                       className="live-video-feed"
                       onError={(e) => {
-                        // Secondary fallback if AI URL fails despite online status
-                        if (aiStatus.online) {
-                           e.target.src = `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}`;
+                        const rawUrl = `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}?label=${encodeURIComponent(currentSession.camera_name || '')}`;
+                        if (e.target.src !== rawUrl) {
+                           console.warn("AI Stream failed, falling back to Raw Feed");
+                           e.target.src = rawUrl;
+                           setAiStatus(prev => ({ ...prev, online: false, displayStatus: 'AI Service Error (Using Raw Feed)', isError: true }));
                         }
                       }}
                     />
@@ -826,25 +828,8 @@ const Dashboard = () => {
                       </button>
                     </div>
 
-                    {isFullscreen && liveAttendance.length > 0 && (
-                      <div className="fullscreen-arrivals-overlay animate-fade-in">
-                        <div className="overlay-header">Recent Arrivals</div>
-                        <div className="overlay-list">
-                          {liveAttendance.slice(0, 6).map((item, i) => (
-                            <div key={i} className="overlay-item animate-slide-right" style={{ animationDelay: `${i * 0.1}s` }}>
-                              <Avatar src={item.image_url} name={item.student_name} size="sm" />
-                              <div className="item-info">
-                                <h6>{item.student_name}</h6>
-                                <span>{item.timestamp || 'Just now'}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className={`ai-status-overlay ${aiStatus.isError ? 'error' : 'active'}`}>
-                      <div className={`status-dot ${aiStatus.isError ? 'offline' : 'online animate-pulse'}`}></div>
+                    <div className={`ai-status-overlay ${aiStatus.isError || !aiStatus.online ? 'error' : 'active'}`}>
+                      <div className={`status-dot ${aiStatus.isError || !aiStatus.online ? 'offline' : 'online animate-pulse'}`}></div>
                       <span>{aiStatus.displayStatus}</span>
                     </div>
                   </div>

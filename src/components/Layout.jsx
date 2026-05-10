@@ -156,9 +156,6 @@ const Layout = ({ children }) => {
           ))}
         </nav>
 
-        <div className="sidebar-footer">
-          {/* Footer content removed for ultra-minimalist look */}
-        </div>
       </aside>
 
       <main className="main-content">

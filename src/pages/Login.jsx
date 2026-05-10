@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor, MonitorPlay } from 'lucide-react';
 import api from '../api';
 import './Login.css';
 
@@ -406,24 +406,22 @@ const Login = () => {
           {view === 'login' ? (
             <form onSubmit={handleLogin} className="auth-form">
               {loginMode === 'admin' && !isElectron ? (
-                <div className="admin-web-restriction animate-fade-in">
-                  <div className="restriction-icon">
-                    <Monitor size={48} />
+                <div className="admin-restriction-message" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                  <div className="restriction-icon" style={{ backgroundColor: '#fff7ed', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                    <MonitorPlay size={32} color="#f97316" />
                   </div>
-                  <h3>Admin Desktop Required</h3>
-                  <p>To manage your institution and use AI features, please use the LectureLog Windows application.</p>
-                  <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
-                    <ChevronRight size={18} />
-                    <span>Download for Windows</span>
-                  </a>
-                  <button type="button" onClick={() => setView('login')} className="secondary-link">
-                    Already have the app? Open it now
-                  </button>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1c1917', marginBottom: '0.75rem' }}>Desktop App Required</h3>
+                  <p style={{ fontSize: '0.875rem', color: '#44403c', lineHeight: 1.6, marginBottom: '2rem' }}>
+                    Administrative tools are restricted to the <strong>LectureLog Desktop App</strong> for security and hardware integration.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <button className="submit-btn" onClick={() => window.location.href = '#'}>Download Desktop App</button>
+                    <button className="secondary-btn" onClick={() => setLoginMode('teacher')}>Login as Teacher</button>
+                  </div>
                 </div>
               ) : (
                 <>
                   <div className="form-fields">
-
                     {loginMode !== 'student' ? (
                       <>
                         <div className="field-group">
@@ -685,6 +683,51 @@ const Login = () => {
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Dev Mode Toggle */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        background: 'white',
+        padding: '8px 15px',
+        borderRadius: '30px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        border: '1px solid #e2e8f0',
+        fontSize: '0.8rem',
+        fontWeight: '600',
+        color: '#64748b'
+      }}>
+        <div style={{
+          width: '10px',
+          height: '10px',
+          borderRadius: '50%',
+          background: localStorage.getItem('use_local_api') === 'true' ? '#10b981' : '#3b82f6'
+        }} />
+        <span>{localStorage.getItem('use_local_api') === 'true' ? 'Local API' : 'Cloud API'}</span>
+        <button 
+          onClick={() => {
+            const current = localStorage.getItem('use_local_api') === 'true';
+            localStorage.setItem('use_local_api', !current);
+            window.location.reload();
+          }}
+          style={{
+            background: '#f1f5f9',
+            border: 'none',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.7rem',
+            color: '#475569'
+          }}
+        >
+          Switch
+        </button>
       </div>
     </div>
   );

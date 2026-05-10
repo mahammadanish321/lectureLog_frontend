@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { MonitorPlay, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle, Camera } from 'lucide-react';
+import { MonitorPlay, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle, Camera, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './ClassroomManager.css';
 
@@ -51,6 +51,51 @@ const ClassroomManager = () => {
       setClassrooms(response.data);
     } catch (err) {
       console.error('Failed to load classrooms');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const syncHardwareIndices = async () => {
+    try {
+      setLoading(true);
+      // 1. Get current hardware labels and indices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length === 0) {
+        alert("No video devices detected on this machine.");
+        return;
+      }
+
+      // 2. Fetch all classrooms
+      const response = await api.get('/classrooms');
+      const currentClassrooms = response.data;
+
+      let updatedCount = 0;
+
+      // 3. Match and update
+      for (const room of currentClassrooms) {
+        if (!room.camera_name || room.camera_url.includes('/') || room.camera_url.includes(':')) continue;
+
+        // Find the device that matches the saved label
+        const matchedDeviceIndex = videoDevices.findIndex(dev => dev.label === room.camera_name);
+        
+        if (matchedDeviceIndex !== -1 && matchedDeviceIndex.toString() !== room.camera_url) {
+          console.log(`[CameraSync] Updating ${room.name}: ${room.camera_url} -> ${matchedDeviceIndex}`);
+          await api.put(`/classrooms/${room.id}`, {
+            ...room,
+            camera_url: matchedDeviceIndex.toString()
+          });
+          updatedCount++;
+        }
+      }
+
+      alert(`Hardware Sync Complete. Updated ${updatedCount} classroom(s).`);
+      fetchClassrooms();
+    } catch (err) {
+      console.error('Hardware sync failed:', err);
+      alert("Failed to sync hardware: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -131,6 +176,10 @@ const ClassroomManager = () => {
           <span className="title">Resource Fleet</span>
         </div>
         <div className="header-actions">
+          <button className="action-btn-outline" onClick={syncHardwareIndices} title="Re-map camera indices based on saved device labels">
+            <RefreshCw size={16} style={{ marginRight: '8px' }} className={loading ? 'animate-spin' : ''} />
+            Sync Hardware
+          </button>
           <button className="action-btn-primary" onClick={() => setShowModal(true)}>
             <Plus size={16} style={{ marginRight: '8px' }} />
             Initialize Classroom
