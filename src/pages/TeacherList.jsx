@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Users, Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import './TeacherList.css';
 
 const TeacherList = () => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const isAdmin = user?.role === 'admin';
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,7 @@ const TeacherList = () => {
       setTeachers(response.data);
       setError(null);
     } catch (err) {
+      addToast('Could not load faculty directory. Please check your connection.', 'error');
       setError('Failed to load faculty directory.');
     } finally {
       setLoading(false);
@@ -75,16 +78,67 @@ const TeacherList = () => {
     e.preventDefault();
     setSubmitting(true);
     
-    const data = new FormData();
-    Object.keys(regData).forEach(key => data.append(key, regData[key]));
-    if (regFile) data.append('image', regFile);
+    // Reliable Electron detection
+    const isElectron = (
+      navigator.userAgent.toLowerCase().includes('electron') ||
+      (typeof process !== 'undefined' && process.versions?.electron)
+    );
+    const AI_SERVICE_URL = 'http://127.0.0.1:8001';
 
     try {
+      let embedding = null;
+
+      // If in Electron, generate face embedding locally FIRST to avoid cloud-to-local mismatch
+      if (isElectron && regFile) {
+        console.log('[Electron] Generating local face embedding for teacher...');
+        try {
+          const aiFormData = new FormData();
+          aiFormData.append('file', regFile);
+          const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
+            method: 'POST',
+            body: aiFormData,
+          });
+          
+          const aiData = await aiResponse.json();
+          
+          if (!aiResponse.ok || aiData.error) {
+            throw new Error(aiData.error || `AI Service Error (${aiResponse.status})`);
+          }
+
+          embedding = aiData.embedding;
+          if (!embedding || !Array.isArray(embedding)) {
+            throw new Error('The AI could not extract a face signature from this photo. Please try a clearer picture.');
+          }
+          console.log('[Electron] ✅ Local teacher embedding generated successfully!');
+        } catch (aiErr) {
+          console.error('[Electron] ❌ Local AI Error:', aiErr.message);
+          addToast(
+            `Face Recognition Error: ${aiErr.message}. Please ensure the photo is clear and contains a single face.`, 
+            'error'
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      const data = new FormData();
+      Object.keys(regData).forEach(key => data.append(key, regData[key]));
+      if (embedding) data.append('face_embedding', JSON.stringify(embedding));
+      
+      // CRITICAL: Append file LAST for proper Multer parsing
+      if (regFile) data.append('image', regFile);
+
       if (isEditMode) {
         await api.put(`/teachers/${currentEditId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+        addToast('Faculty profile updated successfully!', 'success');
       } else {
-        if (!regFile) { alert('Please upload a faculty photo.'); setSubmitting(false); return; }
+        if (!regFile) { 
+          addToast('Please upload a faculty photo to complete enrollment.', 'error'); 
+          setSubmitting(false); 
+          return; 
+        }
         await api.post('/teachers', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+        addToast('New faculty member enrolled successfully!', 'success');
       }
 
       setRegSuccess(true);
@@ -93,7 +147,9 @@ const TeacherList = () => {
         fetchTeachers();
       }, 1500);
     } catch (err) {
-      alert('Operation Error: ' + (err.response?.data?.message || err.message));
+      console.error('[Registration Error] Full Details:', err.response?.data);
+      const msg = err.response?.data?.message || 'We encountered an error while registering the teacher.';
+      addToast(`${msg} ${err.response?.data?.error ? `(${err.response.data.error})` : ''}`, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -103,9 +159,10 @@ const TeacherList = () => {
     if (!window.confirm('Delete this faculty profile?')) return;
     try {
       await api.delete(`/teachers/${id}`);
+      addToast('Faculty profile deleted permanently.', 'info');
       fetchTeachers();
     } catch (err) {
-      alert('Delete failed.');
+      addToast('Failed to delete faculty member.', 'error');
     }
   };
 

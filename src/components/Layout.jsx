@@ -207,15 +207,20 @@ const Layout = ({ children }) => {
                       <strong>{user?.name}</strong>
                       <span>{user?.email}</span>
                     </div>
-                    <button className="dropdown-item" onClick={() => navigate('/settings')}>
-                      <User size={16} />
-                      <span>My Profile</span>
-                    </button>
-                    <button className="dropdown-item" onClick={() => navigate('/settings')}>
-                      <ShieldCheck size={16} />
-                      <span>Security</span>
-                    </button>
+                    
+                    <div className="dropdown-section">
+                      <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/you'); }}>
+                        <User size={16} />
+                        <span>My Profile</span>
+                      </button>
+                      <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
+                        <ShieldCheck size={16} />
+                        <span>Security</span>
+                      </button>
+                    </div>
+
                     <div className="dropdown-divider"></div>
+                    
                     <button className="dropdown-item logout" onClick={handleLogout}>
                       <LogOut size={16} />
                       <span>Logout</span>
@@ -235,20 +240,25 @@ const Layout = ({ children }) => {
          GLOBAL NOTIFICATIONS POPUP
          ========================================================================== */}
       {showNotifications && (
-        <div className="modal-overlay" onClick={() => setShowNotifications(false)}>
-          <div className="modal-container" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>System Notifications</h2>
-              <button className="modal-close-btn" onClick={() => setShowNotifications(false)}>
+        <div className="notif-overlay" onClick={() => setShowNotifications(false)}>
+          <div className="notif-modal animate-pop-in" onClick={e => e.stopPropagation()}>
+            <div className="notif-header">
+              <div className="header-content">
+                <h2>System Notifications</h2>
+                <p>Stay updated with the latest activity.</p>
+              </div>
+              <button className="notif-close-btn" onClick={() => setShowNotifications(false)}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="notif-body">
               <div className="notification-list">
                 {notifications.length === 0 ? (
                   <div className="no-notifications-state">
-                    <Bell size={40} className="empty-icon" />
+                    <div className="empty-notif-circle">
+                      <Bell size={40} />
+                    </div>
                     <p>No new system notifications</p>
                   </div>
                 ) : (

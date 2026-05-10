@@ -59,6 +59,46 @@
   align-items: center;
 }
 
+.action-btn-primary, .action-btn-outline {
+  height: 40px;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.action-btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(16, 89, 52, 0.15);
+}
+
+.action-btn-primary:hover {
+  background: #0d4a2b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(16, 89, 52, 0.2);
+}
+
+.action-btn-outline {
+  background: white;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+}
+
+.action-btn-outline:hover {
+  background: #f8fafc;
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
 /* TABLE CARD */
 .student-table-card {
   background: white;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -48,108 +49,109 @@ function App() {
   const Router = isElectron ? HashRouter : BrowserRouter;
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/get-started" element={<GetStarted />} />
-          <Route
-            path="/"
-            element={
-              <HomeOrLanding />
-            }
-          />
-          <Route
-            path="/sessions"
-            element={
-              <ProtectedRoute allowedRoles={['teacher']}>
-                <Sessions />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/student/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <StudentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/schedules"
-            element={
-              <ProtectedRoute allowedRoles={['teacher', 'admin']}>
-                <ScheduleManager />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/students"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                <StudentList />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/students/register"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <RegisterStudent />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/teachers"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <TeacherList />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/subjects"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <SubjectManager />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/classrooms"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <ClassroomManager />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/routine"
-            element={
-              <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
-                <Timetable />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/you"
-            element={
-              <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
-                <You />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/get-started" element={<GetStarted />} />
+            <Route path="/" element={<HomeOrLanding />} />
+            <Route
+              path="/sessions"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <Sessions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/schedules"
+              element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                  <ScheduleManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/students"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                  <StudentList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/students/register"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <RegisterStudent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teachers"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <TeacherList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subjects"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <SubjectManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/classrooms"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ClassroomManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/routine"
+              element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
+                  <Timetable />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/you"
+              element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
+                  <You />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 
 // Decide whether to show Landing Page or Dashboard
 const HomeOrLanding = () => {
   const { user, loading } = useAuth();
+  const isElectron = (
+    navigator.userAgent.toLowerCase().includes('electron') ||
+    (typeof process !== 'undefined' && process.versions?.electron)
+  );
   
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
@@ -157,9 +159,12 @@ const HomeOrLanding = () => {
     </div>
   );
 
-  if (!user) return <GetStarted />;
+  // If not logged in: Desktop goes to Login, Web goes to Landing Page
+  if (!user) {
+    return isElectron ? <Navigate to="/login" /> : <GetStarted />;
+  }
 
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  // Admin Web Restriction
   if (user.role === 'admin' && !isElectron) {
     return <Navigate to="/login" />;
   }

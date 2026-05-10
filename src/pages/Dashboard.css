@@ -1,4 +1,4 @@
-﻿.dashboard-container {
+.dashboard-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -29,8 +29,7 @@
 /* MAIN GRID SYSTEM */
 .dashboard-grid-layout {
   display: grid;
-  grid-template-columns: 820px 1fr;
-  /* Fixed monitor, Flexible arrivals */
+  grid-template-columns: 1.5fr 1fr; /* Flexible columns */
   gap: 1.25rem;
   flex: 1;
   min-height: 0;
@@ -550,8 +549,7 @@
 /* Main Monitoring Area */
 .analytics-section {
   grid-column: 1;
-  width: 820px;
-  /* Fixed width for 16:9 stability */
+  width: 100%; /* Changed from 820px to fit flexible grid */
   background: white;
   border-radius: 32px;
   padding: 1.5rem;

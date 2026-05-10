@@ -29,11 +29,27 @@ function createWindow() {
   // In development, load from Vite dev server and open DevTools
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools(); // See all console.log output here
+    mainWindow.webContents.openDevTools(); 
   } else {
     // In production, load the built index.html
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
+
+  // Global Zoom Shortcuts Fix
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.control && input.key === '=') {
+      mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 0.5);
+      event.preventDefault();
+    }
+    if (input.control && input.key === '-') {
+      mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() - 0.5);
+      event.preventDefault();
+    }
+    if (input.control && input.key === '0') {
+      mainWindow.webContents.setZoomLevel(0);
+      event.preventDefault();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
