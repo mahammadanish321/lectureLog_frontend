@@ -684,51 +684,6 @@ const Login = () => {
           )}
         </div>
       </div>
-      
-      {/* Dev Mode Toggle */}
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        background: 'white',
-        padding: '8px 15px',
-        borderRadius: '30px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        border: '1px solid #e2e8f0',
-        fontSize: '0.8rem',
-        fontWeight: '600',
-        color: '#64748b'
-      }}>
-        <div style={{
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%',
-          background: localStorage.getItem('use_local_api') === 'true' ? '#10b981' : '#3b82f6'
-        }} />
-        <span>{localStorage.getItem('use_local_api') === 'true' ? 'Local API' : 'Cloud API'}</span>
-        <button 
-          onClick={() => {
-            const current = localStorage.getItem('use_local_api') === 'true';
-            localStorage.setItem('use_local_api', !current);
-            window.location.reload();
-          }}
-          style={{
-            background: '#f1f5f9',
-            border: 'none',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.7rem',
-            color: '#475569'
-          }}
-        >
-          Switch
-        </button>
-      </div>
     </div>
   );
 };

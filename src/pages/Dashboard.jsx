@@ -28,7 +28,7 @@ import {
 import './Dashboard.css';
 
 const AI_SERVICE_URL = 'http://127.0.0.1:8001';
-const CAMERA_BACKEND_URL = 'http://127.0.0.1:8002';
+const CAMERA_BACKEND_URL = 'http://127.0.0.1:8001'; // Unified with AI Service
 
 const DEMO_STATS = {
   totalStudents: 142,
@@ -412,9 +412,30 @@ const Dashboard = () => {
     });
 
     newSocket.on('ai_status_update', (data) => {
-      console.log('AI Status Update:', data.displayStatus);
+      console.log('AI Status Update (from Backend):', data.displayStatus);
       setAiStatus(data);
     });
+
+    // --- FRONTEND DIRECT POLLING FOR LOCAL AI SERVICE ---
+    // Since Cloud Backend cannot reach localhost:8001, the Frontend (Electron) must poll it directly.
+    const pollLocalAI = async () => {
+      try {
+        const resp = await fetch(`${AI_SERVICE_URL}/system/status`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setAiStatus({
+            online: true,
+            displayStatus: data.cameras_open.length > 0 ? 'AI Scanning Active' : 'AI Service Idle',
+            isError: !!data.global_error
+          });
+        }
+      } catch (err) {
+        // If fetch fails, we don't immediately set offline to avoid flickering
+        // if the socket is already providing valid (local) info.
+      }
+    };
+
+    const aiPollingInterval = setInterval(pollLocalAI, 5000);
 
     // Refresh sessions every 60 seconds as a final automation guard
     const sessionRefreshInterval = setInterval(fetchInitialData, 60000);
@@ -422,6 +443,7 @@ const Dashboard = () => {
     return () => {
       console.log('Cleaning up socket connection...');
       clearInterval(sessionRefreshInterval);
+      clearInterval(aiPollingInterval);
       newSocket.off('session_started');
       newSocket.off('session_ended');
       newSocket.off('attendance_update');
@@ -801,7 +823,7 @@ const Dashboard = () => {
                     <Calendar size={48} color="#3b82f6" opacity={0.5} />
                     <span style={{ fontWeight: 600, color: '#475569' }}>Feed will go live at {formatTime(currentSession.start_time)}</span>
                   </div>
-                ) : (
+                ) : currentSession.status === 'active' ? (
                   <div className={`video-feed-container ${isFullscreen ? 'is-fullscreen' : ''}`} ref={videoContainerRef}>
                     <img
                       src={aiStatus.online 
@@ -832,6 +854,12 @@ const Dashboard = () => {
                       <div className={`status-dot ${aiStatus.isError || !aiStatus.online ? 'offline' : 'online animate-pulse'}`}></div>
                       <span>{aiStatus.displayStatus}</span>
                     </div>
+                  </div>
+                ) : (
+                  <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem' }}>
+                    <CheckCircle size={48} color="#10b981" opacity={0.5} />
+                    <span style={{ fontWeight: 600, color: '#475569' }}>Session Concluded</span>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Live monitoring has stopped for this class.</p>
                   </div>
                 )
               ) : (

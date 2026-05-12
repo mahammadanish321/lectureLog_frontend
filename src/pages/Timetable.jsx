@@ -82,6 +82,7 @@ const Timetable = () => {
     subject_id: '', subject_search: '', teacher_id: '', teacher_search: '',
     classroom_id: '', classroom_search: '', camera_id: '0'
   });
+  const [slotEditModal, setSlotEditModal] = useState({ open: false, slot: null, start: '', end: '' });
 
   // Sync with user profile once loaded
   useEffect(() => {
@@ -95,20 +96,83 @@ const Timetable = () => {
   const VISIBLE_COLS = 6;
   const VISIBLE_ROWS = 7; // show all 7 days at once normally
 
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000); // Update every minute
+    return () => clearInterval(timer);
+  }, []);
+
   /* ── Derived ───────────────────────────────────────────────── */
   const weekStart = getWeekStart(weekOffset);
   const weekLabel = formatWeekLabel(weekStart);
   const isCurrentWeek = weekOffset === 0;
-  const todayName = DAYS[((new Date().getDay() + 6) % 7)]; // Mon=0
+  const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const todayName = DAYS[((istNow.getDay() + 6) % 7)]; // Mon=0
+  const currentTimeStr = istNow.toLocaleTimeString('en-GB', { hour12: false }).substring(0, 5); // HH:MM
+
+  // Auto-scroll to current time slot
+  useEffect(() => {
+    if (isCurrentWeek && timeSlots.length > 0) {
+      setTimeout(() => {
+        const activeCol = wrapperRef.current?.querySelector('.current-time-col');
+        if (activeCol) {
+          activeCol.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }, 500);
+    }
+  }, [isCurrentWeek, timeSlots.length, weekOffset]);
 
   /* ── Fetch helpers ─────────────────────────────────────────── */
   const fetchTimeSlots = async () => {
     try {
       const res = await api.get('/time_slots');
-      if (res.data?.length > 0) setTimeSlots(res.data);
+      if (res.data?.length > 0) {
+        // Sort chronologically by raw_start
+        const sorted = [...res.data].sort((a, b) => (a.raw_start || '').localeCompare(b.raw_start || ''));
+        setTimeSlots(sorted);
+      }
     } catch (err) {
       console.error('[Timetable] Failed to fetch time slots:', err);
     }
+  };
+
+  const handleEditTimeSlot = (slot) => {
+    setSlotEditModal({ open: true, slot, start: slot.start_time, end: slot.end_time });
+  };
+
+  const handleSaveEditedSlot = async (e) => {
+    e.preventDefault();
+    const { slot, start, end } = slotEditModal;
+    
+    // Convert to raw time (HH:MM:SS)
+    const convertToRaw = (timeStr) => {
+      const [time, mod] = timeStr.split(' ');
+      let [hh, mm] = time.split(':');
+      let h = parseInt(hh);
+      if (mod === 'PM' && h !== 12) h += 12;
+      if (mod === 'AM' && h === 12) h = 0;
+      return `${h.toString().padStart(2, '0')}:${mm.padStart(2, '0')}:00`;
+    };
+
+    try {
+      await api.put(`/time_slots/${slot.id}`, {
+        start_time: start,
+        end_time: end,
+        raw_start: convertToRaw(start),
+        raw_end: convertToRaw(end)
+      });
+      setSlotEditModal({ open: false, slot: null, start: '', end: '' });
+      fetchTimeSlots();
+    } catch { alert('Failed to update time slot'); }
+  };
+
+  const handleDeleteTimeSlot = async (slotId) => {
+    if (!window.confirm('Are you sure you want to delete this entire time column? All classes in this slot across all days will be hidden.')) return;
+    try {
+      await api.delete(`/time_slots/${slotId}`);
+      fetchTimeSlots();
+    } catch { alert('Failed to delete time slot'); }
   };
 
   const fetchData = async () => {
@@ -334,15 +398,12 @@ const Timetable = () => {
 
   /* ── Cell click ────────────────────────────────────────────── */
   const handleCellClick = async (day, slot, existing = null) => {
-    const isTeacher = user?.role === 'teacher';
-    const canEditRoutine = editMode && isAdmin;
-    const isFreeOrCancelled = !existing || existing.is_cancelled || existing.is_deleted_history;
+    // REQUIRE EDIT MODE FOR ALL CLICKS
+    if (!editMode) return;
 
-    // Allow clicking if:
-    // 1. Admin is in Edit Mode (to manage routine template)
-    // 2. Teacher clicks a FREE or CANCELLED slot (to add a one-off custom session)
-    // 3. Admin clicks a FREE/CANCELLED slot (to either add a routine or a custom session)
-    if (!canEditRoutine && !isFreeOrCancelled) return;
+    const isTeacher = user?.role === 'teacher';
+    const isAdmin = user?.role === 'admin';
+    const isFreeOrCancelled = !existing || existing.is_cancelled || existing.is_deleted_history;
 
     try {
       const [sr, tr, cr] = await Promise.all([
@@ -496,7 +557,7 @@ const Timetable = () => {
 
           {/* Controls row */}
           <div className="timetable-controls-row">
-            {isAdmin && (
+            {(isAdmin || isTeacher) && (
               <button className={`btn-edit-mode ${editMode ? 'on' : 'off'}`} onClick={() => setEditMode(!editMode)}>
                 <Edit3 size={16} /> {editMode ? 'Disable Editing' : 'Enable Edit Mode'}
               </button>
@@ -576,13 +637,22 @@ const Timetable = () => {
                   {visibleSlots.map((slot, idx) => {
                     const globalIdx = autoFit ? idx : colStart + idx;
                     const col = COLUMN_COLORS[globalIdx % COLUMN_COLORS.length];
+                    const isCurrentSlot = isCurrentWeek && currentTimeStr >= slot.raw_start.substring(0, 5) && currentTimeStr < slot.raw_end.substring(0, 5);
+
                     return (
-                      <th key={idx} style={{ background: col.header }}>
+                      <th key={idx} style={{ background: col.header, position: 'relative' }} className={isCurrentSlot ? 'current-time-col' : ''}>
                         <div className="time-header">
                           <div className="col-accent-bar" style={{ background: col.accent }} />
                           <span className="start">{slot.start_time}</span>
                           <span className="separator">↓</span>
                           <span className="end">{slot.end_time}</span>
+                          
+                          {editMode && isAdmin && (
+                            <div className="slot-mgmt-overlay">
+                              <button onClick={() => handleEditTimeSlot(slot)} className="slot-mgmt-btn edit"><Edit3 size={10} /></button>
+                              <button onClick={() => handleDeleteTimeSlot(slot.id)} className="slot-mgmt-btn delete"><Trash2 size={10} /></button>
+                            </div>
+                          )}
                         </div>
                       </th>
                     );
@@ -603,6 +673,7 @@ const Timetable = () => {
                       {visibleSlots.map((slot, idx) => {
                         const globalIdx = autoFit ? idx : colStart + idx;
                         const col = COLUMN_COLORS[globalIdx % COLUMN_COLORS.length];
+                        const isCurrentSlot = isCurrentWeek && currentTimeStr >= slot.raw_start.substring(0, 5) && currentTimeStr < slot.raw_end.substring(0, 5);
                         const cellSchedules = getSchedulesForCell(day, slot.raw_start);
                         const schedule = getEditableSchedule(cellSchedules);
                         const custom = getCustomSessionForCell(day, slot.raw_start, slot.raw_end);
@@ -614,7 +685,7 @@ const Timetable = () => {
                         return (
                           <td
                             key={idx}
-                            className={`slot-cell ${cellSchedules.length ? 'occupied' : (custom ? 'custom-cell' : 'empty')}`}
+                            className={`slot-cell ${cellSchedules.length ? 'occupied' : (custom ? 'custom-cell' : 'empty')} ${isCurrentSlot ? 'current-time-col' : ''}`}
                             style={{ background: isEmpty ? col.bg : undefined }}
                             onClick={() => handleCellClick(day, slot, schedule)}
                           >
@@ -822,6 +893,41 @@ const Timetable = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {slotEditModal.open && (
+        <div className="modal-overlay">
+          <div className="modal-content glass animate-scale-in" style={{ maxWidth: '400px' }}>
+            <h3>Edit Time Slot</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1.5rem' }}>Update the duration for this routine column.</p>
+            <form onSubmit={handleSaveEditedSlot}>
+              <div className="form-group">
+                <label>Start Time (e.g. 09:05 AM)</label>
+                <input 
+                  type="text" 
+                  value={slotEditModal.start} 
+                  onChange={e => setSlotEditModal({ ...slotEditModal, start: e.target.value })}
+                  placeholder="09:05 AM"
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>End Time (e.g. 09:55 AM)</label>
+                <input 
+                  type="text" 
+                  value={slotEditModal.end} 
+                  onChange={e => setSlotEditModal({ ...slotEditModal, end: e.target.value })}
+                  placeholder="09:55 AM"
+                  required 
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setSlotEditModal({ open: false, slot: null, start: '', end: '' })}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Changes</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

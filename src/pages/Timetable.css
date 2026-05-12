@@ -249,6 +249,60 @@
   line-height: 1;
 }
 
+/* SLOT MANAGEMENT OVERLAY */
+.slot-mgmt-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.time-header:hover .slot-mgmt-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.slot-mgmt-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slot-mgmt-btn.edit {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.slot-mgmt-btn.delete {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.slot-mgmt-btn:hover {
+  transform: scale(1.1);
+}
+
+.slot-mgmt-btn.edit:hover { background: #e2e8f0; color: var(--primary); }
+.slot-mgmt-btn.delete:hover { background: #fee2e2; }
+
 /* ─── DAY NAME CELL ───────────────────────── */
 .day-name {
   background: #f8fafc;
@@ -292,10 +346,63 @@
   background: rgba(16, 89, 52, 0.018) !important;
 }
 
+/* CURRENT TIME COLUMN HIGHLIGHT */
+.current-time-col {
+  background: rgba(16, 89, 52, 0.04) !important;
+  position: relative;
+}
+
+.current-time-col::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-left: 1px dashed rgba(16, 89, 52, 0.2);
+  border-right: 1px dashed rgba(16, 89, 52, 0.2);
+  pointer-events: none;
+}
+
 .day-name.today {
-  background: rgba(16, 89, 52, 0.07) !important;
+  background: rgba(16, 89, 52, 0.1) !important;
   color: var(--primary);
-  border-left: 3px solid var(--primary) !important;
+  border-left: 5px solid var(--primary) !important;
+  font-weight: 900;
+}
+
+th.current-time-col {
+  background: rgba(16, 89, 52, 0.12) !important;
+  color: var(--primary) !important;
+  border-top: 5px solid var(--primary) !important;
+  box-shadow: inset 0 10px 20px rgba(16, 89, 52, 0.05);
+}
+
+th.current-time-col .time-header .start,
+th.current-time-col .time-header .end {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+/* Intersection of today row and current time column - THE FOCUS CELL */
+.today-row td.current-time-col {
+  background: rgba(16, 89, 52, 0.08) !important;
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  z-index: 2;
+  box-shadow: 0 0 15px rgba(16, 89, 52, 0.1);
+}
+
+.today-row td.current-time-col::before {
+  content: 'LIVE';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.45rem;
+  font-weight: 900;
+  color: var(--primary);
+  opacity: 0.6;
+  letter-spacing: 0.05em;
 }
 
 /* Corner cell */
