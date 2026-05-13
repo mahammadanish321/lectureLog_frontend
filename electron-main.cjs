@@ -75,6 +75,7 @@ function startAI() {
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
   
   pythonProcess = spawn(pythonCmd, [aiPath], {
+    cwd: path.dirname(aiPath), // Set working directory to the AI folder
     stdio: 'inherit',
     shell: true,
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
@@ -122,9 +123,12 @@ autoUpdater.on('update-downloaded', () => {
 });
 
 app.on('window-all-closed', () => {
-  // On most platforms, we quit when windows are closed
   if (pythonProcess) {
-    pythonProcess.kill();
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', pythonProcess.pid, '/f', '/t']);
+    } else {
+      pythonProcess.kill('SIGKILL');
+    }
   }
   if (process.platform !== 'darwin') {
     app.quit();

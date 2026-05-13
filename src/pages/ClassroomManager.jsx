@@ -28,10 +28,32 @@ const ClassroomManager = () => {
 
   const detectCameras = async () => {
     try {
-      // Request permission to get device labels
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      // 1. Try to get hardware list from AI Service (Bypasses "Device in use" locking)
+      try {
+        const aiResp = await fetch('http://localhost:8001/system/hardware_cameras');
+        if (aiResp.ok) {
+          const aiCams = await aiResp.json();
+          if (aiCams && aiCams.length > 0) {
+            setAvailableCameras(aiCams);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("AI Service hardware detection unavailable, falling back to browser API");
+      }
+
+      // 2. Fallback to browser enumerateDevices
+      let devices = await navigator.mediaDevices.enumerateDevices();
+      let videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length > 0 && !videoDevices[0].label) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream.getTracks().forEach(track => track.stop());
+          devices = await navigator.mediaDevices.enumerateDevices();
+          videoDevices = devices.filter(device => device.kind === 'videoinput');
+        } catch (permErr) {}
+      }
       
       const formattedCameras = videoDevices.map((dev, index) => ({
         id: index.toString(),
@@ -56,33 +78,24 @@ const ClassroomManager = () => {
     }
   };
 
-  const syncHardwareIndices = async () => {
+  const syncHardwareIndices = async (silent = false) => {
     try {
-      setLoading(true);
-      // 1. Get current hardware labels and indices
+      if (!silent) setLoading(true);
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
-      if (videoDevices.length === 0) {
-        alert("No video devices detected on this machine.");
-        return;
-      }
+      if (videoDevices.length === 0) return;
 
-      // 2. Fetch all classrooms
       const response = await api.get('/classrooms');
       const currentClassrooms = response.data;
 
       let updatedCount = 0;
-
-      // 3. Match and update
       for (const room of currentClassrooms) {
         if (!room.camera_name || room.camera_url.includes('/') || room.camera_url.includes(':')) continue;
 
-        // Find the device that matches the saved label
         const matchedDeviceIndex = videoDevices.findIndex(dev => dev.label === room.camera_name);
         
         if (matchedDeviceIndex !== -1 && matchedDeviceIndex.toString() !== room.camera_url) {
-          console.log(`[CameraSync] Updating ${room.name}: ${room.camera_url} -> ${matchedDeviceIndex}`);
           await api.put(`/classrooms/${room.id}`, {
             ...room,
             camera_url: matchedDeviceIndex.toString()
@@ -91,19 +104,22 @@ const ClassroomManager = () => {
         }
       }
 
-      alert(`Hardware Sync Complete. Updated ${updatedCount} classroom(s).`);
-      fetchClassrooms();
+      if (!silent && updatedCount > 0) alert(`Hardware Sync Complete. Re-mapped ${updatedCount} camera(s).`);
+      if (updatedCount > 0) fetchClassrooms();
     } catch (err) {
-      console.error('Hardware sync failed:', err);
-      alert("Failed to sync hardware: " + err.message);
+      if (!silent) console.error('Hardware sync failed:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchClassrooms();
-    detectCameras();
+    const init = async () => {
+      await fetchClassrooms();
+      await detectCameras();
+      await syncHardwareIndices(true); // Silent sync on load
+    };
+    init();
   }, []);
 
   const handleEditClick = (room) => {
@@ -333,7 +349,7 @@ const ClassroomManager = () => {
                       <span style={{ color: '#22c55e' }}>● Live</span>
                     </div>
                     <img 
-                      src={`http://localhost:8002/video_feed/${formData.camera_url}`} 
+                      src={`http://localhost:8002/video_feed/${encodeURIComponent(formData.camera_url)}`} 
                       alt="Hardware Preview" 
                       style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
                       onError={(e) => {

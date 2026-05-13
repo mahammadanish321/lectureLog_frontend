@@ -27,8 +27,8 @@ import {
 } from 'lucide-react';
 import './Dashboard.css';
 
-const AI_SERVICE_URL = 'http://127.0.0.1:8001';
-const CAMERA_BACKEND_URL = 'http://127.0.0.1:8001'; // Unified with AI Service
+const AI_SERVICE_URL = 'http://localhost:8001';
+const CAMERA_BACKEND_URL = 'http://localhost:8002'; // Corrected to use the separate stream backend
 
 const DEMO_STATS = {
   totalStudents: 142,
@@ -416,22 +416,26 @@ const Dashboard = () => {
       setAiStatus(data);
     });
 
-    // --- FRONTEND DIRECT POLLING FOR LOCAL AI SERVICE ---
-    // Since Cloud Backend cannot reach localhost:8001, the Frontend (Electron) must poll it directly.
+    let failCount = 0;
     const pollLocalAI = async () => {
       try {
         const resp = await fetch(`${AI_SERVICE_URL}/system/status`);
         if (resp.ok) {
           const data = await resp.json();
+          failCount = 0;
           setAiStatus({
             online: true,
             displayStatus: data.cameras_open.length > 0 ? 'AI Scanning Active' : 'AI Service Idle',
             isError: !!data.global_error
           });
+        } else {
+          throw new Error('Not OK');
         }
       } catch (err) {
-        // If fetch fails, we don't immediately set offline to avoid flickering
-        // if the socket is already providing valid (local) info.
+        failCount++;
+        if (failCount >= 3) {
+          setAiStatus(prev => ({ ...prev, online: false, displayStatus: 'AI Service Offline' }));
+        }
       }
     };
 

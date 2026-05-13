@@ -259,10 +259,13 @@ const Timetable = () => {
       if (parts.length !== 2) return false;
       
       const datePart = parts[0];
-      const timePart = parts[1].split('.')[0];
       
-      const [y, m, d] = datePart.split('-');
-      const sDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      // Convert to local time string (HH:MM:SS) for comparison with slot headers
+      const localDate = new Date(sess.start_time);
+      const timePart = localDate.toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Kolkata' });
+      
+      const sDate = new Date(localDate);
+      sDate.setHours(0, 0, 0, 0);
       
       if (sDate < weekStart || sDate > wEnd) return false;
       if (DOW[sDate.getDay()] !== day) return false;
