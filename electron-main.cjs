@@ -15,7 +15,7 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false,
     },
-    title: "LectureLog Admin Desktop",
+    title: "Merge Admin Desktop",
     icon: path.join(__dirname, isDev ? 'public' : 'dist', isDev ? 'log.ico' : 'web-app-manifest-512x512.png'),
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
@@ -60,7 +60,7 @@ function startAI() {
   const isPackaged = app.isPackaged;
   const aiPath = isPackaged 
     ? path.join(process.resourcesPath, 'AI', 'main.py')
-    : path.resolve(__dirname, '..', 'LectureLog_AI', 'main.py');
+    : path.resolve(__dirname, '..', 'Merge_AI', 'main.py');
 
   const fs = require('fs');
   if (!fs.existsSync(aiPath)) {
@@ -113,7 +113,7 @@ autoUpdater.on('update-downloaded', () => {
   dialog.showMessageBox({
     type: 'info',
     title: 'Update Ready',
-    message: 'A new version of LectureLog Admin is ready. Restart now to update?',
+    message: 'A new version of Merge Admin is ready. Restart now to update?',
     buttons: ['Restart', 'Later']
   }).then((result) => {
     if (result.response === 0) {

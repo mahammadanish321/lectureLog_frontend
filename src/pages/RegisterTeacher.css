@@ -1,4 +1,4 @@
-/* Reusing logic from RegisterStudent but tailored for Teachers */
+﻿/* Reusing logic from RegisterStudent but tailored for Teachers */
 .register-container {
   padding: 0.5rem 1.5rem 1.5rem 1.5rem;
   display: flex;

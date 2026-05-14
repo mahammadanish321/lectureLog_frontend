@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -159,18 +159,18 @@ const DEMO_ATTENDANCE = [
 ];
 
 const DEMO_PRESENT_STUDENTS = [
-  { student_name: 'Alex Rivera', roll_number: 'CSE-201', email: 'alex.rivera@lecturelog.edu', status: 'present', marked_at: '10:14 AM' },
-  { student_name: 'Jordan Smith', roll_number: 'CSE-202', email: 'jordan.smith@lecturelog.edu', status: 'detected', marked_at: '10:12 AM' },
-  { student_name: 'Elena Gilbert', roll_number: 'CSE-203', email: 'elena.gilbert@lecturelog.edu', status: 'present', marked_at: '10:10 AM' },
-  { student_name: 'Stefan Salvatore', roll_number: 'CSE-204', email: 'stefan.salvatore@lecturelog.edu', status: 'processing', marked_at: '10:08 AM' },
-  { student_name: 'Damon Salvatore', roll_number: 'CSE-205', email: 'damon.salvatore@lecturelog.edu', status: 'present', marked_at: '10:05 AM' },
-  { student_name: 'Bonnie Bennett', roll_number: 'CSE-206', email: 'bonnie.bennett@lecturelog.edu', status: 'present', marked_at: '10:03 AM' },
-  { student_name: 'Caroline Forbes', roll_number: 'CSE-207', email: 'caroline.forbes@lecturelog.edu', status: 'detected', marked_at: '10:01 AM' },
-  { student_name: 'Tyler Lockwood', roll_number: 'CSE-208', email: 'tyler.lockwood@lecturelog.edu', status: 'present', marked_at: '09:58 AM' },
-  { student_name: 'Matt Donovan', roll_number: 'CSE-209', email: 'matt.donovan@lecturelog.edu', status: 'present', marked_at: '09:55 AM' },
-  { student_name: 'Lexi Branson', roll_number: 'CSE-210', email: 'lexi.branson@lecturelog.edu', status: 'present', marked_at: '09:52 AM' },
-  { student_name: 'Jeremy Gilbert', roll_number: 'CSE-211', email: 'jeremy.gilbert@lecturelog.edu', status: 'detected', marked_at: '09:49 AM' },
-  { student_name: 'Alaric Saltzman', roll_number: 'CSE-212', email: 'alaric.saltzman@lecturelog.edu', status: 'present', marked_at: '09:46 AM' }
+  { student_name: 'Alex Rivera', roll_number: 'CSE-201', email: 'alex.rivera@Merge.edu', status: 'present', marked_at: '10:14 AM' },
+  { student_name: 'Jordan Smith', roll_number: 'CSE-202', email: 'jordan.smith@Merge.edu', status: 'detected', marked_at: '10:12 AM' },
+  { student_name: 'Elena Gilbert', roll_number: 'CSE-203', email: 'elena.gilbert@Merge.edu', status: 'present', marked_at: '10:10 AM' },
+  { student_name: 'Stefan Salvatore', roll_number: 'CSE-204', email: 'stefan.salvatore@Merge.edu', status: 'processing', marked_at: '10:08 AM' },
+  { student_name: 'Damon Salvatore', roll_number: 'CSE-205', email: 'damon.salvatore@Merge.edu', status: 'present', marked_at: '10:05 AM' },
+  { student_name: 'Bonnie Bennett', roll_number: 'CSE-206', email: 'bonnie.bennett@Merge.edu', status: 'present', marked_at: '10:03 AM' },
+  { student_name: 'Caroline Forbes', roll_number: 'CSE-207', email: 'caroline.forbes@Merge.edu', status: 'detected', marked_at: '10:01 AM' },
+  { student_name: 'Tyler Lockwood', roll_number: 'CSE-208', email: 'tyler.lockwood@Merge.edu', status: 'present', marked_at: '09:58 AM' },
+  { student_name: 'Matt Donovan', roll_number: 'CSE-209', email: 'matt.donovan@Merge.edu', status: 'present', marked_at: '09:55 AM' },
+  { student_name: 'Lexi Branson', roll_number: 'CSE-210', email: 'lexi.branson@Merge.edu', status: 'present', marked_at: '09:52 AM' },
+  { student_name: 'Jeremy Gilbert', roll_number: 'CSE-211', email: 'jeremy.gilbert@Merge.edu', status: 'detected', marked_at: '09:49 AM' },
+  { student_name: 'Alaric Saltzman', roll_number: 'CSE-212', email: 'alaric.saltzman@Merge.edu', status: 'present', marked_at: '09:46 AM' }
 ];
 
 const Dashboard = () => {

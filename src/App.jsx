@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
-      <p>Loading LectureLog...</p>
+      <p>Loading Merge...</p>
     </div>
   );
 
@@ -155,7 +155,7 @@ const HomeOrLanding = () => {
   
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
-      <p>Loading LectureLog...</p>
+      <p>Loading Merge...</p>
     </div>
   );
 

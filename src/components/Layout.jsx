@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -117,8 +117,8 @@ const Layout = ({ children }) => {
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog Icon" style={{ width: '32px', height: '32px', minWidth: '32px', borderRadius: '8px' }} />
-            {!isSidebarCollapsed && <span className="logo-text">LectureLog</span>}
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="Merge Icon" style={{ width: '32px', height: '32px', minWidth: '32px', borderRadius: '8px' }} />
+            {!isSidebarCollapsed && <span className="logo-text">Merge</span>}
           </div>
           <button className="sidebar-toggle-btn desktop-only" onClick={toggleSidebar} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
             <PanelLeft size={18} />

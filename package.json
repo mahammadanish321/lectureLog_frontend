@@ -1,5 +1,5 @@
 {
-  "name": "lecturelog-frontend",
+  "name": "Merge-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -43,15 +43,15 @@
     "wait-on": "^9.0.5"
   },
   "build": {
-    "appId": "com.lecturelog.admin",
+    "appId": "com.Merge.admin",
     "publish": [
       {
         "provider": "github",
         "owner": "mahammadanish321",
-        "repo": "lectureLog_frontend"
+        "repo": "Merge_frontend"
       }
     ],
-    "productName": "LectureLog Admin",
+    "productName": "Merge Admin",
     "directories": {
       "output": "dist-electron"
     },
@@ -71,7 +71,7 @@
     ],
     "extraResources": [
       {
-        "from": "../LectureLog_AI",
+        "from": "../Merge_AI",
         "to": "AI",
         "filter": [
           "**/*",

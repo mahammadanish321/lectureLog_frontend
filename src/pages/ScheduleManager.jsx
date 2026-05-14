@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit2, Trash2, Clock, MapPin } from 'lucide-react';
 import api from '../api';
 import './ScheduleManager.css';

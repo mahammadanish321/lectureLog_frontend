@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { motion } from "framer-motion";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { useNavigate } from "react-router-dom";
@@ -26,8 +26,8 @@ export default function GetStarted() {
       {/* ── Nav ─────────────────────────────────────── */}
       <nav className="gs-nav">
         <div className="gs-nav-logo">
-          <img src="/favicon.svg" alt="LectureLog" style={{ width: 32, height: 32 }} />
-          <span>LectureLog</span>
+          <img src="/favicon.svg" alt="Merge" style={{ width: 32, height: 32 }} />
+          <span>Merge</span>
         </div>
         <div className="gs-nav-actions">
           <button onClick={() => navigate("/login")} className="gs-btn-ghost">Sign In</button>
@@ -68,7 +68,7 @@ export default function GetStarted() {
             >
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/mahammadanish321/Merge_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
                   Download for Windows
                 </a>
@@ -88,10 +88,10 @@ export default function GetStarted() {
         <div className="gs-mockup">
           {/* Sidebar */}
           <div className="gs-mock-sidebar">
-            {/* Real LectureLog Logo */}
+            {/* Real Merge Logo */}
             <div className="gs-mock-logo-row">
-              <img src="/favicon.svg" alt="LectureLog" style={{ width: 22, height: 22, borderRadius: 5 }} />
-              <span style={{ color: '#86efac', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.02em' }}>LectureLog</span>
+              <img src="/favicon.svg" alt="Merge" style={{ width: 22, height: 22, borderRadius: 5 }} />
+              <span style={{ color: '#86efac', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.02em' }}>Merge</span>
             </div>
 
             {/* Real Nav Items */}
@@ -208,7 +208,7 @@ export default function GetStarted() {
           className="gs-cta-inner"
         >
           <h2 className="gs-cta-title">Ready to transform your campus?</h2>
-          <p className="gs-cta-text">Join institutions already running smarter with LectureLog.</p>
+          <p className="gs-cta-text">Join institutions already running smarter with Merge.</p>
           <button onClick={() => navigate("/signup")} className="gs-cta-big-btn">
             Register Your Institution <ChevronRight size={20} />
           </button>
@@ -218,10 +218,10 @@ export default function GetStarted() {
       {/* ── Footer ───────────────────────────────────── */}
       <footer className="gs-footer">
         <div className="gs-footer-brand">
-          <img src="/favicon.svg" alt="LectureLog" style={{ width: 24, height: 24 }} />
-          <span>LectureLog AI</span>
+          <img src="/favicon.svg" alt="Merge" style={{ width: 24, height: 24 }} />
+          <span>Merge AI</span>
         </div>
-        <p className="gs-footer-copy">© 2026 LectureLog. All rights reserved.</p>
+        <p className="gs-footer-copy">© 2026 Merge. All rights reserved.</p>
       </footer>
     </div>
   );

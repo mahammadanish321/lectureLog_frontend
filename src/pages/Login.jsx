@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor, MonitorPlay } from 'lucide-react';
@@ -291,8 +291,8 @@ const Login = () => {
       <div className="login-visual-section">
         <div className="visual-header">
           <div className="brand-logo">
-            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog" className="logo-img-small" style={{ borderRadius: '8px' }} />
-            <span>LectureLog</span>
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="Merge" className="logo-img-small" style={{ borderRadius: '8px' }} />
+            <span>Merge</span>
           </div>
           <h1>Intelligent Classroom Monitoring</h1>
           <p>Real-time AI attendance and session management for modern institutions.</p>
@@ -361,7 +361,7 @@ const Login = () => {
         </div>
 
         <div className="visual-footer">
-          <span>&copy; 2026 LectureLog AI</span>
+          <span>&copy; 2026 Merge AI</span>
           <div className="footer-links">
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
@@ -412,7 +412,7 @@ const Login = () => {
                   </div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1c1917', marginBottom: '0.75rem' }}>Desktop App Required</h3>
                   <p style={{ fontSize: '0.875rem', color: '#44403c', lineHeight: 1.6, marginBottom: '2rem' }}>
-                    Administrative tools are restricted to the <strong>LectureLog Desktop App</strong> for security and hardware integration.
+                    Administrative tools are restricted to the <strong>Merge Desktop App</strong> for security and hardware integration.
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <button className="submit-btn" onClick={() => window.location.href = '#'}>Download Desktop App</button>
@@ -678,7 +678,7 @@ const Login = () => {
           {loginMode === 'admin' && view === 'login' && (
             <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
               <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                Want to use LectureLog for your institution? <Link to="/signup" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>Register your college</Link>
+                Want to use Merge for your institution? <Link to="/signup" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>Register your college</Link>
               </p>
             </div>
           )}

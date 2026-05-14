@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Loader2, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, ChevronRight, AlertCircle, Monitor } from 'lucide-react';
 import api from '../api';
@@ -206,8 +206,8 @@ export default function Signup() {
       <div className="login-visual-section">
         <div className="visual-header">
           <div className="brand-logo">
-            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="LectureLog" className="logo-img-small" style={{ borderRadius: '8px' }} />
-            <span>LectureLog</span>
+            <img src="https://res.cloudinary.com/dmi7vzu8w/image/upload/v1778328482/Picsart_26-05-07_07-29-20-114_v3en0e.jpg" alt="Merge" className="logo-img-small" style={{ borderRadius: '8px' }} />
+            <span>Merge</span>
           </div>
           <h1>Bring your institution to the future.</h1>
           <p>The all-in-one AI platform for modern attendance and classroom management.</p>
@@ -244,7 +244,7 @@ export default function Signup() {
         </div>
 
         <div className="visual-footer">
-          <span>&copy; 2026 LectureLog AI</span>
+          <span>&copy; 2026 Merge AI</span>
           <div className="footer-links">
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
@@ -260,7 +260,7 @@ export default function Signup() {
             <>
               <div className="form-header">
                 <h2 className="welcome-text">Register Your College</h2>
-                <p className="subtitle">Start your journey with LectureLog in minutes.</p>
+                <p className="subtitle">Start your journey with Merge in minutes.</p>
               </div>
 
               {error && <div className="error-box animate-shake"><AlertCircle size={18} /><span>{error}</span></div>}
@@ -389,12 +389,12 @@ export default function Signup() {
               </div>
               <h2 className="welcome-text">Institution Created!</h2>
               <p className="subtitle" style={{ marginBottom: '2.5rem' }}>
-                Registration successful! {!isElectron ? "To manage your institution, please download and install the LectureLog Windows application." : "You can now log in to your admin dashboard."}
+                Registration successful! {!isElectron ? "To manage your institution, please download and install the Merge Windows application." : "You can now log in to your admin dashboard."}
               </p>
               
               {!isElectron ? (
                 <div className="admin-web-restriction" style={{ background: 'white', border: 'none', padding: 0 }}>
-                  <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
+                  <a href="https://github.com/mahammadanish321/Merge_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
                     <ChevronRight size={18} />
                     <span>Download for Windows</span>
                   </a>

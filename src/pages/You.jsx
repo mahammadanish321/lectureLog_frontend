@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, BookOpen, GraduationCap, Building } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -24,7 +24,7 @@ const You = () => {
           // Fallback if admin goes here somehow
           setProfileData({
             name: user?.name || 'Administrator',
-            email: user?.email || 'admin@lecturelog.edu',
+            email: user?.email || 'admin@Merge.edu',
             role: user?.role || 'admin',
             college_id: 'ADMIN-001'
           });
