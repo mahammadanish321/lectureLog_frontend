@@ -71,14 +71,21 @@ function startAI() {
 
   console.log(`[ELECTRON] ✅ AI script found at: ${aiPath}`);
   console.log(`[ELECTRON] Starting AI Service...`);
+  console.log(`[ELECTRON] ⏳ Please wait ~45s for AI models (DeepFace/TensorFlow) to load...`);
   
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
   
   pythonProcess = spawn(pythonCmd, [aiPath], {
-    cwd: path.dirname(aiPath), // Set working directory to the AI folder
-    stdio: 'inherit',
-    shell: true,
+    cwd: path.dirname(aiPath),
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
+  });
+
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`[AI-STDOUT] ${data.toString().trim()}`);
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`[AI-STDERR] ${data.toString().trim()}`);
   });
 
   pythonProcess.on('error', (err) => {
@@ -124,14 +131,20 @@ autoUpdater.on('update-downloaded', () => {
 
 app.on('window-all-closed', () => {
   if (pythonProcess) {
+    console.log('[ELECTRON] 🛑 Terminating AI Service...');
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', pythonProcess.pid, '/f', '/t']);
+      // Use /T to kill the process tree (children included)
+      spawn('taskkill', ['/pid', pythonProcess.pid, '/f', '/t']).on('exit', () => {
+        app.quit();
+      });
     } else {
       pythonProcess.kill('SIGKILL');
+      app.quit();
     }
-  }
-  if (process.platform !== 'darwin') {
-    app.quit();
+  } else {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   }
 });
 
