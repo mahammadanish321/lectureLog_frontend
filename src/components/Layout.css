@@ -671,15 +671,16 @@ body {
 
 .notif-modal {
   background: white;
-  width: 650px; /* Increased for horizontal rectangular look */
+  width: 680px;
   max-width: 95%;
-  min-height: 400px; /* Added base height */
-  max-height: 85vh;
+  height: 75vh;
+  min-height: 550px;
+  max-height: 88vh;
   border-radius: 32px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
@@ -726,9 +727,25 @@ body {
 }
 
 .notif-body {
-  padding: 1.5rem;
+  flex: 1;
+  padding: 1.5rem 2rem;
   overflow-y: auto;
   background: white;
+}
+
+.notif-body::-webkit-scrollbar {
+  width: 8px;
+}
+.notif-body::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+.notif-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.notif-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .empty-notif-circle {
