@@ -85,6 +85,17 @@ const Timetable = () => {
   });
   const [slotEditModal, setSlotEditModal] = useState({ open: false, slot: null, start: '', end: '' });
 
+  const [passwordModal, setPasswordModal] = useState({
+    open: false,
+    id: null,
+    schedule: null,
+    isCustom: false,
+    password: '',
+    loading: false,
+    title: '',
+    subtitle: '',
+  });
+
   const [searchParams] = useSearchParams();
   const weekStartParam = searchParams.get('week_start');
   const highlightParam = searchParams.get('highlight');
@@ -532,19 +543,16 @@ const Timetable = () => {
     const isAdmin = user?.role === 'admin';
     
     if (isTeacher) {
-      const pass = window.prompt('Enter your Password to cancel this class for this week:');
-      if (!pass) return;
-      try {
-        const cancelDate = formatISODate(getDateForDay(schedule.day_of_week));
-        await api.post(`/schedules/${id}/cancel`, { 
-          password: pass,
-          cancel_date: cancelDate,
-          week_start: formatISODate(weekStart)
-        });
-        fetchData();
-      } catch (err) { 
-        alert(err.response?.data?.message || 'Cancel failed.'); 
-      }
+      setPasswordModal({
+        open: true,
+        id,
+        schedule,
+        isCustom: false,
+        password: '',
+        loading: false,
+        title: 'Cancel Class',
+        subtitle: `Enter your account password to cancel ${schedule.subject_name} for this week:`,
+      });
     } else if (isAdmin) {
       if (!window.confirm('Delete this class from the routine? This week will keep a cancelled history card.')) return;
       try {
@@ -784,12 +792,18 @@ const Timetable = () => {
                                     <div className="card-header">
                                       <span className="subject" style={{ textDecoration: customItem.status === 'cancelled' ? 'line-through' : 'none' }}>{truncate(customItem.subject_name)}</span>
                                       {editMode && customItem.status !== 'cancelled' && (isAdmin || (isTeacher && customItem.teacher_id === user?.id)) && (
-                                        <button className="delete-sched-btn" onClick={async (e) => {
+                                        <button className="delete-sched-btn" onClick={(e) => {
                                           e.stopPropagation();
-                                          if (window.confirm('Cancel this custom session?')) {
-                                            try { await api.post('/sessions/cancel', { id: customItem.id }); fetchData(); }
-                                            catch { alert('Failed'); fetchData(); }
-                                          }
+                                          setPasswordModal({
+                                            open: true,
+                                            id: customItem.id,
+                                            schedule: customItem,
+                                            isCustom: true,
+                                            password: '',
+                                            loading: false,
+                                            title: 'Cancel Custom Session',
+                                            subtitle: `Enter your account password to cancel custom session ${customItem.subject_name}:`,
+                                          });
                                         }}><Trash2 size={12} /></button>
                                       )}
                                     </div>
@@ -997,6 +1011,75 @@ const Timetable = () => {
                 <button type="submit" className="btn-primary">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Password Modal */}
+      {passwordModal.open && (
+        <div className="modal-overlay animate-fade-in" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))}>
+          <div className="modal-content glass animate-scale-in" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>{passwordModal.title}</h3>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>{passwordModal.subtitle}</p>
+              </div>
+              <button className="modal-icon-close" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))}>×</button>
+            </div>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>Account Password</label>
+              <input
+                type="password"
+                placeholder="Enter password..."
+                value={passwordModal.password}
+                onChange={(e) => setPasswordModal((prev) => ({ ...prev, password: e.target.value }))}
+                disabled={passwordModal.loading}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (passwordModal.password) {
+                      setPasswordModal((prev) => ({ ...prev, loading: true }));
+                      if (passwordModal.isCustom) {
+                        api.post('/sessions/cancel', { id: passwordModal.id, password: passwordModal.password })
+                          .then(() => { setPasswordModal((prev) => ({ ...prev, open: false, loading: false })); fetchData(); })
+                          .catch((err) => { alert(err.response?.data?.message || 'Cancel failed'); setPasswordModal((prev) => ({ ...prev, loading: false })); });
+                      } else {
+                        const cancelDate = formatISODate(getDateForDay(passwordModal.schedule.day_of_week));
+                        api.post(`/schedules/${passwordModal.id}/cancel`, { password: passwordModal.password, cancel_date: cancelDate, week_start: formatISODate(weekStart) })
+                          .then(() => { setPasswordModal((prev) => ({ ...prev, open: false, loading: false })); fetchData(); })
+                          .catch((err) => { alert(err.response?.data?.message || 'Cancel failed'); setPasswordModal((prev) => ({ ...prev, loading: false })); });
+                      }
+                    } else alert('Please enter password.');
+                  }
+                }}
+              />
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button className="btn-secondary" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))} disabled={passwordModal.loading}>Cancel</button>
+              <button
+                className="btn-primary"
+                style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.2)' }}
+                disabled={passwordModal.loading}
+                onClick={() => {
+                  if (passwordModal.password) {
+                    setPasswordModal((prev) => ({ ...prev, loading: true }));
+                    if (passwordModal.isCustom) {
+                      api.post('/sessions/cancel', { id: passwordModal.id, password: passwordModal.password })
+                        .then(() => { setPasswordModal((prev) => ({ ...prev, open: false, loading: false })); fetchData(); })
+                        .catch((err) => { alert(err.response?.data?.message || 'Cancel failed'); setPasswordModal((prev) => ({ ...prev, loading: false })); });
+                    } else {
+                      const cancelDate = formatISODate(getDateForDay(passwordModal.schedule.day_of_week));
+                      api.post(`/schedules/${passwordModal.id}/cancel`, { password: passwordModal.password, cancel_date: cancelDate, week_start: formatISODate(weekStart) })
+                        .then(() => { setPasswordModal((prev) => ({ ...prev, open: false, loading: false })); fetchData(); })
+                        .catch((err) => { alert(err.response?.data?.message || 'Cancel failed'); setPasswordModal((prev) => ({ ...prev, loading: false })); });
+                    }
+                  } else alert('Please enter password.');
+                }}
+              >
+                {passwordModal.loading ? <Loader2 className="animate-spin" size={18} /> : 'Confirm Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}

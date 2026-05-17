@@ -52,6 +52,16 @@ const Sessions = () => {
     timeSlot: '10:15 AM - 11:05 AM'
   });
 
+  const [passwordModal, setPasswordModal] = useState({
+    open: false,
+    id: null,
+    isCustom: false,
+    password: '',
+    loading: false,
+    title: '',
+    subtitle: '',
+  });
+
   /* ── fetch ─────────────────────────────────────────── */
   const fetchInitialData = async () => {
     try {
@@ -156,19 +166,47 @@ const Sessions = () => {
       alert('This session belongs to a future week and cannot be deleted until that week becomes active.');
       return;
     }
-    const pass = window.prompt('Enter your Password to cancel this custom session:');
-    if (!pass) return;
-    try { await api.post('/sessions/cancel', { id, password: pass }); fetchSessions(); }
-    catch (err) { alert(err.response?.data?.message || 'Failed'); }
+    setPasswordModal({
+      open: true,
+      id,
+      isCustom: true,
+      password: '',
+      loading: false,
+      title: 'Cancel Custom Session',
+      subtitle: 'Enter your account password to cancel this custom session:',
+    });
   };
 
   const handleCancelRoutine = async (id) => {
-    const pass = window.prompt('Enter your Password to cancel this class:');
-    if (!pass) return;
+    setPasswordModal({
+      open: true,
+      id,
+      isCustom: false,
+      password: '',
+      loading: false,
+      title: 'Cancel Routine Class',
+      subtitle: 'Enter your account password to cancel this routine class:',
+    });
+  };
+
+  const submitCancelSession = async () => {
+    if (!passwordModal.password) {
+      alert('Please enter your password.');
+      return;
+    }
+    setPasswordModal((prev) => ({ ...prev, loading: true }));
     try {
-      await api.post(`/schedules/${id}/cancel`, { password: pass });
+      if (passwordModal.isCustom) {
+        await api.post('/sessions/cancel', { id: passwordModal.id, password: passwordModal.password });
+      } else {
+        await api.post(`/schedules/${passwordModal.id}/cancel`, { password: passwordModal.password });
+      }
+      setPasswordModal((prev) => ({ ...prev, open: false, loading: false }));
       fetchSessions();
-    } catch (err) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Cancellation failed');
+      setPasswordModal((prev) => ({ ...prev, loading: false }));
+    }
   };
 
   const fetchAttendance = async (sessionId) => {
@@ -654,6 +692,41 @@ const Sessions = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Password Modal */}
+      {passwordModal.open && (
+        <div className="sess-modal-overlay animate-fade-in" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))}>
+          <div className="sess-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="sess-modal-header">
+              <div>
+                <h2>{passwordModal.title}</h2>
+                <p>{passwordModal.subtitle}</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))}>×</button>
+            </div>
+            <div className="sess-modal-form">
+              <div className="form-field">
+                <label>Account Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter password..."
+                  value={passwordModal.password}
+                  onChange={(e) => setPasswordModal((prev) => ({ ...prev, password: e.target.value }))}
+                  disabled={passwordModal.loading}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitCancelSession(); }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer-btns">
+              <button className="modal-cancel-btn" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))} disabled={passwordModal.loading}>Cancel</button>
+              <button className="modal-submit-btn" style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.2)' }} onClick={submitCancelSession} disabled={passwordModal.loading}>
+                {passwordModal.loading ? <Loader2 className="animate-spin" size={18} /> : 'Confirm Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}
