@@ -874,3 +874,16 @@ th.current-time-col .time-header .end {
 }
 
 .animate-fade-in { animation: fadeIn 0.22s ease-out; }
+
+/* Highlighted Card Animation */
+.schedule-card.highlighted-card {
+  border: 3px solid #eab308 !important;
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.4) !important;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); }
+  100% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
+}

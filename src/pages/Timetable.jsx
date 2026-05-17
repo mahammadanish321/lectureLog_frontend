@@ -6,6 +6,7 @@ import {
   ZoomIn, ZoomOut, Edit3, Camera, CheckCircle2, XCircle, Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import './Timetable.css';
 
 // Soft pastel palette for time columns
@@ -84,11 +85,26 @@ const Timetable = () => {
   });
   const [slotEditModal, setSlotEditModal] = useState({ open: false, slot: null, start: '', end: '' });
 
+  const [searchParams] = useSearchParams();
+  const weekStartParam = searchParams.get('week_start');
+  const highlightParam = searchParams.get('highlight');
+
   // Sync with user profile once loaded
   useEffect(() => {
     if (user?.year) setSelectedYear(user.year.toString());
     if (user?.stream) setSelectedStream(user.stream);
   }, [user]);
+
+  useEffect(() => {
+    if (weekStartParam) {
+      const targetDate = new Date(weekStartParam);
+      if (!isNaN(targetDate.getTime())) {
+        const currentMonday = getWeekStart(0);
+        const diffWeeks = Math.round((targetDate.getTime() - currentMonday.getTime()) / (7 * 24 * 3600 * 1000));
+        setWeekOffset(diffWeeks);
+      }
+    }
+  }, [weekStartParam]);
 
   const wrapperRef = useRef(null);
 
@@ -712,8 +728,14 @@ const Timetable = () => {
                               {cellSchedules.map(schedule => {
                                 const cardSess = getRoutineSessionForCellCard(schedule, day, slot.raw_start);
                                 const cardCanCheck = cardSess && (cardSess.status === 'ended' || cardSess.status === 'cancelled' || isPastSlot(day, slot.raw_end));
+                                const isHighlight = highlightParam && (String(schedule.id) === String(highlightParam) || (cardSess && String(cardSess.id) === String(highlightParam)));
                                 return (
-                                  <div key={`${schedule.source_type || 'regular'}-${schedule.id}`} className={`schedule-card animate-scale-in ${schedule.is_cancelled || schedule.is_deleted_history ? 'cancelled-routine' : ''}`} style={{ '--card-accent': col.accent, marginBottom: customSessionsForSlot.length ? '4px' : '0' }}>
+                                  <div key={`${schedule.source_type || 'regular'}-${schedule.id}`} className={`schedule-card animate-scale-in ${isHighlight ? 'highlighted-card' : ''} ${schedule.is_cancelled || schedule.is_deleted_history ? 'cancelled-routine' : ''}`} style={{ '--card-accent': col.accent, marginBottom: customSessionsForSlot.length ? '4px' : '0' }}>
+                                    {isHighlight && (
+                                      <div className="highlight-badge" style={{ background: '#fef08a', color: '#854d0e', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', width: 'fit-content', marginBottom: '6px', border: '1px solid #facc15' }}>
+                                        ★ HIGHLIGHTED CLASS
+                                      </div>
+                                    )}
                                     <div className="card-header">
                                       <span className="subject" style={{ textDecoration: schedule.is_cancelled || schedule.is_deleted_history ? 'line-through' : 'none' }}>{truncate(schedule.subject_name)}</span>
                                       {editMode && !schedule.is_snapshot_history && !schedule.is_deleted_history && (isAdmin || (isTeacher && schedule.teacher_id === user?.id)) && (
@@ -751,8 +773,14 @@ const Timetable = () => {
                               {customSessionsForSlot.map(customItem => {
                                 const customCanCheck = customItem && !String(customItem.id).startsWith('routine_') && (customItem.status === 'ended' || customItem.status === 'cancelled' || isPastSlot(day, slot.raw_end));
                                 const itemStudentState = getStudentAttendanceState(schedule, customItem, day, slot);
+                                const isHighlight = highlightParam && String(customItem.id) === String(highlightParam);
                                 return (
-                                  <div key={`custom-${customItem.id}`} className={`schedule-card custom animate-scale-in ${customItem.status === 'cancelled' ? 'cancelled-routine' : ''}`} style={{ marginBottom: '4px' }}>
+                                  <div key={`custom-${customItem.id}`} className={`schedule-card custom animate-scale-in ${isHighlight ? 'highlighted-card' : ''} ${customItem.status === 'cancelled' ? 'cancelled-routine' : ''}`} style={{ marginBottom: '4px' }}>
+                                    {isHighlight && (
+                                      <div className="highlight-badge" style={{ background: '#fef08a', color: '#854d0e', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', width: 'fit-content', marginBottom: '6px', border: '1px solid #facc15' }}>
+                                        ★ HIGHLIGHTED CLASS
+                                      </div>
+                                    )}
                                     <div className="card-header">
                                       <span className="subject" style={{ textDecoration: customItem.status === 'cancelled' ? 'line-through' : 'none' }}>{truncate(customItem.subject_name)}</span>
                                       {editMode && customItem.status !== 'cancelled' && (isAdmin || (isTeacher && customItem.teacher_id === user?.id)) && (
