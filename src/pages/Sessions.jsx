@@ -102,8 +102,17 @@ const Sessions = () => {
         setSessions(res.data.filter(s => String(s.teacher_id) === String(uid)));
         const schRes = await api.get('/schedules/my');
         setTeacherSchedules(schRes.data);
+      } else if (role === 'student') {
+        const studentYear = user?.year || '1';
+        const studentStream = user?.stream || 'CSE';
+        setSessions(res.data.filter(s => String(s.year) === String(studentYear) && String(s.stream) === String(studentStream)));
+        const schRes = await api.get(`/schedules?year=${studentYear}&stream=${studentStream}`);
+        setTeacherSchedules(schRes.data);
       } else {
+        // admin
         setSessions(res.data);
+        const schRes = await api.get('/schedules');
+        setTeacherSchedules(schRes.data);
       }
     } catch { }
     finally { setLoading(false); }
