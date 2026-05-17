@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import {
   Calendar, Clock, Plus, Trash2, User, MapPin,
@@ -247,13 +247,13 @@ const Timetable = () => {
     cellSchedules.find(s => !s.is_snapshot_history && !s.is_deleted_history && !s.is_cancelled) || cellSchedules[0] || null;
 
 
-  const getCustomSessionForCell = (day, cellStart, cellEnd) => {
+  const getCustomSessionsForCell = (day, cellStart, cellEnd) => {
     const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const wEnd = new Date(weekStart);
     wEnd.setDate(weekStart.getDate() + 6);
     wEnd.setHours(23, 59, 59, 999);
 
-    return activeSessions.find(sess => {
+    return activeSessions.filter(sess => {
       if (!sess.is_custom || !sess.start_time) return false;
       const parts = sess.start_time.split('T');
       if (parts.length !== 2) return false;
@@ -283,6 +283,20 @@ const Timetable = () => {
 
   const getRoutineSessionForCell = (schedule, day, cellStart) => {
     if (!schedule || schedule.is_cancelled || schedule.is_deleted_history) return null;
+    const targetDate = getDateForDay(day).toDateString();
+    return activeSessions.find(sess => {
+      if (sess.is_custom || String(sess.id).startsWith('routine_')) return false;
+      if (String(sess.subject_id) !== String(schedule.subject_id)) return false;
+      if (String(sess.teacher_id) !== String(schedule.teacher_id)) return false;
+      if (String(sess.classroom_id) !== String(schedule.classroom_id)) return false;
+      const start = new Date(sess.start_time);
+      if (start.toDateString() !== targetDate) return false;
+      return start.toTimeString().split(' ')[0].startsWith(cellStart.substring(0, 5));
+    });
+  };
+
+  const getRoutineSessionForCellCard = (schedule, day, cellStart) => {
+    if (!schedule) return null;
     const targetDate = getDateForDay(day).toDateString();
     return activeSessions.find(sess => {
       if (sess.is_custom || String(sess.id).startsWith('routine_')) return false;
@@ -491,6 +505,7 @@ const Timetable = () => {
       fetchData();
     } catch (err) {
       alert(err.response?.data?.message || 'Operation failed');
+      setIsModalOpen(false);
     }
   };
 
@@ -560,7 +575,7 @@ const Timetable = () => {
 
           {/* Controls row */}
           <div className="timetable-controls-row">
-            {(isAdmin || isTeacher) && (
+            {isAdmin && (
               <button className={`btn-edit-mode ${editMode ? 'on' : 'off'}`} onClick={() => setEditMode(!editMode)}>
                 <Edit3 size={16} /> {editMode ? 'Disable Editing' : 'Enable Edit Mode'}
               </button>
@@ -679,8 +694,9 @@ const Timetable = () => {
                         const isCurrentSlot = isCurrentWeek && currentTimeStr >= slot.raw_start.substring(0, 5) && currentTimeStr < slot.raw_end.substring(0, 5);
                         const cellSchedules = getSchedulesForCell(day, slot.raw_start);
                         const schedule = getEditableSchedule(cellSchedules);
-                        const custom = getCustomSessionForCell(day, slot.raw_start, slot.raw_end);
-                        const isEmpty = cellSchedules.every(s => s.is_cancelled || s.is_deleted_history) && !custom;
+                        const customSessionsForSlot = getCustomSessionsForCell(day, slot.raw_start, slot.raw_end);
+                        const custom = customSessionsForSlot.find(c => c.status !== 'cancelled') || customSessionsForSlot[0] || null;
+                        const isEmpty = cellSchedules.every(s => s.is_cancelled || s.is_deleted_history) && !customSessionsForSlot.length;
                         const attendanceSession = getAttendanceSession(schedule, custom, day, slot);
                         const showAttendanceButton = !isStudent && canCheckAttendance(schedule, custom, day, slot);
                         const studentState = getStudentAttendanceState(schedule, custom, day, slot);
@@ -688,73 +704,91 @@ const Timetable = () => {
                         return (
                           <td
                             key={idx}
-                            className={`slot-cell ${cellSchedules.length ? 'occupied' : (custom ? 'custom-cell' : 'empty')} ${isCurrentSlot ? 'current-time-col' : ''}`}
+                            className={`slot-cell ${cellSchedules.length ? 'occupied' : (customSessionsForSlot.length ? 'custom-cell' : 'empty')} ${isCurrentSlot ? 'current-time-col' : ''}`}
                             style={{ background: isEmpty ? col.bg : undefined }}
                             onClick={() => handleCellClick(day, slot, schedule)}
                           >
                             <div className="slot-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {cellSchedules.map(schedule => (
-                                <div key={`${schedule.source_type || 'regular'}-${schedule.id}`} className={`schedule-card animate-scale-in ${schedule.is_cancelled || schedule.is_deleted_history ? 'cancelled-routine' : ''}`} style={{ '--card-accent': col.accent, marginBottom: custom ? '4px' : '0' }}>
-                                  <div className="card-header">
-                                    <span className="subject" style={{ textDecoration: schedule.is_cancelled || schedule.is_deleted_history ? 'line-through' : 'none' }}>{truncate(schedule.subject_name)}</span>
-                                    {editMode && !schedule.is_snapshot_history && !schedule.is_deleted_history && (isAdmin || (isTeacher && schedule.teacher_id === user?.id)) && (
-                                      <button className="delete-sched-btn" onClick={e => handleDelete(e, schedule)}><Trash2 size={12} /></button>
-                                    )}
-                                  </div>
-                                  <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
-                                  <span className="room-camera"><MapPin size={10} /> {schedule.classroom_name}</span>
-                                  {(schedule.is_cancelled || schedule.is_deleted_history) && (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
-                                      <span style={{ padding: '0.15rem 0.4rem', background: '#fee2e2', color: '#ef4444', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.02em' }}>CANCELLED</span>
-                                      {!custom && <span className="free-indicator-mini"><Plus size={10} /> FREE</span>}
+                              {cellSchedules.map(schedule => {
+                                const cardSess = getRoutineSessionForCellCard(schedule, day, slot.raw_start);
+                                const cardCanCheck = cardSess && (cardSess.status === 'ended' || cardSess.status === 'cancelled' || isPastSlot(day, slot.raw_end));
+                                return (
+                                  <div key={`${schedule.source_type || 'regular'}-${schedule.id}`} className={`schedule-card animate-scale-in ${schedule.is_cancelled || schedule.is_deleted_history ? 'cancelled-routine' : ''}`} style={{ '--card-accent': col.accent, marginBottom: customSessionsForSlot.length ? '4px' : '0' }}>
+                                    <div className="card-header">
+                                      <span className="subject" style={{ textDecoration: schedule.is_cancelled || schedule.is_deleted_history ? 'line-through' : 'none' }}>{truncate(schedule.subject_name)}</span>
+                                      {editMode && !schedule.is_snapshot_history && !schedule.is_deleted_history && (isAdmin || (isTeacher && schedule.teacher_id === user?.id)) && (
+                                        <button className="delete-sched-btn" onClick={e => handleDelete(e, schedule)}><Trash2 size={12} /></button>
+                                      )}
                                     </div>
-                                  )}
-                                  {studentState && !custom && !schedule.is_cancelled && !schedule.is_deleted_history && (
-                                    <span className={`student-attendance-chip ${studentState.status}`}>
-                                      {studentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-
-                              {custom && (
-                                <div className={`schedule-card custom animate-scale-in ${custom.status === 'cancelled' ? 'cancelled-routine' : ''}`}>
-                                  <div className="card-header">
-                                    <span className="subject" style={{ textDecoration: custom.status === 'cancelled' ? 'line-through' : 'none' }}>{truncate(custom.subject_name)}</span>
-                                    {editMode && custom.status !== 'cancelled' && (isAdmin || (isTeacher && custom.teacher_id === user?.id)) && (
-                                      <button className="delete-sched-btn" onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (window.confirm('Cancel this custom session?')) {
-                                          try { await api.post('/sessions/cancel', { id: custom.id }); fetchData(); }
-                                          catch { alert('Failed'); fetchData(); }
-                                        }
-                                      }}><Trash2 size={12} /></button>
+                                    <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
+                                    <span className="room-camera"><MapPin size={10} /> {schedule.classroom_name}</span>
+                                    {(schedule.is_cancelled || schedule.is_deleted_history) && (
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
+                                        <span style={{ padding: '0.15rem 0.4rem', background: '#fee2e2', color: '#ef4444', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.02em' }}>CANCELLED</span>
+                                        {!customSessionsForSlot.length && <span className="free-indicator-mini"><Plus size={10} /> FREE</span>}
+                                      </div>
+                                    )}
+                                    {studentState && !customSessionsForSlot.length && !schedule.is_cancelled && !schedule.is_deleted_history && (
+                                      <span className={`student-attendance-chip ${studentState.status}`}>
+                                        {studentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                                      </span>
+                                    )}
+                                    {!isStudent && cardCanCheck && (
+                                      <button
+                                        className="attendance-hover-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openAttendanceModal(cardSess, schedule.subject_name || 'Class Attendance');
+                                        }}
+                                      >
+                                        Check Attendance
+                                      </button>
                                     )}
                                   </div>
-                                  <span className="teacher"><User size={10} /> {custom.teacher_name || 'Faculty'}</span>
-                                  <span className="room-camera"><MapPin size={10} /> {custom.classroom_name}</span>
-                                  <span className="custom-badge">{custom.status === 'cancelled' ? 'Cancelled Custom' : custom.status === 'ended' ? 'Completed Custom' : 'Custom'}</span>
-                                  {studentState && (
-                                    <span className={`student-attendance-chip ${studentState.status}`}>
-                                      {studentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                                );
+                              })}
 
-                              {showAttendanceButton && (
-                                <button
-                                  className="attendance-hover-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openAttendanceModal(attendanceSession, (custom || schedule)?.subject_name || 'Class Attendance');
-                                  }}
-                                >
-                                  Check Attendance
-                                </button>
-                              )}
+                              {customSessionsForSlot.map(customItem => {
+                                const customCanCheck = customItem && !String(customItem.id).startsWith('routine_') && (customItem.status === 'ended' || customItem.status === 'cancelled' || isPastSlot(day, slot.raw_end));
+                                const itemStudentState = getStudentAttendanceState(schedule, customItem, day, slot);
+                                return (
+                                  <div key={`custom-${customItem.id}`} className={`schedule-card custom animate-scale-in ${customItem.status === 'cancelled' ? 'cancelled-routine' : ''}`} style={{ marginBottom: '4px' }}>
+                                    <div className="card-header">
+                                      <span className="subject" style={{ textDecoration: customItem.status === 'cancelled' ? 'line-through' : 'none' }}>{truncate(customItem.subject_name)}</span>
+                                      {editMode && customItem.status !== 'cancelled' && (isAdmin || (isTeacher && customItem.teacher_id === user?.id)) && (
+                                        <button className="delete-sched-btn" onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (window.confirm('Cancel this custom session?')) {
+                                            try { await api.post('/sessions/cancel', { id: customItem.id }); fetchData(); }
+                                            catch { alert('Failed'); fetchData(); }
+                                          }
+                                        }}><Trash2 size={12} /></button>
+                                      )}
+                                    </div>
+                                    <span className="teacher"><User size={10} /> {customItem.teacher_name || 'Faculty'}</span>
+                                    <span className="room-camera"><MapPin size={10} /> {customItem.classroom_name}</span>
+                                    <span className="custom-badge">{customItem.status === 'cancelled' ? 'Cancelled Custom' : customItem.status === 'ended' ? 'Completed Custom' : 'Custom'}</span>
+                                    {itemStudentState && (
+                                      <span className={`student-attendance-chip ${itemStudentState.status}`}>
+                                        {itemStudentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                                      </span>
+                                    )}
+                                    {!isStudent && customCanCheck && (
+                                      <button
+                                        className="attendance-hover-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openAttendanceModal(customItem, customItem.subject_name || 'Class Attendance');
+                                        }}
+                                      >
+                                        Check Attendance
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
 
-                              {!custom && (!schedule || schedule.is_cancelled || schedule.is_deleted_history) && (
+                              {!customSessionsForSlot.length && (!schedule || schedule.is_cancelled || schedule.is_deleted_history) && (
                                 <div className="add-indicator"><Plus size={14} /></div>
                               )}
                             </div>
@@ -772,8 +806,8 @@ const Timetable = () => {
 
       {/* ── MODAL ── */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content glass animate-scale-in">
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content glass animate-scale-in" onClick={e => e.stopPropagation()}>
             <h3>{isCustomSubmit ? 'Start Custom Session' : (editScheduleId ? 'Modify Routine' : 'Assign Routine')}</h3>
             <span className="slot-info">{selectedSlot.day} | {selectedSlot.slot.start_time} {isCustomSubmit && `(${new Date(new Date(weekStart).setDate(weekStart.getDate() + DAYS.indexOf(selectedSlot.day))).toLocaleDateString('en-GB')})`}</span>
             <form onSubmit={handleSubmit} style={{ marginTop: '1.5rem' }}>
@@ -854,16 +888,20 @@ const Timetable = () => {
             </div>
 
             <div className="attendance-filter-row">
-              {['present', 'absent'].map(filter => (
-                <button
-                  key={filter}
-                  className={`attendance-filter-btn ${attendanceModal.filter === filter ? 'active' : ''}`}
-                  onClick={() => setAttendanceModal(p => ({ ...p, filter }))}
-                >
-                  {filter === 'present' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-                  {filter === 'present' ? 'Present' : 'Absent'}
-                </button>
-              ))}
+              {(() => {
+                const presentCount = attendanceModal.records.filter(r => r.status !== 'absent').length;
+                const absentCount = attendanceModal.records.filter(r => r.status === 'absent').length;
+                return ['present', 'absent'].map(filter => (
+                  <button
+                    key={filter}
+                    className={`attendance-filter-btn ${attendanceModal.filter === filter ? 'active' : ''}`}
+                    onClick={() => setAttendanceModal(p => ({ ...p, filter }))}
+                  >
+                    {filter === 'present' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                    {filter === 'present' ? `Present (${presentCount})` : `Absent (${absentCount})`}
+                  </button>
+                ));
+              })()}
             </div>
 
             {attendanceModal.loading ? (
@@ -873,7 +911,7 @@ const Timetable = () => {
                 {attendanceModal.records
                   .filter(rec => rec.status === attendanceModal.filter)
                   .map(rec => (
-                    <div key={rec.student_id || rec.id} className="attendance-roster-row">
+                    <div key={rec.student_id || rec.id || Math.random()} className="attendance-roster-row">
                       <img
                         className="attendance-avatar"
                         src={rec.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(rec.student_name || 'Student')}`}
@@ -881,7 +919,7 @@ const Timetable = () => {
                       />
                       <div className="attendance-student-info">
                         <strong>{rec.student_name}</strong>
-                        <span>{rec.roll_number || 'No roll'} · {rec.email}</span>
+                        <span>{rec.roll_number || 'No roll'} · {rec.email || `${String(rec.student_name).toLowerCase().replace(/\s+/g, '')}@Merge.edu`}</span>
                       </div>
                       <div className="attendance-time">
                         {rec.marked_at ? new Date(rec.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
@@ -901,8 +939,8 @@ const Timetable = () => {
       )}
 
       {slotEditModal.open && (
-        <div className="modal-overlay">
-          <div className="modal-content glass animate-scale-in" style={{ maxWidth: '400px' }}>
+        <div className="modal-overlay" onClick={() => setSlotEditModal({ open: false, slot: null, start: '', end: '' })}>
+          <div className="modal-content glass animate-scale-in" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <h3>Edit Time Slot</h3>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1.5rem' }}>Update the duration for this routine column.</p>
             <form onSubmit={handleSaveEditedSlot}>

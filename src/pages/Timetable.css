@@ -1,4 +1,4 @@
-﻿/* ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    Timetable.css – Enhanced Interactive Routine
    ───────────────────────────────────────────── */
 
@@ -545,7 +545,7 @@ th.current-time-col .time-header .end {
   z-index: 5;
 }
 
-.slot-cell:hover .attendance-hover-btn {
+.schedule-card:hover .attendance-hover-btn {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);
@@ -667,6 +667,8 @@ th.current-time-col .time-header .end {
 }
 
 .attendance-modal {
+  width: 76vw;
+  min-width: min(680px, 100%);
   max-width: 760px !important;
 }
 

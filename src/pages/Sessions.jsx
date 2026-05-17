@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   Plus, Loader2, X, Clock, MapPin, User, BookOpen,
-  CalendarDays, CheckCircle2, Trash2, Star, ChevronDown
+  CalendarDays, CheckCircle2, Trash2, Star, ChevronDown, XCircle
 } from 'lucide-react';
 import './Sessions.css';
 
@@ -32,12 +32,19 @@ const Sessions = () => {
   const [teacherSchedules, setTeacherSchedules] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [classrooms, setClassrooms] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [showAttModal, setShowAttModal] = useState(false);
   const [attLoading, setAttLoading] = useState(false);
-  const [expandedDate, setExpandedDate] = useState(new Date().toLocaleDateString('en-GB'));
+  const [attFilter, setAttFilter] = useState('present');
+  const todayDefault = new Date().toLocaleDateString('en-GB');
+  const [expandedDates, setExpandedDates] = useState({ [todayDefault]: true });
+
+  const toggleDateGroup = (date) => {
+    setExpandedDates(prev => ({ ...prev, [date]: !prev[date] }));
+  };
 
   const [formData, setFormData] = useState({
     subject_id: '', classroom_id: '', year: '1', stream: 'CSE',
@@ -48,10 +55,30 @@ const Sessions = () => {
   /* ── fetch ─────────────────────────────────────────── */
   const fetchInitialData = async () => {
     try {
-      const [sr, cr] = await Promise.all([api.get('/subjects'), api.get('/classrooms')]);
-      setSubjects(sr.data);
-      setClassrooms(cr.data);
-      if (sr.data.length > 0) setFormData(p => ({ ...p, subject_id: sr.data[0].id }));
+      const [sr, cr, tr] = await Promise.allSettled([
+        api.get('/subjects'),
+        api.get('/classrooms'),
+        api.get('/time_slots')
+      ]);
+
+      if (sr.status === 'fulfilled' && sr.value?.data) {
+        setSubjects(sr.value.data);
+        if (sr.value.data.length > 0) setFormData(p => ({ ...p, subject_id: sr.value.data[0].id }));
+      }
+      if (cr.status === 'fulfilled' && cr.value?.data) {
+        setClassrooms(cr.value.data);
+      }
+
+      const trData = tr.status === 'fulfilled' ? tr.value?.data : null;
+      if (trData?.length > 0) {
+        const formattedSlots = trData.map(t => `${t.start_time} - ${t.end_time}`);
+        setTimeSlots(formattedSlots);
+        setFormData(p => ({ ...p, timeSlot: formattedSlots[0] }));
+      } else {
+        const defSlots = ['10:15 AM - 11:05 AM', '11:05 AM - 11:55 AM', '11:55 AM - 12:45 PM', '12:45 PM - 01:35 PM', '01:35 PM - 02:25 PM', '02:25 PM - 03:15 PM', '03:15 PM - 04:05 PM', '04:05 PM - 04:55 PM', '04:55 PM - 05:45 PM', '05:45 PM - 06:35 PM', '06:35 PM - 07:25 PM', '07:25 PM - 08:15 PM', '08:15 PM - 09:05 PM', '09:05 PM - 09:55 PM', '09:55 PM - 10:45 PM', '10:45 PM - 11:35 PM'];
+        setTimeSlots(defSlots);
+        setFormData(p => ({ ...p, timeSlot: defSlots[0] }));
+      }
     } catch { }
   };
 
@@ -129,7 +156,7 @@ const Sessions = () => {
       alert('This session belongs to a future week and cannot be deleted until that week becomes active.');
       return;
     }
-    const pass = window.prompt('Enter your Password to delete this custom session:');
+    const pass = window.prompt('Enter your Password to cancel this custom session:');
     if (!pass) return;
     try { await api.post('/sessions/cancel', { id, password: pass }); fetchSessions(); }
     catch (err) { alert(err.response?.data?.message || 'Failed'); }
@@ -140,8 +167,7 @@ const Sessions = () => {
     if (!pass) return;
     try {
       await api.post(`/schedules/${id}/cancel`, { password: pass });
-      const r = await api.get('/schedules/my');
-      setTeacherSchedules(r.data);
+      fetchSessions();
     } catch (err) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
   };
 
@@ -149,7 +175,7 @@ const Sessions = () => {
     setAttLoading(true);
     setShowAttModal(true);
     try {
-      const r = await api.get(`/attendance/session/${sessionId}`);
+      const r = await api.get(`/attendance/session/${sessionId}?include_absent=true`);
       setAttendanceRecords(r.data);
     } catch { setAttendanceRecords([]); }
     finally { setAttLoading(false); }
@@ -193,6 +219,7 @@ const Sessions = () => {
     const fromSchedules = teacherSchedules
       .filter(s => {
         const { dateStr } = getScheduleInfo(s);
+        if (dateStr !== today) return false;
         // Do not show routine if there's already a DB session for this subject on this date
         return !sessions.some(db =>
           !db.is_custom &&
@@ -234,7 +261,7 @@ const Sessions = () => {
       };
 
       return {
-        id: `db_${s.id}`, originalId: s.id,
+        id: `db_${s.id}`, originalId: s.id, scheduleId: s.schedule_id || s.id,
         subject_name: s.subject_name, type: s.is_custom ? 'Custom' : 'Regular',
         year: s.year, stream: s.stream || 'N/A',
         room: s.classroom_name || s.camera_url || '—',
@@ -276,6 +303,16 @@ const Sessions = () => {
     });
   });
 
+  useEffect(() => {
+    if (sortedDates.length > 0) {
+      setExpandedDates(prev => ({
+        ...prev,
+        [sortedDates[0]]: true,
+        [todayStr]: true
+      }));
+    }
+  }, [sortedDates.length]);
+
   /* ── date label helper ─────────────────────────────────── */
   const formatDateLabel = (dateStr) => {
     if (dateStr === todayStr) return 'Today';
@@ -291,6 +328,8 @@ const Sessions = () => {
   /* ── counts ─────────────────────────────────────────────── */
   const liveCount = combined.filter(i => i.status === 'active').length;
   const upcomingCount = combined.filter(i => i.status === 'scheduled').length;
+  const completedCount = combined.filter(i => i.status === 'ended').length;
+  const cancelledCount = combined.filter(i => i.status === 'cancelled').length;
   const customCount = combined.filter(i => i.isCustom).length;
 
   /* ── render ──────────────────────────────────────────── */
@@ -319,6 +358,16 @@ const Sessions = () => {
           <CalendarDays size={13} />
           <span className="pill-val">{upcomingCount}</span>
           <span className="pill-label">Upcoming</span>
+        </div>
+        <div className="sess-stat-pill pill-neutral">
+          <CheckCircle2 size={13} />
+          <span className="pill-val">{completedCount}</span>
+          <span className="pill-label">Completed</span>
+        </div>
+        <div className="sess-stat-pill pill-red">
+          <XCircle size={13} />
+          <span className="pill-val">{cancelledCount}</span>
+          <span className="pill-label">Cancelled</span>
         </div>
         <div className="sess-stat-pill pill-amber">
           <Star size={12} />
@@ -349,7 +398,7 @@ const Sessions = () => {
       ) : (
         <div className="sess-groups">
           {sortedDates.map(date => {
-            const isOpen = expandedDate === null || expandedDate === date;
+            const isOpen = !!expandedDates[date];
             const isToday = date === todayStr;
             const isFuture = !isToday && (() => {
               const [dd, mm, yyyy] = date.split('/');
@@ -361,7 +410,7 @@ const Sessions = () => {
                 {/* Date header */}
                 <button
                   className={`sess-date-header ${isToday ? 'today-header' : ''} ${isFuture && hasCustom ? 'future-custom-header' : ''}`}
-                  onClick={() => setExpandedDate(expandedDate === date ? null : date)}
+                  onClick={() => toggleDateGroup(date)}
                 >
                   <div className="sess-date-left">
                     {isToday && <span className="today-chip">TODAY</span>}
@@ -380,13 +429,6 @@ const Sessions = () => {
                         key={item.id}
                         className={`sess-card ${item.status} ${item.isCustom ? 'custom-card' : ''}`}
                       >
-                        {/* Custom badge */}
-                        {item.isCustom && (
-                          <div className="custom-badge-pill">
-                            <Star size={10} /> Custom
-                          </div>
-                        )}
-
                         {/* Card body */}
                         <div className="sess-card-body">
                           <div className="sess-card-left">
@@ -402,6 +444,13 @@ const Sessions = () => {
                           </div>
 
                           <div className="sess-card-right">
+                            {/* Custom badge */}
+                            {item.isCustom && (
+                              <span className="custom-badge-pill">
+                                <Star size={11} /> Custom
+                              </span>
+                            )}
+
                             {/* Status badge */}
                             <span className={`sess-status-badge ${STATUS_META[item.status]?.cls || ''}`}>
                               {item.status === 'active' && <span className="live-dot" />}
@@ -410,29 +459,29 @@ const Sessions = () => {
 
                             {/* Actions */}
                             <div className="sess-actions">
-                              {/* Cancel regular class (teacher any day) */}
-                              {item.type === 'Regular' && !item.isCustom && !item.isDone && !item.is_cancelled && (
-                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.originalId)}>
+                              {/* Cancel regular class */}
+                              {item.type === 'Regular' && !item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
+                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.scheduleId || item.originalId)}>
                                   Cancel Class
                                 </button>
                               )}
 
-                              {/* Delete custom session */}
+                              {/* Cancel custom session */}
                               {item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
-                                <button className="act-btn act-amber" onClick={() => handleCancelSession(item.originalId)}>
-                                  <Trash2 size={13} /> Delete
+                                <button className="act-btn act-red" onClick={() => handleCancelSession(item.originalId)}>
+                                  Cancel Class
                                 </button>
                               )}
 
                               {/* Admin delete any session */}
                               {isAdmin && !item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
-                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.originalId)}>
+                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.scheduleId || item.originalId)}>
                                   Cancel
                                 </button>
                               )}
 
                               {/* Check Attendance */}
-                              {(item.isDone || item.status === 'ended') && (
+                              {(item.status === 'ended' || item.status === 'active' || item.status === 'cancelled') && (
                                 <button className="act-btn act-primary" onClick={() => {
                                   if (item.id.startsWith('db_') || item.isCustom || item.type === 'Custom') {
                                     fetchAttendance(item.originalId);
@@ -446,7 +495,7 @@ const Sessions = () => {
                                     else alert('No attendance record exists for this session yet.');
                                   }
                                 }}>
-                                  <CheckCircle2 size={13} /> Attendance
+                                  <CheckCircle2 size={13} /> {item.status === 'active' ? 'Live Attendance' : 'Attendance'}
                                 </button>
                               )}
                             </div>
@@ -509,13 +558,20 @@ const Sessions = () => {
               <div className="form-row-2">
                 <div className="form-field">
                   <label>Date</label>
-                  <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                  <input type="date" value={formData.date} onChange={e => {
+                    const newDate = e.target.value;
+                    if (!newDate) return;
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayOnly = new Date(newDate).getDay();
+                    const dayName = days[Number.isNaN(dayOnly) ? 0 : dayOnly];
+                    setFormData(prev => ({ ...prev, date: newDate, day: dayName }));
+                  }} required />
                 </div>
                 <div className="form-field">
                   <label>Day</label>
-                  <select value={formData.day} onChange={e => setFormData({ ...formData, day: e.target.value })} required>
+                  <select value={formData.day} disabled className="disabled-select" required>
                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d =>
-                      <option key={d}>{d}</option>
+                      <option key={d} value={d}>{d}</option>
                     )}
                   </select>
                 </div>
@@ -524,10 +580,7 @@ const Sessions = () => {
               <div className="form-field">
                 <label>Time Slot</label>
                 <select value={formData.timeSlot} onChange={e => setFormData({ ...formData, timeSlot: e.target.value })} required>
-                  {['10:15 AM - 11:05 AM', '11:05 AM - 11:55 AM', '11:55 AM - 12:45 PM',
-                    '12:45 PM - 01:35 PM', '01:35 PM - 02:25 PM', '02:25 PM - 03:15 PM',
-                    '03:15 PM - 04:05 PM', '04:05 PM - 04:55 PM', '04:55 PM - 05:45 PM']
-                    .map(s => <option key={s}>{s}</option>)}
+                  {timeSlots.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
@@ -544,32 +597,61 @@ const Sessions = () => {
       {showAttModal && (
         <div className="sess-modal-overlay" onClick={() => setShowAttModal(false)}>
           <div className="sess-modal att-modal animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="sess-modal-header">
-              <div><h2>Attendance Records</h2><p>Students marked present for this session</p></div>
-              <button className="modal-close-btn" onClick={() => setShowAttModal(false)}><X size={18} /></button>
+            <div className="attendance-modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>Class Attendance</h3>
+                <span className="slot-info" style={{ marginTop: '4px', marginBottom: 0 }}>Roster Records</span>
+              </div>
+              <button className="modal-icon-close" onClick={() => setShowAttModal(false)}>
+                <XCircle size={20} />
+              </button>
             </div>
+
+            <div className="attendance-filter-row">
+              {(() => {
+                const presentCount = attendanceRecords.filter(r => r.status !== 'absent').length;
+                const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+                return ['present', 'absent'].map(filter => (
+                  <button
+                    key={filter}
+                    className={`attendance-filter-btn ${attFilter === filter ? 'active' : ''}`}
+                    onClick={() => setAttFilter(filter)}
+                  >
+                    {filter === 'present' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                    {filter === 'present' ? `Present (${presentCount})` : `Absent (${absentCount})`}
+                  </button>
+                ));
+              })()}
+            </div>
+
             {attLoading ? (
-              <div className="sess-loader" style={{ minHeight: '200px' }}>
-                <Loader2 size={28} className="animate-spin" color="var(--primary)" />
-              </div>
-            ) : attendanceRecords.length === 0 ? (
-              <div className="sess-empty" style={{ minHeight: '160px' }}>
-                <p>No attendance records found for this session.</p>
-              </div>
+              <div className="attendance-loading"><Loader2 className="animate-spin" size={28} /></div>
             ) : (
-              <div className="att-list">
-                {attendanceRecords.map((rec, i) => (
-                  <div key={i} className="att-row">
-                    <div className="att-avatar">{rec.student_name?.charAt(0)?.toUpperCase()}</div>
-                    <div className="att-info">
-                      <span className="att-name">{rec.student_name}</span>
-                      <span className="att-email">{rec.email}</span>
+              <div className="attendance-roster">
+                {attendanceRecords
+                  .filter(rec => (attFilter === 'present' ? rec.status !== 'absent' : rec.status === 'absent'))
+                  .map((rec, i) => (
+                    <div key={rec.student_id || rec.id || i} className="attendance-roster-row">
+                      <img
+                        className="attendance-avatar"
+                        src={rec.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(rec.student_name || 'Student')}`}
+                        alt={rec.student_name}
+                      />
+                      <div className="attendance-student-info">
+                        <strong>{rec.student_name}</strong>
+                        <span>{rec.roll_number || 'No roll'} · {rec.email || `${String(rec.student_name).toLowerCase().replace(/\s+/g, '')}@Merge.edu`}</span>
+                      </div>
+                      <div className="attendance-time">
+                        {rec.marked_at ? new Date(rec.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
+                      </div>
+                      <span className={`attendance-status-icon ${rec.status === 'absent' ? 'absent' : 'present'}`}>
+                        {rec.status === 'absent' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                      </span>
                     </div>
-                    <span className={`att-status ${rec.status === 'present' ? 'att-present' : 'att-absent'}`}>
-                      {rec.status?.toUpperCase()}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                {attendanceRecords.filter(rec => (attFilter === 'present' ? rec.status !== 'absent' : rec.status === 'absent')).length === 0 && (
+                  <div className="attendance-empty">No {attFilter} students found.</div>
+                )}
               </div>
             )}
           </div>

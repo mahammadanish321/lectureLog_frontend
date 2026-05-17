@@ -1,4 +1,4 @@
-﻿.dashboard-container {
+.dashboard-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -354,6 +354,32 @@
 
 .session-mini-card.upcoming-mini:hover {
   background-color: rgba(59, 130, 246, 0.03);
+}
+
+/* Yellow theme for custom sessions */
+.session-mini-card.custom-mini {
+  background: rgba(254, 252, 232, 0.75);
+  border-color: rgba(234, 179, 8, 0.35);
+}
+
+.session-mini-card.custom-mini:hover {
+  background: rgba(254, 252, 232, 0.95);
+  border-color: rgba(234, 179, 8, 0.55);
+  box-shadow: 0 15px 35px rgba(234, 179, 8, 0.08);
+}
+
+.session-mini-card.custom-mini.active {
+  border-color: #eab308;
+  border-width: 2px;
+  background: rgba(254, 252, 232, 0.9);
+}
+
+.session-mini-card.custom-mini .subject {
+  color: #78350f;
+}
+
+.session-mini-card.custom-mini .session-card-meta {
+  color: #92400e;
 }
 
 .session-card-main {

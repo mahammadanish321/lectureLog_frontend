@@ -1,4 +1,4 @@
-﻿/* ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    Sessions.css – Redesigned to match app theme
    ───────────────────────────────────────────── */
 
@@ -93,6 +93,7 @@
 .pill-green  { background: rgba(16,89,52,0.07);  border-color: rgba(16,89,52,0.12);  color: #105934; }
 .pill-blue   { background: rgba(59,130,246,0.07); border-color: rgba(59,130,246,0.12); color: #2563eb; }
 .pill-amber  { background: rgba(234,179,8,0.08);  border-color: rgba(234,179,8,0.15);  color: #92400e; }
+.pill-red    { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.15);  color: #dc2626; }
 .pill-neutral{ background: rgba(100,116,139,0.06);border-color: rgba(100,116,139,0.12);color: #475569; }
 
 .pill-dot {
@@ -254,20 +255,19 @@
 
 /* Custom badge pill */
 .custom-badge-pill {
-  position: absolute;
-  top: 0.75rem;
-  right: 1.5rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.6rem;
+  gap: 5px;
+  font-size: 0.65rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: #92400e;
   background: rgba(234,179,8,0.15);
   border: 1px solid rgba(234,179,8,0.25);
-  padding: 2px 8px;
+  padding: 0.28rem 0.75rem;
   border-radius: 999px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* Card body */
@@ -418,7 +418,11 @@
 
 .sess-modal::-webkit-scrollbar { display: none; }
 
-.att-modal { max-width: 640px; }
+.att-modal {
+  width: 76vw;
+  min-width: min(680px, 100%);
+  max-width: 760px !important;
+}
 
 .sess-modal-header {
   display: flex;
@@ -540,74 +544,94 @@
 }
 .modal-submit-btn:hover { background: #0d4a2b; transform: translateY(-1px); }
 
-/* ── ATTENDANCE LIST ─────────────────────────── */
-.att-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 0.25rem;
-}
-
-.att-row {
+/* ── ATTENDANCE MODAL & ROSTER ─────────────────────────── */
+.attendance-filter-row {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem 1rem;
-  background: #f8fafc;
-  border-radius: 14px;
-  border: 1px solid #f1f5f9;
-  transition: border-color 0.15s;
+  gap: 0.5rem;
+  margin: 1rem 0;
 }
 
-.att-row:hover { border-color: rgba(16,89,52,0.15); }
-
-.att-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(16,89,52,0.1);
-  color: var(--primary, #105934);
-  font-size: 0.85rem;
+.attendance-filter-btn {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 10px;
+  height: 34px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.attendance-filter-btn.active {
+  background: var(--primary, #105934);
+  color: white;
+  border-color: var(--primary, #105934);
+}
+
+.attendance-loading,
+.attendance-empty {
+  min-height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.att-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.att-name {
-  display: block;
-  font-size: 0.85rem;
+  color: #64748b;
   font-weight: 700;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.att-email {
-  display: block;
-  font-size: 0.7rem;
-  color: #94a3b8;
-  font-weight: 500;
+.attendance-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
 }
 
-.att-status {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  padding: 0.25rem 0.7rem;
-  border-radius: 999px;
+.attendance-roster-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.attendance-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
-.att-present { background: rgba(16,185,129,0.12); color: #059669; }
-.att-absent  { background: rgba(239,68,68,0.1);   color: #dc2626; }
+.attendance-student-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendance-student-info strong {
+  font-size: 0.86rem;
+  color: #1e293b;
+}
+
+.attendance-student-info span,
+.attendance-time {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.attendance-status-icon.present { color: #16a34a; }
+.attendance-status-icon.absent { color: #dc2626; }
 
 /* Animations */
 @keyframes fadeIn {

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -190,6 +190,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [aiStatus, setAiStatus] = useState({ online: false, displayStatus: 'Connecting...', isError: false });
   const selectedSessionIdRef = useRef(selectedSessionId);
+  // Track whether the user has MANUALLY chosen a session — prevents auto-switching on 60s refresh
+  const userManuallySelectedRef = useRef(false);
 
   // Keep the ref in sync with the state
   useEffect(() => {
@@ -324,10 +326,19 @@ const Dashboard = () => {
 
         setActiveSessions(uniqueSessions);
 
-        // Auto-select the first session only if it is active
+        // Auto-select the first active session ONLY on initial load (not on 60s refresh if user has already picked one)
         const firstActive = uniqueSessions.find(s => s.status === 'active');
-        if (firstActive && !selectedSessionId) {
+        if (firstActive && !userManuallySelectedRef.current && !selectedSessionIdRef.current) {
           setSelectedSessionId(firstActive.id);
+        }
+        // If the user had a session selected and it is still in the list, keep it selected
+        if (userManuallySelectedRef.current && selectedSessionIdRef.current) {
+          const stillExists = uniqueSessions.find(s => s.id === selectedSessionIdRef.current);
+          if (!stillExists) {
+            // Session was removed — reset to first active
+            userManuallySelectedRef.current = false;
+            setSelectedSessionId(firstActive?.id || null);
+          }
         }
 
         // Also fetch total stats and all students
@@ -372,7 +383,8 @@ const Dashboard = () => {
           return updated.sort((a, b) => extractTimeForSort(a.start_time).localeCompare(extractTimeForSort(b.start_time)));
         });
 
-        if (user?.role === 'teacher') {
+        // For teachers, auto-switch only if they haven't manually picked a different one
+        if (user?.role === 'teacher' && !userManuallySelectedRef.current) {
           setSelectedSessionId(newSession.id);
         }
       }
@@ -383,6 +395,8 @@ const Dashboard = () => {
       setActiveSessions(prev => prev.filter(s => s.id !== id));
 
       if (selectedSessionIdRef.current === id) {
+        // The currently selected session ended — reset manual lock
+        userManuallySelectedRef.current = false;
         setSelectedSessionId(null);
       }
     });
@@ -699,7 +713,17 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     activeSessions.filter(s => s.status === 'active').map((session) => (
-                      <div key={session.id} className={`session-mini-card ${currentSession?.id === session.id ? 'active' : ''}`} onClick={() => setSelectedSessionId(session.id)}>
+                      <div
+                        key={session.id}
+                        className={`session-mini-card ${currentSession?.id === session.id ? 'active' : ''} ${session.is_custom ? 'custom-mini' : ''}`}
+                        onClick={() => {
+                          userManuallySelectedRef.current = true;
+                          setSelectedSessionId(session.id);
+                        }}
+                      >
+                        {session.is_custom && (
+                          <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem', background: 'rgba(234,179,8,0.15)', color: '#92400e', borderRadius: '6px', padding: '0.1rem 0.4rem', fontSize: '0.5rem', fontWeight: 800, letterSpacing: '0.05em' }}>★ CUSTOM</div>
+                        )}
                         <div className="session-card-main">
                           <div className="subject">{session.subject_name}</div>
                           <div className="teacher">{session.teacher_name}</div>
