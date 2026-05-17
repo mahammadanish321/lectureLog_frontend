@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --sidebar-bg: #f8faf9;
   --promo-bg: #0d3d25;
 }
@@ -762,4 +762,118 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* RICH NOTIFICATION STYLES */
+.unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notif-subbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 2rem;
+  background-color: white;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.notif-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.notif-tab-btn {
+  background: #f1f5f9;
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notif-tab-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 89, 52, 0.2);
+}
+
+.notif-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.notif-action-btn {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.2s;
+}
+
+.notif-action-btn:hover {
+  opacity: 0.8;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.15rem;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid #f1f5f9;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.notification-item.unread {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.notification-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.notif-priority-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.notif-priority-tag.critical { background: #fee2e2; color: #ef4444; }
+.notif-priority-tag.important { background: #fef3c7; color: #d97706; }
+.notif-priority-tag.normal { background: #e0e7ff; color: #4f46e5; }
+.notif-priority-tag.system { background: #f3e8ff; color: #9333ea; }
+
 

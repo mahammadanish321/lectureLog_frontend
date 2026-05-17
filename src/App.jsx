@@ -1,7 +1,8 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -52,8 +53,9 @@ function App() {
     <ToastProvider>
       <AuthProvider>
         <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+          <NotificationProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/" element={<HomeOrLanding />} />
@@ -138,7 +140,8 @@ function App() {
               }
             />
             <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+            </Routes>
+          </NotificationProvider>
         </Router>
       </AuthProvider>
     </ToastProvider>

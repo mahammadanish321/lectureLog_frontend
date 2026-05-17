@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --background: #ffffff;
   --foreground: #1c1917;
   --primary: #105934;
@@ -161,4 +161,34 @@ h6 {
 
 .toast-close:hover {
   color: #64748b;
+}
+
+/* PRIORITY TOAST STYLES */
+.toast-item.priority-critical {
+  border: 2px solid #ef4444;
+  border-left: 6px solid #ef4444;
+  background: linear-gradient(135deg, #ffffff, #fef2f2);
+  box-shadow: 0 12px 40px rgba(239, 68, 68, 0.25);
+  animation: toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1), toastPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes toastPulse {
+  0%, 100% { box-shadow: 0 12px 40px rgba(239, 68, 68, 0.25); transform: scale(1); }
+  50% { box-shadow: 0 16px 50px rgba(239, 68, 68, 0.45); transform: scale(1.02); }
+}
+
+.toast-item.priority-important {
+  border-left: 5px solid #f59e0b;
+  background: linear-gradient(135deg, #ffffff, #fffbeb);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.15);
+}
+
+.toast-item.clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toast-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
 }

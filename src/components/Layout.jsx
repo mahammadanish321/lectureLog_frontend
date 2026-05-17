@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -22,39 +22,24 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { io } from 'socket.io-client';
+import { useNotifications } from '../context/NotificationContext';
 import './Layout.css';
-
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllReadNotifications } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
-  const [notifications, setNotifications] = React.useState([]);
+  const [filterTab, setFilterTab] = React.useState('all');
 
-  // Socket for real-time notifications
-  React.useEffect(() => {
-    const socket = io(SOCKET_URL);
-
-    socket.on('new_notification', (data) => {
-      setNotifications(prev => [
-        {
-          id: Date.now(),
-          message: data.message,
-          type: data.type || 'info',
-          time: 'Just now'
-        },
-        ...prev
-      ]);
-    });
-
-    return () => socket.close();
-  }, []);
+  const filteredNotifs = React.useMemo(() => {
+    if (filterTab === 'unread') return notifications.filter(n => !n.is_read);
+    return notifications;
+  }, [notifications, filterTab]);
 
   // Close mobile menu on route change
   React.useEffect(() => {
@@ -181,6 +166,7 @@ const Layout = ({ children }) => {
             <div className={`top-navbar-right ${isElectron ? 'electron-controls-offset' : ''}`}>
               <button className="circle-btn" title="Notifications" onClick={() => setShowNotifications(true)}>
                 <Bell size={18} />
+                {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
               </button>
               <button className="circle-btn" title="Team">
                 <Users size={18} />
@@ -242,35 +228,93 @@ const Layout = ({ children }) => {
             <div className="notif-header">
               <div className="header-content">
                 <h2>System Notifications</h2>
-                <p>Stay updated with the latest activity.</p>
+                <p>Stay updated with the latest activity across Merge.</p>
               </div>
               <button className="notif-close-btn" onClick={() => setShowNotifications(false)}>
                 <X size={20} />
               </button>
             </div>
 
+            <div className="notif-subbar">
+              <div className="notif-tabs">
+                <button 
+                  className={`notif-tab-btn ${filterTab === 'all' ? 'active' : ''}`} 
+                  onClick={() => setFilterTab('all')}
+                >
+                  All ({notifications.length})
+                </button>
+                <button 
+                  className={`notif-tab-btn ${filterTab === 'unread' ? 'active' : ''}`} 
+                  onClick={() => setFilterTab('unread')}
+                >
+                  Unread ({unreadCount})
+                </button>
+              </div>
+              <div className="notif-actions">
+                {unreadCount > 0 && (
+                  <button className="notif-action-btn" onClick={markAllAsRead}>
+                    <CheckCircle2 size={16} /> Mark all read
+                  </button>
+                )}
+                {notifications.some(n => n.is_read) && (
+                  <button className="notif-action-btn" onClick={clearAllReadNotifications} style={{ color: '#64748b' }}>
+                    <X size={16} /> Clear read
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="notif-body">
               <div className="notification-list">
-                {notifications.length === 0 ? (
+                {filteredNotifs.length === 0 ? (
                   <div className="no-notifications-state">
                     <div className="empty-notif-circle">
                       <Bell size={40} />
                     </div>
-                    <p>No new system notifications</p>
+                    <p>{filterTab === 'unread' ? 'No unread notifications' : 'No new notifications'}</p>
                   </div>
                 ) : (
-                  notifications.map((notif, index) => (
-                    <div key={notif.id || index} className="notification-item animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                      <div className={`notification-icon-wrapper ${notif.type || 'info'}`}>
-                        {notif.type === 'success' ? <CheckCircle2 size={20} /> : notif.type === 'alert' ? <AlertCircle size={20} /> : <Info size={20} />}
-                      </div>
-                      <div className="notification-content">
-                        <p>{notif.message}</p>
-                        <div className="notification-time">
-                          <Clock size={12} />
-                          <span>{notif.time}</span>
+                  filteredNotifs.map((notif, index) => (
+                    <div 
+                      key={notif.id} 
+                      className={`notification-item animate-fade-in ${!notif.is_read ? 'unread' : ''}`} 
+                      style={{ animationDelay: `${index * 0.05}s`, cursor: notif.redirect_url ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!notif.is_read) markAsRead(notif.id);
+                        if (notif.redirect_url) {
+                          setShowNotifications(false);
+                          navigate(notif.redirect_url);
+                        }
+                      }}
+                    >
+                      {notif.sender_image ? (
+                        <img src={notif.sender_image} alt="Sender" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div className={`notification-icon-wrapper ${notif.priority === 'critical' ? 'alert' : 'info'}`} style={{ width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: notif.priority === 'critical' ? '#fee2e2' : '#f1f5f9', color: notif.priority === 'critical' ? '#ef4444' : '#64748b', flexShrink: 0 }}>
+                          {notif.priority === 'critical' ? <AlertCircle size={20} /> : <Info size={20} />}
                         </div>
+                      )}
+                      <div className="notification-content" style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+                          <span className={`notif-priority-tag ${notif.priority || 'normal'}`}>
+                            {notif.session_type || notif.priority || 'system'}
+                          </span>
+                          <div className="notification-time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#94a3b8' }}>
+                            <Clock size={12} />
+                            <span>{new Date(notif.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                        {notif.title && <strong style={{ display: 'block', fontSize: '14px', color: '#1e293b', marginBottom: '2px' }}>{notif.title}</strong>}
+                        <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: '1.4' }}>{notif.message}</p>
                       </div>
+                      <button 
+                        className="circle-btn" 
+                        style={{ width: '28px', height: '28px', background: 'transparent', border: 'none', color: '#94a3b8', padding: 0 }} 
+                        onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
+                        title="Delete notification"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
                   ))
                 )}
