@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Users, Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -78,11 +78,8 @@ const TeacherList = () => {
     e.preventDefault();
     setSubmitting(true);
     
-    // Reliable Electron detection
-    const isElectron = (
-      navigator.userAgent.toLowerCase().includes('electron') ||
-      (typeof process !== 'undefined' && process.versions?.electron)
-    );
+    // Secure Electron detection via preload bridge
+    const isElectron = !!(window.electronAPI?.isElectron);
     const AI_SERVICE_URL = 'http://127.0.0.1:8001';
 
     try {

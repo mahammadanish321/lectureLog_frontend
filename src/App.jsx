@@ -23,7 +23,7 @@ import './App.css';
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  const isElectron = !!(window.electronAPI?.isElectron);
 
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>
@@ -46,7 +46,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 function App() {
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  const isElectron = !!(window.electronAPI?.isElectron);
   const Router = isElectron ? HashRouter : BrowserRouter;
 
   return (
@@ -151,10 +151,7 @@ function App() {
 // Decide whether to show Landing Page or Dashboard
 const HomeOrLanding = () => {
   const { user, loading } = useAuth();
-  const isElectron = (
-    navigator.userAgent.toLowerCase().includes('electron') ||
-    (typeof process !== 'undefined' && process.versions?.electron)
-  );
+  const isElectron = !!(window.electronAPI?.isElectron);
   
   if (loading) return (
     <div className="loading-screen" style={{ background: '#fdfcf7', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1c1917' }}>

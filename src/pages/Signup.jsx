@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Loader2, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, ChevronRight, AlertCircle, Monitor } from 'lucide-react';
 import api from '../api';
@@ -74,7 +74,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
 };
 
 export default function Signup() {
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  const isElectron = !!(window.electronAPI?.isElectron);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

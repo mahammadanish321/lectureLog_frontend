@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor, MonitorPlay } from 'lucide-react';
@@ -89,7 +89,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
 };
 
 const Login = () => {
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  const isElectron = !!(window.electronAPI?.isElectron);
   const [loginMode, setLoginMode] = useState('teacher'); // 'teacher', 'admin', 'student'
   const [view, setView] = useState('login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
   const [organizations, setOrganizations] = useState([]);

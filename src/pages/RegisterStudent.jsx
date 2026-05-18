@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { UserPlus, Upload, Loader2, CheckCircle, Users, Trash2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -60,11 +60,8 @@ const RegisterStudent = () => {
     e.preventDefault();
     if (!file) return alert('Please upload a student photo');
 
-    // Reliable Electron detection — works in both dev and packaged builds
-    const isElectron = (
-      navigator.userAgent.toLowerCase().includes('electron') ||
-      (typeof process !== 'undefined' && process.versions?.electron)
-    );
+    // Secure Electron detection via preload bridge
+    const isElectron = !!(window.electronAPI?.isElectron);
     const AI_SERVICE_URL = 'http://127.0.0.1:8001';
 
     setLoading(true);

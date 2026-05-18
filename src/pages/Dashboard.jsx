@@ -430,41 +430,67 @@ const Dashboard = () => {
       setAiStatus(data);
     });
 
-    let failCount = 0;
-    const pollLocalAI = async () => {
-      try {
-        const resp = await fetch(`${AI_SERVICE_URL}/system/status`);
-        if (resp.ok) {
-          const data = await resp.json();
-          failCount = 0;
-          setAiStatus({
-            online: true,
-            displayStatus: data.cameras_open.length > 0 ? 'AI Scanning Active' : 'AI Service Idle',
-            isError: !!data.global_error
-          });
-        } else {
-          throw new Error('Not OK');
-        }
-      } catch (err) {
-        failCount++;
-        if (failCount >= 3) {
-          setAiStatus(prev => ({ ...prev, online: false, displayStatus: 'AI Service Offline' }));
-        }
-      }
-    };
+    // ── AI Polling: ONLY for admin on desktop (Refinement #3, #7, #9, #10) ──
+    const isDesktopAdmin = !!(window.electronAPI?.isElectron) && user?.role === 'admin';
+    let aiPollingInterval = null;
+    let aiCrashCleanup = null;
 
-    const aiPollingInterval = setInterval(pollLocalAI, 5000);
+    if (isDesktopAdmin) {
+      let failCount = 0;
+      const pollLocalAI = async () => {
+        try {
+          const resp = await fetch(`${AI_SERVICE_URL}/system/status`);
+          if (resp.ok) {
+            const data = await resp.json();
+            failCount = 0;
+            setAiStatus({
+              online: true,
+              displayStatus: data.cameras_open.length > 0 ? 'AI Scanning Active' : 'AI Service Idle',
+              isError: !!data.global_error
+            });
+          } else {
+            throw new Error('Not OK');
+          }
+        } catch (err) {
+          failCount++;
+          if (failCount >= 3) {
+            setAiStatus(prev => ({ ...prev, online: false, displayStatus: 'AI Service Offline' }));
+          }
+        }
+      };
+
+      aiPollingInterval = setInterval(pollLocalAI, 5000);
+
+      // Listen for AI crash notifications from Electron main process
+      if (window.electronAPI?.onAIProcessCrash) {
+        aiCrashCleanup = window.electronAPI.onAIProcessCrash((data) => {
+          console.warn('[Dashboard] AI process crashed:', data);
+          setAiStatus({
+            online: false,
+            displayStatus: data.crashCount > 2 
+              ? 'AI Crashed — Manual Restart Required' 
+              : `AI Restarting (attempt ${data.crashCount}/2)...`,
+            isError: true
+          });
+        });
+      }
+    } else {
+      // Non-admin or web: AI is explicitly not available
+      setAiStatus({ online: false, displayStatus: 'Not Available', isError: false });
+    }
 
     // Refresh sessions every 60 seconds as a final automation guard
     const sessionRefreshInterval = setInterval(fetchInitialData, 60000);
 
     return () => {
-      console.log('Cleaning up socket connection...');
+      console.log('Cleaning up socket connection and all intervals...');
       clearInterval(sessionRefreshInterval);
-      clearInterval(aiPollingInterval);
+      if (aiPollingInterval) clearInterval(aiPollingInterval);
+      if (aiCrashCleanup) aiCrashCleanup(); // Remove Electron listener
       newSocket.off('session_started');
       newSocket.off('session_ended');
       newSocket.off('attendance_update');
+      newSocket.off('ai_status_update');
       newSocket.close();
     };
   }, []); // Run once on mount

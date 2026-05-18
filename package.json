@@ -67,6 +67,7 @@
     "files": [
       "dist/**/*",
       "electron-main.cjs",
+      "preload.cjs",
       "package.json"
     ],
     "extraResources": [

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
@@ -6,14 +6,19 @@ const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
 let pythonProcess = null;
+let authenticatedRole = null;  // Track current role in main process
+let aiStarting = false;        // Prevent concurrent start attempts
+let aiCrashCount = 0;          // Track crashes for recovery limiting
+const MAX_AUTO_RESTARTS = 2;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
     title: "Merge Admin Desktop",
     icon: path.join(__dirname, isDev ? 'public' : 'dist', 'log.ico'),
@@ -56,7 +61,16 @@ function createWindow() {
   });
 }
 
+// ── AI Process Management ───────────────────────────────────────
+
 function startAI() {
+  if (pythonProcess || aiStarting) {
+    console.log('[ELECTRON] AI already running or starting, skipping.');
+    return Promise.resolve(true);
+  }
+
+  aiStarting = true;
+
   const isPackaged = app.isPackaged;
   const aiPath = isPackaged 
     ? path.join(process.resourcesPath, 'AI', 'main.py')
@@ -66,7 +80,8 @@ function startAI() {
   if (!fs.existsSync(aiPath)) {
     console.error(`[ELECTRON] ❌ AI script NOT FOUND at: ${aiPath}`);
     console.error('[ELECTRON] Check extraResources config in package.json');
-    return;
+    aiStarting = false;
+    return Promise.resolve(false);
   }
 
   console.log(`[ELECTRON] ✅ AI script found at: ${aiPath}`);
@@ -91,21 +106,122 @@ function startAI() {
   pythonProcess.on('error', (err) => {
     console.error('[ELECTRON] ❌ Failed to start AI process:', err.message);
     console.error('[ELECTRON] Make sure Python is installed and in your PATH');
+    pythonProcess = null;
+    aiStarting = false;
+    notifyRenderer('ai-status-changed', { online: false, displayStatus: 'AI Failed to Start', isError: true });
   });
 
   pythonProcess.on('close', (code) => {
+    const wasRunning = pythonProcess !== null;
+    pythonProcess = null;
+    aiStarting = false;
+
     if (code === 0) {
       console.log('[ELECTRON] AI process exited cleanly.');
+      notifyRenderer('ai-status-changed', { online: false, displayStatus: 'AI Service Stopped', isError: false });
+    } else if (wasRunning && authenticatedRole === 'admin') {
+      // ── AI Crash Detection & Recovery (Refinement #9) ──
+      console.error(`[ELECTRON] ⚠️ AI process crashed with code ${code}.`);
+      aiCrashCount++;
+      notifyRenderer('ai-process-crash', { exitCode: code, crashCount: aiCrashCount });
+
+      if (aiCrashCount <= MAX_AUTO_RESTARTS) {
+        console.log(`[ELECTRON] 🔄 Auto-restarting AI (attempt ${aiCrashCount}/${MAX_AUTO_RESTARTS})...`);
+        setTimeout(() => {
+          if (authenticatedRole === 'admin') {
+            startAI();
+          }
+        }, 3000);
+      } else {
+        console.error('[ELECTRON] ❌ Max auto-restart attempts reached. Manual restart required.');
+        notifyRenderer('ai-status-changed', { 
+          online: false, 
+          displayStatus: 'AI Crashed — Manual Restart Required', 
+          isError: true 
+        });
+      }
+    }
+  });
+
+  aiStarting = false;
+  return Promise.resolve(true);
+}
+
+function killAI() {
+  return new Promise((resolve) => {
+    if (!pythonProcess) {
+      console.log('[ELECTRON] No AI process to kill.');
+      resolve(true);
+      return;
+    }
+
+    console.log('[ELECTRON] 🛑 Terminating AI Service...');
+    const pid = pythonProcess.pid;
+
+    // Set a safety timeout — if process doesn't die in 8s, force resolve
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[ELECTRON] ⚠️ AI shutdown timed out after 8s, forcing cleanup.');
+      pythonProcess = null;
+      resolve(true);
+    }, 8000);
+
+    pythonProcess.on('close', () => {
+      clearTimeout(safetyTimeout);
+      pythonProcess = null;
+      aiCrashCount = 0;
+      console.log('[ELECTRON] ✅ AI process terminated cleanly.');
+      resolve(true);
+    });
+
+    if (process.platform === 'win32') {
+      // Use /T to kill the process tree (children included)
+      spawn('taskkill', ['/pid', pid.toString(), '/f', '/t']);
     } else {
-      console.error(`[ELECTRON] ⚠️ AI process exited with code ${code}. It may have crashed.`);
+      pythonProcess.kill('SIGKILL');
     }
   });
 }
 
+function notifyRenderer(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data);
+  }
+}
+
+// ── IPC Handlers ────────────────────────────────────────────────
+
+// Refinement #2: Role verification in main process before starting AI
+ipcMain.handle('start-ai-service', async (_event, sessionInfo) => {
+  // NEVER trust renderer blindly — verify role stored in main process
+  if (authenticatedRole !== 'admin') {
+    console.warn('[ELECTRON] ⛔ Non-admin tried to start AI service. Denied.');
+    return { success: false, reason: 'Only admin can start AI.' };
+  }
+
+  aiCrashCount = 0; // Reset crash counter on intentional start
+  const started = await startAI();
+  return { success: started };
+});
+
+// Refinement #3: AI shutdown returns promise — logout waits for completion
+ipcMain.handle('stop-ai-service', async () => {
+  await killAI();
+  authenticatedRole = null;
+  return { success: true };
+});
+
+// Track authenticated role in main process
+ipcMain.on('set-auth-role', (_event, role) => {
+  console.log(`[ELECTRON] Auth role updated: ${role || 'logged-out'}`);
+  authenticatedRole = role;
+});
+
+// ── App Lifecycle ───────────────────────────────────────────────
+
 app.on('ready', () => {
   createWindow();
-  startAI();
-  
+  // AI is NOT started here — it starts only when admin logs in via IPC
+
   if (!isDev) {
     autoUpdater.checkForUpdatesAndNotify();
   }
@@ -129,22 +245,10 @@ autoUpdater.on('update-downloaded', () => {
   });
 });
 
-app.on('window-all-closed', () => {
-  if (pythonProcess) {
-    console.log('[ELECTRON] 🛑 Terminating AI Service...');
-    if (process.platform === 'win32') {
-      // Use /T to kill the process tree (children included)
-      spawn('taskkill', ['/pid', pythonProcess.pid, '/f', '/t']).on('exit', () => {
-        app.quit();
-      });
-    } else {
-      pythonProcess.kill('SIGKILL');
-      app.quit();
-    }
-  } else {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+app.on('window-all-closed', async () => {
+  await killAI();
+  if (process.platform !== 'darwin') {
+    app.quit();
   }
 });
 

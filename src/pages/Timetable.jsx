@@ -242,7 +242,11 @@ const Timetable = () => {
   useEffect(() => {
     fetchTimeSlots();
     fetchData();
-    detectCameras();
+    // ── Only detect cameras for admin on desktop (Refinement #4, #10) ──
+    const isDesktopAdmin = !!(window.electronAPI?.isElectron) && user?.role === 'admin';
+    if (isDesktopAdmin) {
+      detectCameras();
+    }
   }, [selectedYear, selectedStream, weekOffset]);
 
   /* ── Navigation ────────────────────────────────────────────── */

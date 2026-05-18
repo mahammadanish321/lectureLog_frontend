@@ -50,8 +50,8 @@ const Layout = ({ children }) => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout(); // Waits for AI shutdown + state cleanup
     navigate('/login');
   };
 
@@ -90,7 +90,7 @@ const Layout = ({ children }) => {
   const allItems = [...menuItems, ...generalItems];
   const currentPage = allItems.find(item => item.path === location.pathname);
 
-  const isElectron = window.navigator.userAgent.includes('Electron');
+  const isElectron = !!(window.electronAPI?.isElectron);
 
   return (
     <div className={`app-container ${isElectron ? 'is-electron' : ''}`}>
