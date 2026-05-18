@@ -1,5 +1,5 @@
 {
-  "name": "Merge-frontend",
+  "name": "merge",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -58,7 +58,7 @@
     "win": {
       "target": "nsis",
       "icon": "public/log.ico",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": false,

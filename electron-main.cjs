@@ -16,7 +16,7 @@ function createWindow() {
       contextIsolation: false,
     },
     title: "Merge Admin Desktop",
-    icon: path.join(__dirname, isDev ? 'public' : 'dist', isDev ? 'log.ico' : 'web-app-manifest-512x512.png'),
+    icon: path.join(__dirname, isDev ? 'public' : 'dist', 'log.ico'),
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
