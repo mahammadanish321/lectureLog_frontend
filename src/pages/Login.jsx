@@ -415,8 +415,7 @@ const Login = () => {
                     Administrative tools are restricted to the <strong>Merge Desktop App</strong> for security and hardware integration.
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <button className="submit-btn" onClick={() => window.location.href = '#'}>Download Desktop App</button>
-                    <button className="secondary-btn" onClick={() => setLoginMode('teacher')}>Login as Teacher</button>
+                    <button type="button" className="submit-btn" onClick={(e) => { e.preventDefault(); window.location.href = 'https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.0.exe'; }}>Download Desktop App</button>
                   </div>
                 </div>
               ) : (
