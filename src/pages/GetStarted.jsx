@@ -75,7 +75,7 @@ export default function GetStarted() {
               </div>
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Students & Teachers</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_mobile/releases/latest" className="gs-cta-outline" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/mahammadanish321/lectureLog_mobile/releases/latest/download/Merge.apk" className="gs-cta-outline">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg" alt="Android" style={{ width: '22px', height: '22px' }} />
                   Download for Android
                 </a>
