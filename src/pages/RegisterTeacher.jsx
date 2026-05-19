@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { UserPlus, Upload, Loader2, CheckCircle, Trash2, Users, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -56,24 +56,68 @@ const RegisterTeacher = () => {
     e.preventDefault();
     if (!file) return alert('Please upload a teacher photo');
 
+    const isElectron = !!(window.electronAPI?.isElectron);
+    const AI_SERVICE_URL = 'http://127.0.0.1:8001';
+
     setLoading(true);
-    const data = new FormData();
-    data.append('name', formData.name);
-    data.append('email', formData.email);
-    data.append('college_id', formData.college_id);
-    data.append('image', file);
+    let embedding = null;
 
     try {
+      // 1. Always try local AI first when in Electron
+      if (isElectron) {
+        try {
+          const aiFormData = new FormData();
+          aiFormData.append('file', file);
+
+          const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
+            method: 'POST',
+            body: aiFormData,
+          });
+
+          if (!aiResponse.ok) throw new Error(`AI responded with status ${aiResponse.status}`);
+
+          const aiData = await aiResponse.json();
+          embedding = aiData.embedding;
+
+          if (!embedding || !Array.isArray(embedding)) {
+            throw new Error('AI returned an invalid embedding.');
+          }
+
+          console.log('[Electron] Local embedding generated successfully for teacher.');
+        } catch (aiErr) {
+          console.error('[Electron] Local AI Error:', aiErr);
+          alert(
+            '⚠️ The AI face recognition service is still warming up.\n\n' +
+            'Please wait 30 seconds for it to fully start, then try again.\n\n' +
+            'If this keeps happening, restart the application.'
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Submit to backend
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('email', formData.email);
+      data.append('college_id', formData.college_id);
+      data.append('image', file);
+      if (embedding) {
+        data.append('face_embedding', JSON.stringify(embedding));
+      }
+
       await api.post('/teachers', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
       setSuccess(true);
       setFormData({ name: '', email: '', college_id: '' });
       setFile(null);
       setPreview(null);
       fetchTeachers(); 
     } catch (err) {
-      alert('Registration failed');
+      console.error('Registration failed:', err);
+      alert(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
