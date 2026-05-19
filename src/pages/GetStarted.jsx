@@ -68,7 +68,7 @@ export default function GetStarted() {
             >
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.0.exe" className="gs-cta-primary">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
                   Download for Windows
                 </a>
