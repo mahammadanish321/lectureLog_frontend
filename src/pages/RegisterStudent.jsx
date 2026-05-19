@@ -75,10 +75,15 @@ const RegisterStudent = () => {
           const aiFormData = new FormData();
           aiFormData.append('file', file);
 
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+
           const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
             method: 'POST',
             body: aiFormData,
+            signal: controller.signal
           });
+          clearTimeout(timeoutId);
 
           if (!aiResponse.ok) throw new Error(`AI responded with status ${aiResponse.status}`);
 

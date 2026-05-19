@@ -144,9 +144,9 @@ const Sessions = () => {
         let h = parseInt(hh);
         if (mod === 'PM' && h !== 12) h += 12;
         if (mod === 'AM' && h === 12) h = 0;
-        const d = new Date(dateStr);
-        d.setHours(h, parseInt(mm), 0, 0);
-        return d;
+        const hhStr = String(h).padStart(2, '0');
+        const mmStr = String(mm).padStart(2, '0');
+        return new Date(`${dateStr}T${hhStr}:${mmStr}:00+05:30`).toISOString();
       };
       await api.post('/sessions/start', {
         subject_id: parseInt(formData.subject_id),
@@ -154,8 +154,8 @@ const Sessions = () => {
         duration: 50,
         year: formData.year,
         stream: formData.stream,
-        start_time: parseTime(formData.date, startStr).toISOString(),
-        end_time: parseTime(formData.date, endStr).toISOString(),
+        start_time: parseTime(formData.date, startStr),
+        end_time: parseTime(formData.date, endStr),
       });
       setShowModal(false);
       fetchSessions();
@@ -315,9 +315,21 @@ const Sessions = () => {
         time_range: `${formatWallTime(s.start_time)} – ${formatWallTime(s.end_time)}`,
         status: s.status, isCustom: !!s.is_custom, isDone: s.status === 'ended',
         date: (() => {
-          if (!s.start_time || !s.start_time.includes('T')) return new Date().toLocaleDateString('en-GB');
-          const [yyyy, mm, dd] = s.start_time.split('T')[0].split('-');
-          return `${dd}/${mm}/${yyyy}`;
+          if (!s.start_time) {
+            return new Intl.DateTimeFormat('en-GB', {
+              timeZone: 'Asia/Kolkata',
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            }).format(new Date());
+          }
+          const dObj = new Date(s.start_time);
+          return new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Kolkata',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).format(dObj);
         })(),
         raw: s,
       };
@@ -335,7 +347,12 @@ const Sessions = () => {
     return acc;
   }, {});
 
-  const todayStr = new Date().toLocaleDateString('en-GB');
+  const todayStr = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(new Date());
   const sortedDates = Object.keys(groups).sort((a, b) => {
     if (a === todayStr) return -1;
     if (b === todayStr) return 1;
@@ -536,7 +553,15 @@ const Sessions = () => {
                                     // It's a schedule template (sched_), find corresponding DB session
                                     const matched = sessions.find(s =>
                                       s.subject_id === item.raw.subject_id &&
-                                      new Date(s.start_time).toLocaleDateString('en-GB') === date
+                                      (() => {
+                                        const dObj = new Date(s.start_time);
+                                        return new Intl.DateTimeFormat('en-GB', {
+                                          timeZone: 'Asia/Kolkata',
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric'
+                                        }).format(dObj);
+                                      })() === date
                                     );
                                     if (matched) fetchAttendance(matched.id);
                                     else alert('No attendance record exists for this session yet.');
