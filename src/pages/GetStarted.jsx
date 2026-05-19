@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { useNavigate } from "react-router-dom";
@@ -68,14 +68,14 @@ export default function GetStarted() {
             >
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
-                <a href="https://github.com/mahammadanish321/Merge_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" className="gs-cta-primary" target="_blank" rel="noopener noreferrer">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
                   Download for Windows
                 </a>
               </div>
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Students & Teachers</span>
-                <a href="#" className="gs-cta-outline">
+                <a href="https://github.com/mahammadanish321/lectureLog_mobile/releases/latest" className="gs-cta-outline" target="_blank" rel="noopener noreferrer">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg" alt="Android" style={{ width: '22px', height: '22px' }} />
                   Download for Android
                 </a>
