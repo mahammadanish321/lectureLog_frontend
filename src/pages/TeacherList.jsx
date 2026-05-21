@@ -3,10 +3,12 @@ import api from '../api';
 import { Users, Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import './TeacherList.css';
 
 const TeacherList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const isAdmin = user?.role === 'admin';
   const [teachers, setTeachers] = useState([]);
@@ -180,7 +182,7 @@ const TeacherList = () => {
           <span className="title">Academic Staff</span>
         </div>
         <div className="header-actions">
-          <button className="action-btn-primary" onClick={() => setShowAddModal(true)}>
+          <button className="action-btn-primary" onClick={() => navigate('/teachers/register')}>
             <UserPlus size={16} style={{ marginRight: '8px' }} />
             Add Teacher
           </button>
@@ -240,8 +242,8 @@ const TeacherList = () => {
           <div className="modal-content animate-pop-in">
             <div className="modal-header">
               <div className="modal-header-copy">
-                <h2>{isEditMode ? 'Update Faculty Profile' : 'Faculty Enrollment'}</h2>
-                <p>{isEditMode ? 'Modify existing staff metadata.' : 'Initialize a secure academic staff profile.'}</p>
+                <h2>Update Faculty Profile</h2>
+                <p>Modify existing staff metadata.</p>
               </div>
               <button type="button" className="modal-close-btn" onClick={closeModal} aria-label="Close faculty enrollment popup">
                 <X size={20} />
@@ -251,7 +253,7 @@ const TeacherList = () => {
             {regSuccess ? (
               <div className="success-card-inline">
                 <CheckCircle size={48} color="#22c55e" />
-                <h3>{isEditMode ? 'Update Successful' : 'Enrollment Successful'}</h3>
+                <h3>Update Successful</h3>
               </div>
             ) : (
               <form onSubmit={handleRegSubmit}>
@@ -288,7 +290,7 @@ const TeacherList = () => {
                   <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>
                   <button type="submit" className="btn-modal-submit" disabled={submitting}>
                     {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                    {submitting ? (isEditMode ? 'Updating...' : 'Registering...') : (isEditMode ? 'Update Profile' : 'Finalize Enrollment')}
+                    {submitting ? 'Updating...' : 'Update Profile'}
                   </button>
                 </div>
               </form>

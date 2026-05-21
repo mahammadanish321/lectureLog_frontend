@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import './StudentList.css';
 
 const StudentList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +172,7 @@ const StudentList = () => {
           <span className="title">Student Database</span>
         </div>
         <div className="header-actions">
-          <button className="action-btn-primary" onClick={() => setShowAddModal(true)}>
+          <button className="action-btn-primary" onClick={() => navigate('/students/register')}>
             <UserPlus size={16} style={{ marginRight: '8px' }} />
             Add Student
           </button>
@@ -237,8 +239,8 @@ const StudentList = () => {
           <div className="modal-content animate-pop-in">
             <div className="modal-header">
               <div className="modal-header-copy">
-                <h2>{isEditMode ? 'Update Student Profile' : 'New Student Enrollment'}</h2>
-                <p>{isEditMode ? 'Modify existing identity metadata.' : 'Initialize a secure academic identity profile.'}</p>
+                <h2>Update Student Profile</h2>
+                <p>Modify existing identity metadata.</p>
               </div>
               <button type="button" className="modal-close-btn" onClick={closeModal} aria-label="Close student enrollment popup">
                 <X size={20} />
@@ -248,7 +250,7 @@ const StudentList = () => {
             {regSuccess ? (
               <div className="success-card-inline">
                 <CheckCircle size={48} color="#22c55e" />
-                <h3>{isEditMode ? 'Update Successful' : 'Enrollment Successful'}</h3>
+                <h3>Update Successful</h3>
               </div>
             ) : (
               <form onSubmit={handleRegSubmit}>
@@ -306,7 +308,7 @@ const StudentList = () => {
                   <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>
                   <button type="submit" className="btn-modal-submit" disabled={submitting}>
                     {submitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                    {submitting ? (isEditMode ? 'Updating...' : 'Registering...') : (isEditMode ? 'Update Profile' : 'Finalize Enrollment')}
+                    {submitting ? 'Updating...' : 'Update Profile'}
                   </button>
                 </div>
               </form>
