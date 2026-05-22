@@ -736,7 +736,7 @@ const Timetable = () => {
                             style={{ background: isEmpty ? col.bg : undefined }}
                             onClick={() => handleCellClick(day, slot, schedule)}
                           >
-                            <div className="slot-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div className="slot-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               {cellSchedules.map(schedule => {
                                 const cardSess = getRoutineSessionForCellCard(schedule, day, slot.raw_start);
                                 const cardCanCheck = cardSess && (cardSess.status === 'ended' || cardSess.status === 'cancelled' || isPastSlot(day, slot.raw_end));
@@ -757,7 +757,7 @@ const Timetable = () => {
                                     <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
                                     <span className="room-camera"><MapPin size={10} /> {schedule.classroom_name}</span>
                                     {(schedule.is_cancelled || schedule.is_deleted_history) && (
-                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.4rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.1rem' }}>
                                         <span style={{ padding: '0.15rem 0.4rem', background: '#fee2e2', color: '#ef4444', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.02em' }}>CANCELLED</span>
                                         {!customSessionsForSlot.length && <span className="free-indicator-mini"><Plus size={10} /> FREE</span>}
                                       </div>

@@ -429,7 +429,7 @@ th.current-time-col .time-header .end {
 
 /* ─── SLOT CELLS ──────────────────────────── */
 .slot-cell {
-  height: 76px;
+  height: 50px;
   cursor: default;
   transition: background 0.15s;
   padding: 0;
@@ -439,17 +439,17 @@ th.current-time-col .time-header .end {
 .edit-active .slot-cell:hover { filter: brightness(0.96); }
 
 .slot-cell.occupied,
-.slot-cell.custom-cell { padding: 5px; }
+.slot-cell.custom-cell { padding: 4px; }
 
 /* ─── SCHEDULE CARD ───────────────────────── */
 .schedule-card {
-  min-height: 64px;
   background: var(--primary);
-  border-radius: 12px;
-  padding: 7px 8px;
+  border-radius: 8px;
+  padding: 4px 6px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
+  line-height: 1.15;
   color: white;
   position: relative;
   overflow: hidden;
@@ -520,7 +520,6 @@ th.current-time-col .time-header .end {
   background: rgba(234,179,8,0.2);
   border-radius: 4px;
   padding: 1px 4px;
-  margin-top: auto;
   width: fit-content;
 }
 

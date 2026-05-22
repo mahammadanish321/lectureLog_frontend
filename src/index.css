@@ -48,8 +48,11 @@ body::before {
   -webkit-app-region: drag;
 }
 
-/* Ensure buttons/inputs are clickable and don't get blocked by the drag area */
-button, input, a, .clickable {
+/* Electron Drag Region Bug Fix:
+   Chromium hit-testing can get stuck in "drag" mode after a native modal closes,
+   causing elements without an explicit no-drag rule to lose hover and pointer events.
+   Applying no-drag to the root app container shields all interactive elements. */
+#root, .toast-container, button, input, select, textarea, a, label, .clickable {
   -webkit-app-region: no-drag;
 }
 
@@ -191,4 +194,23 @@ h6 {
 .toast-item.clickable:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+/* GLOBAL SELECT & OPTION STYLING */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1.2em;
+  padding-right: 2.5rem;
+  color: #1e293b;
+}
+
+/* Force options to have a light theme, overriding Windows OS-level dark mode */
+select option {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  font-weight: 600;
+  padding: 12px;
 }

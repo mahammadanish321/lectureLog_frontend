@@ -4,6 +4,70 @@ import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import './StudentList.css';
+import './RegisterStudent.css';
+
+// SVG cartoon illustrations for each angle
+const AngleIllustration = ({ angle }) => {
+  const illustrations = {
+    front: (
+      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="28" r="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
+        <ellipse cx="34" cy="26" rx="3" ry="3.5" fill="#38bdf8" opacity="0.8"/>
+        <ellipse cx="46" cy="26" rx="3" ry="3.5" fill="#38bdf8" opacity="0.8"/>
+        <path d="M34 34 Q40 38 46 34" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <line x1="40" y1="8" x2="40" y2="2" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+        <path d="M20 75 Q40 60 60 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <line x1="40" y1="46" x2="40" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
+        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">STRAIGHT</text>
+      </svg>
+    ),
+    left: (
+      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="38" cy="28" rx="14" ry="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
+        <circle cx="33" cy="26" r="3" fill="#38bdf8" opacity="0.8"/>
+        <path d="M30 34 Q36 37 42 35" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M24 28 L16 28" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5" markerEnd="url(#arrow)"/>
+        <path d="M16 26 L22 28 L16 30" fill="#38bdf8" opacity="0.6"/>
+        <path d="M18 75 Q38 60 56 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <line x1="38" y1="46" x2="38" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
+        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">TURN LEFT</text>
+      </svg>
+    ),
+    right: (
+      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="42" cy="28" rx="14" ry="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
+        <circle cx="47" cy="26" r="3" fill="#38bdf8" opacity="0.8"/>
+        <path d="M38 34 Q44 37 50 35" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M56 28 L64 28" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+        <path d="M64 26 L58 28 L64 30" fill="#38bdf8" opacity="0.6"/>
+        <path d="M22 75 Q42 60 60 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <line x1="42" y1="46" x2="42" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
+        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">TURN RIGHT</text>
+      </svg>
+    ),
+    down: (
+      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="32" rx="18" ry="14" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
+        <ellipse cx="34" cy="32" rx="2.5" ry="2" fill="#38bdf8" opacity="0.8"/>
+        <ellipse cx="46" cy="32" rx="2.5" ry="2" fill="#38bdf8" opacity="0.8"/>
+        <path d="M35 37 Q40 40 45 37" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M40 46 L40 54" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+        <path d="M38 52 L40 56 L42 52" fill="#38bdf8" opacity="0.6"/>
+        <path d="M20 78 Q40 63 60 78" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">LOOK DOWN</text>
+      </svg>
+    ),
+  };
+  return illustrations[angle] || null;
+};
+
+const ANGLES = [
+  { key: 'front', label: 'Front', required: true, tip: 'Look straight at the camera' },
+  { key: 'left',  label: 'Left',  required: true, tip: 'Turn your head to the left' },
+  { key: 'right', label: 'Right', required: true, tip: 'Turn your head to the right' },
+  { key: 'down',  label: 'Down',  required: false, tip: 'Look slightly downward' },
+];
+
 
 const StudentList = () => {
   const { user } = useAuth();
@@ -22,8 +86,8 @@ const StudentList = () => {
   const [currentEditId, setCurrentEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [regFile, setRegFile] = useState(null);
+  const [files, setFiles] = useState({ front: null, left: null, right: null, down: null });
+  const [previews, setPreviews] = useState({});
   const [regData, setRegData] = useState({
     name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE'
   });
@@ -45,12 +109,10 @@ const StudentList = () => {
     fetchStudents();
   }, []);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setRegFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
+  const handleFile = (angle, file) => {
+    if (!file) return;
+    setFiles(f => ({ ...f, [angle]: file }));
+    setPreviews(p => ({ ...p, [angle]: URL.createObjectURL(file) }));
   };
 
   const handleEditClick = (student) => {
@@ -62,7 +124,7 @@ const StudentList = () => {
       year: student.year?.toString() || '1',
       stream: student.stream || 'CSE'
     });
-    setPreview(student.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.id}.jpg`);
+    setPreviews({ front: student.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.id}.jpg` });
     setCurrentEditId(student.id);
     setIsEditMode(true);
     setShowAddModal(true);
@@ -73,8 +135,8 @@ const StudentList = () => {
     setIsEditMode(false);
     setCurrentEditId(null);
     setRegData({ name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE' });
-    setRegFile(null);
-    setPreview(null);
+    setFiles({ front: null, left: null, right: null, down: null });
+    setPreviews({});
     setRegSuccess(false);
   };
 
@@ -82,35 +144,29 @@ const StudentList = () => {
     e.preventDefault();
     setSubmitting(true);
 
-    // Secure Electron detection via preload bridge
     const isElectron = !!(window.electronAPI?.isElectron);
     const AI_SERVICE_URL = 'http://127.0.0.1:8001';
 
     try {
-      let embedding = null;
+      const selectedAngles = ANGLES.filter(a => files[a.key]);
+      let embeddingsArray = null;
 
-      // If in Electron, generate face embedding locally FIRST
-      if (isElectron && regFile && !isEditMode) {
-        console.log('[Electron] Generating local face embedding...');
+      if (isElectron && selectedAngles.length > 0) {
+        console.log('[Electron] Generating local face embeddings...');
         try {
-          const aiFormData = new FormData();
-          aiFormData.append('file', regFile);
-          const aiResponse = await fetch(`${AI_SERVICE_URL}/embed`, {
-            method: 'POST',
-            body: aiFormData,
+          const embedTasks = selectedAngles.map(async (a) => {
+            const fd = new FormData();
+            fd.append('file', files[a.key]);
+            const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
+            const d = await r.json();
+            if (!d.embedding) throw new Error(`No embedding for ${a.label} angle`);
+            return d.embedding;
           });
-          if (!aiResponse.ok) throw new Error(`AI responded with status ${aiResponse.status}`);
-          const aiData = await aiResponse.json();
-          embedding = aiData.embedding;
-          if (!embedding || !Array.isArray(embedding)) throw new Error('Invalid embedding returned.');
-          console.log('[Electron] ✅ Local embedding generated successfully!');
+          embeddingsArray = await Promise.all(embedTasks);
+          console.log('[Electron] ✅ Local embeddings generated successfully!');
         } catch (aiErr) {
           console.error('[Electron] ❌ Local AI Error:', aiErr.message);
-          alert(
-            '⚠️ The AI face recognition service is still warming up.\n\n' +
-            'Please wait 30-60 seconds after opening the app, then try again.\n\n' +
-            'If this keeps happening, restart the application.'
-          );
+          alert('⚠️ The AI face recognition service error. Please try again.');
           setSubmitting(false);
           return;
         }
@@ -118,13 +174,19 @@ const StudentList = () => {
 
       const data = new FormData();
       Object.keys(regData).forEach(key => data.append(key, regData[key]));
-      if (regFile) data.append('image', regFile);
-      if (embedding) data.append('face_embedding', JSON.stringify(embedding));
+      
+      if (files.front) data.append('image', files.front);
+      selectedAngles.forEach(a => {
+        if (a.key !== 'front') data.append('images', files[a.key]);
+      });
+      
+      if (embeddingsArray) {
+        data.append('face_embeddings', JSON.stringify(embeddingsArray));
+      }
 
       if (isEditMode) {
         await api.put(`/students/${currentEditId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        if (!regFile) { alert('Please upload a student photo.'); setSubmitting(false); return; }
         await api.post('/students', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
       
@@ -255,14 +317,36 @@ const StudentList = () => {
             ) : (
               <form onSubmit={handleRegSubmit}>
                 <div className="enrollment-form-grid">
-                  {/* LEFT COLUMN: IMAGE */}
-                  <div className="image-upload-column">
-                    <label className="image-upload-square">
-                      {preview ? <img src={preview} alt="Preview" /> : <Upload size={24} />}
-                      <input type="file" onChange={handleFileChange} hidden />
-                    </label>
-                    <span className="upload-label">Identity Photo</span>
-                  </div>
+                    {/* LEFT COLUMN: MULTI-ANGLE IMAGE GRID */}
+                    <div className="angle-grid-section" style={{ paddingRight: '20px' }}>
+                      <div className="angle-grid-label" style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>
+                        <Camera size={14}/>
+                        <span>Face Angle Photos <span className="req" style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.7rem' }}>* Front, Left, Right required</span></span>
+                      </div>
+                      <div className="angle-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        {ANGLES.map(a => (
+                          <label key={a.key} className={`angle-slot ${files[a.key] ? 'filled' : ''} ${!a.required ? 'optional' : ''}`}>
+                            {!a.required && <span className="angle-badge recommended">Recommended</span>}
+                            {previews[a.key] ? (
+                              <div className="angle-preview-wrap">
+                                <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
+                                <div className="angle-check"><CheckCircle size={20}/></div>
+                              </div>
+                            ) : (
+                              <div className="angle-illustration">
+                                <AngleIllustration angle={a.key}/>
+                                <div className="angle-upload-hint"><Upload size={12}/></div>
+                              </div>
+                            )}
+                            <div className="angle-info">
+                              <span className="angle-label">{a.label}{a.required && <span className="req">*</span>}</span>
+                              <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
+                            </div>
+                            <input type="file" accept="image/*" hidden onChange={e => handleFile(a.key, e.target.files[0])}/>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
 
                   {/* RIGHT COLUMN: FIELDS */}
                   <div className="fields-column">
