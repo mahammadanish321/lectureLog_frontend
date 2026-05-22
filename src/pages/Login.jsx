@@ -127,6 +127,13 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check for auth errors passed from api interceptor
+    const authErrorMsg = localStorage.getItem('auth_error_msg');
+    if (authErrorMsg) {
+      setError(authErrorMsg);
+      localStorage.removeItem('auth_error_msg');
+    }
+
     // Fetch organizations
     const fetchOrgs = async () => {
       try {

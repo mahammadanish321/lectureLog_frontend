@@ -43,7 +43,7 @@ api.interceptors.response.use(
         ? 'Your admin session was taken over by another device. You have been logged out.'
         : 'Your session expired due to inactivity. Please log in again.';
       
-      alert(msg);
+      localStorage.setItem('auth_error_msg', msg);
       window.location.href = window.electronAPI?.isElectron ? '#/login' : '/login';
       
       // Reset flag after a delay
