@@ -1,64 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, Camera } from 'lucide-react';
+import { Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, Camera, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import WebcamModal from '../components/ui/WebcamModal';
 import './StudentList.css';
 import './RegisterStudent.css';
 
 // SVG cartoon illustrations for each angle
 const AngleIllustration = ({ angle }) => {
-  const illustrations = {
-    front: (
-      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="40" cy="28" r="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
-        <ellipse cx="34" cy="26" rx="3" ry="3.5" fill="#38bdf8" opacity="0.8"/>
-        <ellipse cx="46" cy="26" rx="3" ry="3.5" fill="#38bdf8" opacity="0.8"/>
-        <path d="M34 34 Q40 38 46 34" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <line x1="40" y1="8" x2="40" y2="2" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-        <path d="M20 75 Q40 60 60 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <line x1="40" y1="46" x2="40" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
-        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">STRAIGHT</text>
-      </svg>
-    ),
-    left: (
-      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="38" cy="28" rx="14" ry="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
-        <circle cx="33" cy="26" r="3" fill="#38bdf8" opacity="0.8"/>
-        <path d="M30 34 Q36 37 42 35" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <path d="M24 28 L16 28" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5" markerEnd="url(#arrow)"/>
-        <path d="M16 26 L22 28 L16 30" fill="#38bdf8" opacity="0.6"/>
-        <path d="M18 75 Q38 60 56 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <line x1="38" y1="46" x2="38" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
-        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">TURN LEFT</text>
-      </svg>
-    ),
-    right: (
-      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="42" cy="28" rx="14" ry="18" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
-        <circle cx="47" cy="26" r="3" fill="#38bdf8" opacity="0.8"/>
-        <path d="M38 34 Q44 37 50 35" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <path d="M56 28 L64 28" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-        <path d="M64 26 L58 28 L64 30" fill="#38bdf8" opacity="0.6"/>
-        <path d="M22 75 Q42 60 60 75" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <line x1="42" y1="46" x2="42" y2="60" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round"/>
-        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">TURN RIGHT</text>
-      </svg>
-    ),
-    down: (
-      <svg viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="40" cy="32" rx="18" ry="14" stroke="#38bdf8" strokeWidth="2.5" fill="none"/>
-        <ellipse cx="34" cy="32" rx="2.5" ry="2" fill="#38bdf8" opacity="0.8"/>
-        <ellipse cx="46" cy="32" rx="2.5" ry="2" fill="#38bdf8" opacity="0.8"/>
-        <path d="M35 37 Q40 40 45 37" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <path d="M40 46 L40 54" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-        <path d="M38 52 L40 56 L42 52" fill="#38bdf8" opacity="0.6"/>
-        <path d="M20 78 Q40 63 60 78" stroke="#38bdf8" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <text x="40" y="88" textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="sans-serif" fontWeight="600">LOOK DOWN</text>
-      </svg>
-    ),
+  const images = {
+    front: '/front-profile.png',
+    left: '/left-profile.png',
+    right: '/right-profile.png',
+    down: '/front-up-profile.png',
   };
-  return illustrations[angle] || null;
+  return (
+    <img 
+      src={images[angle]} 
+      alt={`${angle} angle illustration`} 
+      className="angle-illustration-img" 
+    />
+  );
 };
 
 const ANGLES = [
@@ -70,7 +33,7 @@ const ANGLES = [
 
 
 const StudentList = () => {
-  const { user } = useAuth();
+  const { user, adminLogin } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
   const [students, setStudents] = useState([]);
@@ -80,6 +43,16 @@ const StudentList = () => {
   const [filterStream, setFilterStream] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Secure Deletion State
+  const [deleteModalState, setDeleteModalState] = useState({
+    isOpen: false,
+    step: 1, // 1 = Warning, 2 = Password
+    student: null,
+    password: '',
+    error: '',
+    isDeleting: false
+  });
+  
   // Modal & Registration State
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -88,6 +61,7 @@ const StudentList = () => {
   const [regSuccess, setRegSuccess] = useState(false);
   const [files, setFiles] = useState({ front: null, left: null, right: null, down: null });
   const [previews, setPreviews] = useState({});
+  const [webcamState, setWebcamState] = useState({ isOpen: false, angle: null });
   const [regData, setRegData] = useState({
     name: '', email: '', roll_number: '', college_id: '', year: '1', stream: 'CSE'
   });
@@ -124,7 +98,14 @@ const StudentList = () => {
       year: student.year?.toString() || '1',
       stream: student.stream || 'CSE'
     });
-    setPreviews({ front: student.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.id}.jpg` });
+    let initPreviews = { front: student.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.id}.jpg` };
+    if (student.angle_images) {
+      const parsed = typeof student.angle_images === 'string' ? JSON.parse(student.angle_images) : student.angle_images;
+      Object.keys(parsed).forEach(k => {
+        if (parsed[k]?.url) initPreviews[k] = parsed[k].url;
+      });
+    }
+    setPreviews(initPreviews);
     setCurrentEditId(student.id);
     setIsEditMode(true);
     setShowAddModal(true);
@@ -154,15 +135,16 @@ const StudentList = () => {
       if (isElectron && selectedAngles.length > 0) {
         console.log('[Electron] Generating local face embeddings...');
         try {
-          const embedTasks = selectedAngles.map(async (a) => {
+          embeddingsArray = [];
+          for (let i = 0; i < selectedAngles.length; i++) {
+            const a = selectedAngles[i];
             const fd = new FormData();
             fd.append('file', files[a.key]);
             const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
             const d = await r.json();
             if (!d.embedding) throw new Error(`No embedding for ${a.label} angle`);
-            return d.embedding;
-          });
-          embeddingsArray = await Promise.all(embedTasks);
+            embeddingsArray.push(d.embedding);
+          }
           console.log('[Electron] ✅ Local embeddings generated successfully!');
         } catch (aiErr) {
           console.error('[Electron] ❌ Local AI Error:', aiErr.message);
@@ -177,7 +159,7 @@ const StudentList = () => {
       
       if (files.front) data.append('image', files.front);
       selectedAngles.forEach(a => {
-        if (a.key !== 'front') data.append('images', files[a.key]);
+        if (a.key !== 'front') data.append('image_' + a.key, files[a.key]);
       });
       
       if (embeddingsArray) {
@@ -202,13 +184,35 @@ const StudentList = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this student profile?')) return;
+  const handleDeleteClick = (student) => {
+    setDeleteModalState({
+      isOpen: true,
+      step: 1,
+      student: student,
+      password: '',
+      error: '',
+      isDeleting: false
+    });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const confirmDelete = async () => {
+    setDeleteModalState(prev => ({ ...prev, isDeleting: true, error: '' }));
     try {
-      await api.delete(`/students/${id}`);
+      // 1. Verify Password by logging in again
+      await adminLogin(user.email, deleteModalState.password);
+      
+      // 2. Delete Student
+      await api.delete(`/students/${deleteModalState.student.id}`);
       fetchStudents();
+      
+      // 3. Close Modal
+      setDeleteModalState(prev => ({ ...prev, isOpen: false }));
     } catch (err) {
-      alert('Delete failed.');
+      setDeleteModalState(prev => ({ ...prev, isDeleting: false, error: 'Incorrect password or deletion failed.' }));
     }
   };
 
@@ -284,7 +288,7 @@ const StudentList = () => {
                     <td>
                       <div className="action-buttons">
                         <button className="btn-edit" onClick={() => handleEditClick(student)}><Edit2 size={14} /></button>
-                        <button className="btn-delete" onClick={() => handleDelete(student.id)}><Trash2 size={14} /></button>
+                        <button className="btn-delete" onClick={() => handleDeleteClick(student)}><Trash2 size={14} /></button>
                       </div>
                     </td>
                   )}
@@ -324,27 +328,50 @@ const StudentList = () => {
                         <span>Face Angle Photos <span className="req" style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.7rem' }}>* Front, Left, Right required</span></span>
                       </div>
                       <div className="angle-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        {ANGLES.map(a => (
-                          <label key={a.key} className={`angle-slot ${files[a.key] ? 'filled' : ''} ${!a.required ? 'optional' : ''}`}>
-                            {!a.required && <span className="angle-badge recommended">Recommended</span>}
-                            {previews[a.key] ? (
-                              <div className="angle-preview-wrap">
-                                <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
-                                <div className="angle-check"><CheckCircle size={20}/></div>
-                              </div>
-                            ) : (
-                              <div className="angle-illustration">
-                                <AngleIllustration angle={a.key}/>
-                                <div className="angle-upload-hint"><Upload size={12}/></div>
-                              </div>
-                            )}
+                        {ANGLES.map(a => {
+                          const currentStudent = isEditMode ? filteredStudents.find(s => s.id === currentEditId) : null;
+                          const showEncodedState = isEditMode && a.key !== 'front' && currentStudent && currentStudent.angle_count >= 2;
+                          return (
+                            <div key={a.key} className="angle-card" style={{ position: 'relative' }}>
+                              <label className={`angle-slot ${files[a.key] || (showEncodedState && !previews[a.key]) ? 'filled' : ''} ${!a.required ? 'optional' : ''}`}>
+                                {!a.required && <span className="angle-badge recommended">Recommended</span>}
+                                {previews[a.key] ? (
+                                  <div className="angle-preview-wrap">
+                                    <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
+                                    <div className="angle-check"><CheckCircle size={20}/></div>
+                                  </div>
+                                ) : (
+                                  <div className="angle-illustration">
+                                    <AngleIllustration angle={a.key}/>
+                                    {showEncodedState ? (
+                                      <div className="encoded-overlay">
+                                        <div className="encoded-badge">
+                                          <Lock size={12} />
+                                          <span>Encoded</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="angle-upload-hint"><Upload size={12}/></div>
+                                    )}
+                                  </div>
+                                )}
+                                <input type="file" accept="image/*" hidden onChange={e => handleFile(a.key, e.target.files[0])}/>
+                              </label>
+                            <button 
+                              type="button" 
+                              className="webcam-trigger-btn" 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebcamState({ isOpen: true, angle: a }); }}
+                              title="Take Photo"
+                            >
+                              <Camera size={16} />
+                            </button>
                             <div className="angle-info">
                               <span className="angle-label">{a.label}{a.required && <span className="req">*</span>}</span>
                               <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
                             </div>
-                            <input type="file" accept="image/*" hidden onChange={e => handleFile(a.key, e.target.files[0])}/>
-                          </label>
-                        ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -400,6 +427,74 @@ const StudentList = () => {
           </div>
         </div>
       )}
+
+      {/* SECURE DELETION MODAL */}
+      {deleteModalState.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-pop-in secure-delete-modal" style={{ width: '500px', minWidth: 'auto', height: 'auto', padding: '2.5rem' }}>
+            <div className="modal-header" style={{ borderBottom: 'none', marginBottom: '0' }}>
+              <div className="modal-header-copy">
+                <h2 style={{ color: '#ef4444' }}>Security Verification</h2>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={closeDeleteModal}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="delete-modal-body" style={{ textAlign: 'center', marginTop: '1rem' }}>
+              {deleteModalState.step === 1 ? (
+                <>
+                  <div className="warning-icon-wrapper" style={{ display: 'inline-flex', background: '#fef2f2', padding: '1rem', borderRadius: '50%', marginBottom: '1.5rem' }}>
+                    <Trash2 size={36} color="#ef4444" />
+                  </div>
+                  <h3 style={{ fontSize: '1.1rem', color: '#1e293b', marginBottom: '0.75rem' }}>Are you sure you want to delete {deleteModalState.student?.name}?</h3>
+                  <p className="delete-warning-text" style={{ color: '#64748b', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                    By deleting this account, all data associated with them will also be deleted and cannot be recovered.
+                  </p>
+                  <div className="modal-actions-row" style={{ marginTop: '2.5rem', justifyContent: 'center', borderTop: 'none', paddingTop: 0 }}>
+                    <button className="btn-modal-cancel" onClick={closeDeleteModal}>No, Cancel</button>
+                    <button className="btn-modal-submit" style={{ background: '#ef4444' }} onClick={() => setDeleteModalState(prev => ({ ...prev, step: 2 }))}>Yes, Delete</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: '1.1rem', color: '#1e293b', marginBottom: '0.75rem' }}>Admin Authorization Required</h3>
+                  <p className="delete-warning-text" style={{ color: '#64748b', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                    Please enter your admin password to confirm the permanent deletion of <strong>{deleteModalState.student?.name}</strong>.
+                  </p>
+                  
+                  <div className="form-group" style={{ marginTop: '2rem', textAlign: 'left' }}>
+                    <label style={{ color: '#475569' }}>Admin Password</label>
+                    <input 
+                      type="password" 
+                      placeholder="Enter your password..." 
+                      value={deleteModalState.password}
+                      onChange={e => setDeleteModalState(prev => ({ ...prev, password: e.target.value, error: '' }))}
+                      autoFocus
+                    />
+                    {deleteModalState.error && <span className="req" style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem', display: 'block', fontWeight: 600 }}>{deleteModalState.error}</span>}
+                  </div>
+
+                  <div className="modal-actions-row" style={{ marginTop: '2.5rem', justifyContent: 'flex-end', borderTop: 'none', paddingTop: 0 }}>
+                    <button className="btn-modal-cancel" onClick={closeDeleteModal} disabled={deleteModalState.isDeleting}>Cancel</button>
+                    <button className="btn-modal-submit" style={{ background: '#ef4444' }} onClick={confirmDelete} disabled={deleteModalState.isDeleting || !deleteModalState.password}>
+                      {deleteModalState.isDeleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                      {deleteModalState.isDeleting ? 'Deleting...' : 'Confirm Deletion'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <WebcamModal 
+        isOpen={webcamState.isOpen} 
+        onClose={() => setWebcamState({ isOpen: false, angle: null })} 
+        onCapture={(blob) => handleFile(webcamState.angle?.key, blob)} 
+        angleLabel={webcamState.angle?.label} 
+      />
     </div>
   );
 };

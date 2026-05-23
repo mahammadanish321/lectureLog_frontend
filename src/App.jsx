@@ -3,6 +3,8 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { RegistrationQueueProvider } from './context/RegistrationQueueContext';
+import RegistrationQueueUI from './components/RegistrationQueueUI';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -10,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Sessions from './pages/Sessions';
 import RegisterStudent from './pages/RegisterStudent';
+import RegisterTeacher from './pages/RegisterTeacher';
 import ScheduleManager from './pages/ScheduleManager';
 import Timetable from './pages/Timetable';
 import SubjectManager from './pages/SubjectManager';
@@ -52,10 +55,12 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <Router>
-          <NotificationProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
+        <RegistrationQueueProvider>
+          <Router>
+            <NotificationProvider>
+              <RegistrationQueueUI />
+              <Routes>
+                <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/" element={<HomeOrLanding />} />
@@ -108,6 +113,14 @@ function App() {
               }
             />
             <Route
+              path="/teachers/register"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <RegisterTeacher />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/subjects"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
@@ -143,6 +156,7 @@ function App() {
             </Routes>
           </NotificationProvider>
         </Router>
+        </RegistrationQueueProvider>
       </AuthProvider>
     </ToastProvider>
   );

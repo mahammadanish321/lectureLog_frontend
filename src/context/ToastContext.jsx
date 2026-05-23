@@ -11,7 +11,7 @@ export const ToastProvider = ({ children }) => {
   }, []);
 
   const addToast = useCallback((msgOrObj, type = 'info', duration = 4000, priority = 'normal', onClick = null) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random().toString(36).substring(2, 9);
     let message = typeof msgOrObj === 'string' ? msgOrObj : msgOrObj.message;
     let title = typeof msgOrObj === 'object' ? msgOrObj.title : null;
     let image = typeof msgOrObj === 'object' ? msgOrObj.image : null;

@@ -94,7 +94,7 @@ h6 {
 /* PREMIUM TOAST SYSTEM */
 .toast-container {
   position: fixed;
-  bottom: 2rem;
+  top: 2rem;
   right: 2rem;
   z-index: 10000;
   display: flex;

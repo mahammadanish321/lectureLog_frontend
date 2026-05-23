@@ -56,6 +56,17 @@ function createWindow() {
     }
   });
 
+  // ── Auto-Grant Camera Permissions ──
+  const { session } = require('electron');
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    console.log(`[ELECTRON] Auto-granting permission request for: ${permission}`);
+    callback(true);
+  });
+
+  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    return true;
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

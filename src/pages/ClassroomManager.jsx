@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { MonitorPlay, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle, Camera, RefreshCw } from 'lucide-react';
+import { MonitorPlay, Search, Trash2, Edit2, Check, X, Plus, Loader2, CheckCircle, Camera, RefreshCw, Grid, List } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './ClassroomManager.css';
 
@@ -14,21 +14,23 @@ const ClassroomManager = () => {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [useManualInput, setUseManualInput] = useState(false);
 
-  // Modal & Form State
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'bulk'
+
+  // Modal & Form State (Single)
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    camera_url: '',
-    camera_name: ''
-  });
+  const [formData, setFormData] = useState({ name: '', camera_url: '', camera_name: '' });
+
+  // Bulk Spreadsheet State
+  const generateNewRow = () => ({ id: Date.now().toString() + Math.random(), name: '', camera_url: '' });
+  const [spreadsheetRows, setSpreadsheetRows] = useState([generateNewRow()]);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   const detectCameras = async () => {
     try {
-      // 1. Try to get hardware list from AI Service (Bypasses "Device in use" locking)
       try {
         const aiResp = await fetch('http://localhost:8001/system/hardware_cameras');
         if (aiResp.ok) {
@@ -42,7 +44,6 @@ const ClassroomManager = () => {
         console.warn("AI Service hardware detection unavailable, falling back to browser API");
       }
 
-      // 2. Fallback to browser enumerateDevices
       let devices = await navigator.mediaDevices.enumerateDevices();
       let videoDevices = devices.filter(device => device.kind === 'videoinput');
       
@@ -96,10 +97,7 @@ const ClassroomManager = () => {
         const matchedDeviceIndex = videoDevices.findIndex(dev => dev.label === room.camera_name);
         
         if (matchedDeviceIndex !== -1 && matchedDeviceIndex.toString() !== room.camera_url) {
-          await api.put(`/classrooms/${room.id}`, {
-            ...room,
-            camera_url: matchedDeviceIndex.toString()
-          });
+          await api.put(`/classrooms/${room.id}`, { ...room, camera_url: matchedDeviceIndex.toString() });
           updatedCount++;
         }
       }
@@ -117,21 +115,16 @@ const ClassroomManager = () => {
     const init = async () => {
       await fetchClassrooms();
       await detectCameras();
-      await syncHardwareIndices(true); // Silent sync on load
+      await syncHardwareIndices(true);
     };
     init();
   }, []);
 
+  // -- Single Add / Edit Handlers --
   const handleEditClick = (room) => {
-    // If it's a URL (contains / or :) it's manual, otherwise it's hardware
     const isManual = room.camera_url?.includes('/') || room.camera_url?.includes(':');
     setUseManualInput(isManual);
-    
-    setFormData({
-      name: room.name,
-      camera_url: room.camera_url || '',
-      camera_name: room.camera_name || ''
-    });
+    setFormData({ name: room.name, camera_url: room.camera_url || '', camera_name: room.camera_name || '' });
     setCurrentEditId(room.id);
     setIsEditMode(true);
     setShowModal(true);
@@ -176,6 +169,46 @@ const ClassroomManager = () => {
     }
   };
 
+  // -- Bulk Spreadsheet Handlers --
+  const handleSpreadsheetChange = (id, field, value) => {
+    setSpreadsheetRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
+  };
+
+  const addSpreadsheetRow = () => {
+    setSpreadsheetRows(prev => [...prev, generateNewRow()]);
+  };
+
+  const removeSpreadsheetRow = (id) => {
+    setSpreadsheetRows(prev => prev.filter(row => row.id !== id));
+  };
+
+  const startBulkRegistration = async () => {
+    const validRows = spreadsheetRows.filter(row => row.name.trim() !== '' && row.camera_url.trim() !== '');
+    if (validRows.length === 0) return alert('No valid rows found. Ensure Name and Camera Source are provided for at least one row.');
+
+    setBulkSubmitting(true);
+    try {
+      for (const row of validRows) {
+        // Find if they typed an ID that matches an available camera name
+        const matchedCam = availableCameras.find(c => c.name === row.camera_url || c.id === row.camera_url);
+        
+        await api.post('/classrooms', {
+          name: row.name,
+          camera_url: matchedCam ? matchedCam.id : row.camera_url, // Use resolved ID if they picked a name
+          camera_name: matchedCam ? matchedCam.name : ''
+        });
+      }
+      setSpreadsheetRows([generateNewRow()]);
+      setViewMode('list');
+      fetchClassrooms();
+      alert(`Successfully added ${validRows.length} classroom(s)!`);
+    } catch (err) {
+      alert('Bulk operation failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
   const filteredRooms = classrooms.filter(r => 
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (r.camera_url && r.camera_url.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -184,90 +217,169 @@ const ClassroomManager = () => {
   return (
     <div className="classroom-manager-container">
       <div className="management-header-row">
-        <div className="title-section">
+        <div className="title-section" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h1>Classroom Management</h1>
+          <div className="management-context-pill" style={{ position: 'relative', left: 'auto', transform: 'none' }}>
+            <span className="meta">Admin</span>
+            <span className="title">Resource Fleet</span>
+          </div>
         </div>
-        <div className="management-context-pill">
-          <span className="meta">Admin</span>
-          <span className="title">Resource Fleet</span>
-        </div>
-        <div className="header-actions">
-          <button className="action-btn-outline" onClick={syncHardwareIndices} title="Re-map camera indices based on saved device labels">
+        
+        <div className="header-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {/* Mode Toggle */}
+          <div className="registration-mode-toggle" style={{ margin: 0 }}>
+            <button 
+              className={`mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              <List size={16}/> Directory
+            </button>
+            <button 
+              className={`mode-btn ${viewMode === 'bulk' ? 'active' : ''}`}
+              onClick={() => setViewMode('bulk')}
+            >
+              <Grid size={16}/> Bulk Spreadsheet
+            </button>
+          </div>
+
+          <button className="action-btn-outline" onClick={() => syncHardwareIndices(false)} title="Re-map camera indices">
             <RefreshCw size={16} style={{ marginRight: '8px' }} className={loading ? 'animate-spin' : ''} />
             Sync Hardware
           </button>
-          <button className="action-btn-primary" onClick={() => setShowModal(true)}>
-            <Plus size={16} style={{ marginRight: '8px' }} />
-            Initialize Classroom
-          </button>
           <button className="action-btn-outline" onClick={fetchClassrooms}>
-            Refresh Fleet
+            Refresh
           </button>
         </div>
       </div>
 
-      <div className="classroom-table-card">
-        <div className="table-controls">
-          <div className="search-box">
-            <Search size={18} color="#94a3b8" />
-            <input
-              type="text"
-              placeholder="Search by room name or camera source..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      {viewMode === 'list' ? (
+        <div className="classroom-table-card animate-fade-in">
+          <div className="table-controls" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div className="search-box">
+              <Search size={18} color="#94a3b8" />
+              <input
+                type="text"
+                placeholder="Search by room name or camera source..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {isAdmin && (
+              <button className="action-btn-primary" onClick={() => setShowModal(true)}>
+                <Plus size={16} style={{ marginRight: '8px' }} />
+                Add Single Room
+              </button>
+            )}
+          </div>
+
+          <div className="classroom-data-table-wrapper">
+            <table className="classroom-data-table">
+              <thead>
+                <tr><th>Room / Lab Name</th><th>Camera Source / CCTV Input</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="3" className="loading-cell">Synchronizing hardware assets...</td></tr>
+                ) : filteredRooms.length === 0 ? (
+                  <tr><td colSpan="3" className="empty-cell">No classrooms found in current fleet.</td></tr>
+                ) : (
+                  filteredRooms.map((room) => (
+                    <tr key={room.id}>
+                      <td><span className="room-name-badge">{room.name}</span></td>
+                      <td>
+                        <span className="camera-url-text">
+                          {(() => {
+                            const rawId = room.camera_url;
+                            if (!rawId) return 'No URL configured';
+                            if (rawId.includes('/') || rawId.includes(':')) return rawId;
+                            if (room.camera_name) return room.camera_name;
+                            const matchedCam = availableCameras.find(cam => cam.id === rawId);
+                            return matchedCam ? matchedCam.name : `Camera Index ${rawId}`;
+                          })()}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                            <button className="btn-edit" onClick={() => handleEditClick(room)}><Edit2 size={14} /></button>
+                            <button className="btn-delete" onClick={() => handleDelete(room.id)}><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      ) : (
+        /* Bulk Spreadsheet UI */
+        <div className="spreadsheet-container animate-fade-in" style={{ margin: '1.5rem 2.5rem' }}>
+          <div className="spreadsheet-header">
+            <div>
+              <h3>Bulk Spreadsheet Entry</h3>
+              <p>Type in data rapidly. Use the dropdown to select physical cameras, or type an RTSP stream URL directly.</p>
+            </div>
+            <button className="start-bulk-btn" onClick={startBulkRegistration} disabled={bulkSubmitting}>
+              {bulkSubmitting ? <Loader2 size={16} className="animate-spin"/> : <Check size={16}/>} 
+              {bulkSubmitting ? 'Saving...' : 'Start Bulk Registration'}
+            </button>
+          </div>
 
-        <div className="classroom-data-table-wrapper">
-          <table className="classroom-data-table">
-            <thead>
-              <tr><th>Room / Lab Name</th><th>Camera Source / CCTV Input</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan="3" className="loading-cell">Synchronizing hardware assets...</td></tr>
-              ) : filteredRooms.length === 0 ? (
-                <tr><td colSpan="3" className="empty-cell">No classrooms found in current fleet.</td></tr>
-              ) : (
-                filteredRooms.map((room) => (
-                  <tr key={room.id}>
-                    <td><span className="room-name-badge">{room.name}</span></td>
-                    <td>
-                      <span className="camera-url-text">
-                        {(() => {
-                          const rawId = room.camera_url;
-                          if (!rawId) return 'No URL configured';
-                          
-                          // If it's a manual URL (contains / or :) show it as is
-                          if (rawId.includes('/') || rawId.includes(':')) return rawId;
-                          
-                          // Use stored camera_name if available
-                          if (room.camera_name) return room.camera_name;
-
-                          // Otherwise, try to resolve friendly name from hardware list (fallback)
-                          const matchedCam = availableCameras.find(cam => cam.id === rawId);
-                          return matchedCam ? matchedCam.name : `Camera Index ${rawId}`;
-                        })()}
-                      </span>
-                    </td>
-                    {isAdmin && (
-                      <td style={{ textAlign: 'right' }}>
-                        <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
-                          <button className="btn-edit" onClick={() => handleEditClick(room)}><Edit2 size={14} /></button>
-                          <button className="btn-delete" onClick={() => handleDelete(room.id)}><Trash2 size={14} /></button>
-                        </div>
+          <div className="spreadsheet-table-wrapper" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <table className="spreadsheet-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40px' }}></th>
+                  <th style={{ width: '40%' }}>Room / Lab Name <span className="req">*</span></th>
+                  <th>Camera Source (List or URL) <span className="req">*</span></th>
+                  <th style={{ width: '50px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {spreadsheetRows.map((row, index) => {
+                  const isReady = row.name && row.camera_url;
+                  return (
+                    <tr key={row.id} className={isReady ? 'row-ready' : ''}>
+                      <td className="row-index">{index + 1}</td>
+                      <td>
+                        <input type="text" value={row.name} placeholder="e.g. CS Lab 4A" onChange={e => handleSpreadsheetChange(row.id, 'name', e.target.value)} />
                       </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      <td>
+                        <input 
+                          type="text" 
+                          list="camera-list"
+                          value={row.camera_url} 
+                          placeholder="Select from list, or type RTSP://..." 
+                          onChange={e => handleSpreadsheetChange(row.id, 'camera_url', e.target.value)} 
+                        />
+                      </td>
+                      <td>
+                        <button className="spreadsheet-remove-btn" onClick={() => removeSpreadsheetRow(row.id)} title="Remove row">
+                          <Trash2 size={16}/>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            
+            <datalist id="camera-list">
+              {availableCameras.map(cam => (
+                <option key={cam.id} value={cam.name} />
+              ))}
+            </datalist>
+            
+            <button className="add-row-btn" onClick={addSpreadsheetRow}>
+              <Plus size={16}/> Add Blank Row
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* CLASSROOM INITIALIZATION MODAL */}
+      {/* CLASSROOM INITIALIZATION MODAL (Single) */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content animate-pop-in">
@@ -321,11 +433,7 @@ const ClassroomManager = () => {
                       onChange={e => {
                         const selectedId = e.target.value;
                         const cam = availableCameras.find(c => c.id === selectedId);
-                        setFormData({
-                          ...formData, 
-                          camera_url: selectedId,
-                          camera_name: cam ? cam.name : ''
-                        });
+                        setFormData({ ...formData, camera_url: selectedId, camera_name: cam ? cam.name : '' });
                       }}
                       required
                     >
@@ -336,11 +444,6 @@ const ClassroomManager = () => {
                     </select>
                   )}
                 </div>
-                <p className="form-hint">
-                  {useManualInput 
-                    ? "Enter the stream URL or specific hardware index." 
-                    : "Select a physically connected device from the list above."}
-                </p>
 
                 {formData.camera_url && !useManualInput && (
                   <div className="camera-preview-box" style={{ marginTop: '1.5rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
