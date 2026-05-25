@@ -260,13 +260,28 @@ const Login = () => {
     setLoading(true);
     try {
       if (view === 'verify-email') {
+        let targetOrgId = selectedOrg;
+        let targetOrgName = loginMode === 'admin' ? collegeName : undefined;
+        let targetOrgSlug = loginMode === 'admin' ? collegeSlug : undefined;
+
+        if (!targetOrgId && searchQuery) {
+          const matchedOrg = organizations.find(o => o.name.toLowerCase() === searchQuery.toLowerCase() || o.slug.toLowerCase() === searchQuery.toLowerCase());
+          if (matchedOrg) {
+            targetOrgId = matchedOrg.id;
+          } else {
+            setError('Please select a valid institution from the dropdown.');
+            setLoading(false);
+            return;
+          }
+        }
+
         // Step 1: Check email and send OTP
         await api.post('/auth/claim-init', {
           email,
-          organization_id: selectedOrg,
+          organization_id: targetOrgId,
           role: loginMode,
-          orgName: loginMode === 'admin' ? collegeName : undefined,
-          orgSlug: loginMode === 'admin' ? collegeSlug : undefined
+          orgName: targetOrgName,
+          orgSlug: targetOrgSlug
         });
         setView('verify-otp');
         setSuccess('OTP sent to your institutional email.');

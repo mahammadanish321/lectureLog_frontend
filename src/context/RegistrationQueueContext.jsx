@@ -104,6 +104,10 @@ export const RegistrationQueueProvider = ({ children }) => {
       }
       
       data.append('image', task.files['front']);
+      task.selectedAngles.forEach(a => {
+        if (a.key !== 'front') data.append('image_' + a.key, task.files[a.key]);
+      });
+
       if (embeddingsArray) {
         data.append('face_embeddings', JSON.stringify(embeddingsArray));
       }
