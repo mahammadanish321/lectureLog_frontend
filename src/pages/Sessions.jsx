@@ -124,29 +124,59 @@ const Sessions = () => {
   useEffect(() => {
     if (!formData.subject_id || !teacherSchedules.length) return;
     const m = teacherSchedules.find(s => String(s.subject_id) === String(formData.subject_id));
+    
+    const formatTimeTo12Hour = (timeStr) => {
+      if (!timeStr) return '';
+      const [hStr, mStr] = timeStr.split(':');
+      let h = parseInt(hStr);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      const hh = String(h).padStart(2, '0');
+      return `${hh}:${mStr} ${ampm}`;
+    };
+
     if (m) setFormData(p => ({
       ...p,
       classroom_id: m.classroom_id,
       year: m.year || p.year,
       stream: m.stream || p.stream,
-      timeSlot: `${m.start_time.substring(0, 5)} - ${m.end_time.substring(0, 5)}`
+      timeSlot: `${formatTimeTo12Hour(m.start_time.substring(0, 5))} - ${formatTimeTo12Hour(m.end_time.substring(0, 5))}`
     }));
   }, [formData.subject_id, teacherSchedules]);
 
   /* ── actions ────────────────────────────────────────── */
   const handleStartSession = async (e) => {
     e.preventDefault();
+    if (!formData.timeSlot || !formData.timeSlot.includes(' - ')) {
+      alert('Please select a valid time slot.');
+      return;
+    }
+    if (!formData.date) {
+      alert('Please select a valid date.');
+      return;
+    }
     try {
       const [startStr, endStr] = formData.timeSlot.split(' - ');
+      if (!startStr || !endStr) {
+        alert('Invalid time slot selection.');
+        return;
+      }
       const parseTime = (dateStr, timeStr) => {
-        const [time, mod] = timeStr.trim().split(' ');
+        if (!timeStr) throw new Error('Time string is missing');
+        const parts = timeStr.trim().split(' ');
+        const time = parts[0];
+        const mod = parts[1];
+        if (!time || !time.includes(':')) throw new Error('Time format is invalid');
         let [hh, mm] = time.split(':');
         let h = parseInt(hh);
+        if (isNaN(h)) throw new Error('Hour is not a number');
         if (mod === 'PM' && h !== 12) h += 12;
         if (mod === 'AM' && h === 12) h = 0;
         const hhStr = String(h).padStart(2, '0');
         const mmStr = String(mm).padStart(2, '0');
-        return new Date(`${dateStr}T${hhStr}:${mmStr}:00+05:30`).toISOString();
+        const dateObj = new Date(`${dateStr}T${hhStr}:${mmStr}:00+05:30`);
+        if (isNaN(dateObj.getTime())) throw new Error('Generated date is invalid');
+        return dateObj.toISOString();
       };
       await api.post('/sessions/start', {
         subject_id: parseInt(formData.subject_id),

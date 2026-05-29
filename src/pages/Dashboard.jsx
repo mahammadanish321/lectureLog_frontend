@@ -301,10 +301,30 @@ const Dashboard = () => {
     const fetchInitialData = async () => {
       try {
         const response = await api.get('/sessions');
-        // Filter sessions: If teacher, only show their own. If admin, show all.
-        // We now include 'scheduled' sessions to show upcoming classes.
-        let allRelevantSessions = response.data.filter(s => s.status === 'active' || s.status === 'scheduled');
+        const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        
+        // Auto-cleanup: Identify and permanently delete "ghost" schedules (no teacher assigned)
+        const ghostSchedules = response.data.filter(s => s.status === 'scheduled' && !s.teacher_name && String(s.id).startsWith('routine_'));
+        for (const ghost of ghostSchedules) {
+          try {
+            const id = ghost.id.replace('routine_', '');
+            await api.delete(`/schedules/${id}`);
+            console.log(`Automatically deleted ghost schedule: ${id}`);
+          } catch (e) { console.error('Failed to delete ghost schedule:', e); }
+        }
 
+        let allRelevantSessions = response.data.filter(s => {
+          if (!s.teacher_name) return false; // Hide from UI immediately
+          if (s.status === 'active') return true;
+          if (s.status !== 'scheduled') return false;
+          
+          try {
+            const sessionDateIST = new Date(s.start_time).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+            return sessionDateIST === todayIST;
+          } catch (err) {
+            return true;
+          }
+        });
         if (user?.role === 'teacher') {
           allRelevantSessions = allRelevantSessions.filter(s =>
             String(s.teacher_name).trim().toLowerCase() === String(user.name).trim().toLowerCase()
@@ -475,8 +495,18 @@ const Dashboard = () => {
         });
       }
     } else {
-      // Non-admin or web: AI is explicitly not available
-      setAiStatus({ online: false, displayStatus: 'Not Available', isError: false });
+      // Non-admin or web: Fetch status from backend and poll it
+      const fetchStatusFromBackend = async () => {
+        try {
+          const response = await api.get('/recognition/status');
+          setAiStatus(response.data);
+        } catch (err) {
+          console.warn('Failed to fetch AI status from backend:', err.message);
+        }
+      };
+
+      fetchStatusFromBackend();
+      aiPollingInterval = setInterval(fetchStatusFromBackend, 10000);
     }
 
     // Refresh sessions every 60 seconds as a final automation guard

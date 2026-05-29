@@ -153,11 +153,14 @@ const Timetable = () => {
   /* ── Fetch helpers ─────────────────────────────────────────── */
   const fetchTimeSlots = async () => {
     try {
-      const res = await api.get('/time_slots');
+      const weekStartParam = formatISODate(weekStart);
+      const res = await api.get(`/time_slots?week_start=${weekStartParam}`);
       if (res.data?.length > 0) {
         // Sort chronologically by raw_start
         const sorted = [...res.data].sort((a, b) => (a.raw_start || '').localeCompare(b.raw_start || ''));
         setTimeSlots(sorted);
+      } else {
+        setTimeSlots([]);
       }
     } catch (err) {
       console.error('[Timetable] Failed to fetch time slots:', err);
@@ -197,8 +200,10 @@ const Timetable = () => {
   const handleDeleteTimeSlot = async (slotId) => {
     if (!window.confirm('Are you sure you want to delete this entire time column? All classes in this slot across all days will be hidden.')) return;
     try {
-      await api.delete(`/time_slots/${slotId}`);
+      const weekStartParam = formatISODate(weekStart);
+      await api.delete(`/time_slots/${slotId}?week_start=${weekStartParam}`);
       fetchTimeSlots();
+      fetchData();
     } catch { alert('Failed to delete time slot'); }
   };
 
@@ -439,6 +444,7 @@ const Timetable = () => {
         end_time: e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         raw_start: s.toTimeString().split(' ')[0],
         raw_end: e.toTimeString().split(' ')[0],
+        week_start: formatISODate(weekStart),
       });
       fetchTimeSlots();
     } catch { alert('Failed to add column'); }
@@ -526,7 +532,10 @@ const Timetable = () => {
           day_of_week: selectedSlot.day,
           start_time: startTimeRaw,
           end_time: endTimeRaw,
-          year: selectedYear, stream: selectedStream, ...formData
+          year: selectedYear,
+          stream: selectedStream,
+          week_start: formatISODate(weekStart),
+          ...formData
         };
         if (editScheduleId) await api.put(`/schedules/${editScheduleId}`, payload);
         else await api.post('/schedules', payload);

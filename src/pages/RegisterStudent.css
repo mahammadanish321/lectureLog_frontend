@@ -975,3 +975,27 @@
   font-size: 0.9rem;
   font-weight: 500;
 }
+
+/* --- Face Angle Highlighting & Error Styling --- */
+.angle-slot.unverified {
+  border: 2px dashed #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+.angle-slot.unverified:hover {
+  background-color: #fee2e2 !important;
+  opacity: 0.95;
+}
+
+.angle-check.error {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3) !important;
+  padding: 3px;
+}
+
+.angle-tip.error {
+  color: #ef4444 !important;
+  font-weight: 600 !important;
+}

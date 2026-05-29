@@ -22,10 +22,10 @@ const ClassroomManager = () => {
   const [currentEditId, setCurrentEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [formData, setFormData] = useState({ name: '', camera_url: '', camera_name: '' });
+  const [formData, setFormData] = useState({ name: '', camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' });
 
   // Bulk Spreadsheet State
-  const generateNewRow = () => ({ id: Date.now().toString() + Math.random(), name: '', camera_url: '' });
+  const generateNewRow = () => ({ id: Date.now().toString() + Math.random(), name: '', camera_url: '', camera_type: 'webcam', camera_quality: '720p' });
   const [spreadsheetRows, setSpreadsheetRows] = useState([generateNewRow()]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
@@ -124,7 +124,7 @@ const ClassroomManager = () => {
   const handleEditClick = (room) => {
     const isManual = room.camera_url?.includes('/') || room.camera_url?.includes(':');
     setUseManualInput(isManual);
-    setFormData({ name: room.name, camera_url: room.camera_url || '', camera_name: room.camera_name || '' });
+    setFormData({ name: room.name, camera_url: room.camera_url || '', camera_name: room.camera_name || '', camera_type: room.camera_type || 'webcam', camera_quality: room.camera_quality || '720p' });
     setCurrentEditId(room.id);
     setIsEditMode(true);
     setShowModal(true);
@@ -134,7 +134,7 @@ const ClassroomManager = () => {
     setShowModal(false);
     setIsEditMode(false);
     setCurrentEditId(null);
-    setFormData({ name: '', camera_url: '', camera_name: '' });
+    setFormData({ name: '', camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' });
     setSuccess(false);
   };
 
@@ -195,7 +195,9 @@ const ClassroomManager = () => {
         await api.post('/classrooms', {
           name: row.name,
           camera_url: matchedCam ? matchedCam.id : row.camera_url, // Use resolved ID if they picked a name
-          camera_name: matchedCam ? matchedCam.name : ''
+          camera_name: matchedCam ? matchedCam.name : '',
+          camera_type: row.camera_type || 'webcam',
+          camera_quality: row.camera_quality || '720p'
         });
       }
       setSpreadsheetRows([generateNewRow()]);
@@ -332,8 +334,10 @@ const ClassroomManager = () => {
               <thead>
                 <tr>
                   <th style={{ width: '40px' }}></th>
-                  <th style={{ width: '40%' }}>Room / Lab Name <span className="req">*</span></th>
+                  <th style={{ width: '30%' }}>Room / Lab Name <span className="req">*</span></th>
                   <th>Camera Source (List or URL) <span className="req">*</span></th>
+                  <th style={{ width: '140px' }}>Camera Type</th>
+                  <th style={{ width: '140px' }}>Camera Quality</th>
                   <th style={{ width: '50px' }}></th>
                 </tr>
               </thead>
@@ -354,6 +358,20 @@ const ClassroomManager = () => {
                           placeholder="Select from list, or type RTSP://..." 
                           onChange={e => handleSpreadsheetChange(row.id, 'camera_url', e.target.value)} 
                         />
+                      </td>
+                      <td>
+                        <select value={row.camera_type || 'webcam'} onChange={e => handleSpreadsheetChange(row.id, 'camera_type', e.target.value)}>
+                          <option value="webcam">Webcam / USB</option>
+                          <option value="cctv">CCTV (IP/RTSP)</option>
+                        </select>
+                      </td>
+                      <td>
+                        <select value={row.camera_quality || '720p'} onChange={e => handleSpreadsheetChange(row.id, 'camera_quality', e.target.value)}>
+                          <option value="480p">480p</option>
+                          <option value="720p">720p</option>
+                          <option value="1080p">1080p</option>
+                          <option value="4k">4K</option>
+                        </select>
                       </td>
                       <td>
                         <button className="spreadsheet-remove-btn" onClick={() => removeSpreadsheetRow(row.id)} title="Remove row">
@@ -443,6 +461,30 @@ const ClassroomManager = () => {
                       ))}
                     </select>
                   )}
+                </div>
+
+                <div className="form-group">
+                  <label>Camera Type</label>
+                  <select
+                    value={formData.camera_type}
+                    onChange={e => setFormData(prev => ({ ...prev, camera_type: e.target.value }))}
+                  >
+                    <option value="webcam">Webcam / USB Camera</option>
+                    <option value="cctv">CCTV (IP / RTSP)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Camera Quality</label>
+                  <select
+                    value={formData.camera_quality}
+                    onChange={e => setFormData(prev => ({ ...prev, camera_quality: e.target.value }))}
+                  >
+                    <option value="480p">480p (Low)</option>
+                    <option value="720p">720p (Standard)</option>
+                    <option value="1080p">1080p (HD)</option>
+                    <option value="4k">4K (Ultra HD)</option>
+                  </select>
                 </div>
 
                 {formData.camera_url && !useManualInput && (

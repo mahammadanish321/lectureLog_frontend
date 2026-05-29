@@ -57,18 +57,44 @@ const AddAnglesModal = ({ student, onClose, onDone }) => {
       if (isElectron) {
         // Generate embeddings locally in parallel
         setProgress({ step: 1, label: 'Generating embeddings locally...' });
+        const failedAngles = [];
+        const verifiedAngles = {};
+        
+        selected.forEach(a => {
+          verifiedAngles[a.key] = true;
+        });
+
         const embedTasks = selected.map(async (a) => {
-          const fd = new FormData();
-          fd.append('file', files[a.key]);
-          const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
-          const d = await r.json();
-          return d.embedding;
+          try {
+            const fd = new FormData();
+            fd.append('file', files[a.key]);
+            const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
+            const d = await r.json();
+            if (!r.ok || d.error || d.face_detected === false || !d.embedding) {
+              console.warn(`Face not detected for ${a.label}: ${d.error || 'No embedding returned'}`);
+              verifiedAngles[a.key] = false;
+              failedAngles.push(a.label);
+              return null;
+            }
+            return d.embedding;
+          } catch (e) {
+            console.error('Embed error:', e);
+            verifiedAngles[a.key] = false;
+            failedAngles.push(a.label);
+            return null;
+          }
         });
         const embeddings = (await Promise.all(embedTasks)).filter(Boolean);
+        
+        if (failedAngles.length > 0) {
+          alert(`⚠️ Face not detected in: ${failedAngles.join(', ')}. These specific photos will be marked as unverified.`);
+        }
+
         setProgress({ step: 2, label: 'Saving to server...' });
         const fd = new FormData();
         selected.forEach(a => fd.append('image_' + a.key, files[a.key]));
         fd.append('face_embeddings', JSON.stringify(embeddings));
+        fd.append('verified_angles', JSON.stringify(verifiedAngles));
         await api.patch(`/students/${student.id}/angles`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
         // Web flow: send files directly to backend

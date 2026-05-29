@@ -131,20 +131,45 @@ const StudentList = () => {
     try {
       const selectedAngles = ANGLES.filter(a => files[a.key]);
       let embeddingsArray = null;
+      let verifiedAngles = {};
 
       if (isElectron && selectedAngles.length > 0) {
         console.log('[Electron] Generating local face embeddings...');
         try {
           embeddingsArray = [];
+          const failedAngles = [];
+          
+          selectedAngles.forEach(a => {
+            verifiedAngles[a.key] = true;
+          });
+
           for (let i = 0; i < selectedAngles.length; i++) {
             const a = selectedAngles[i];
             const fd = new FormData();
             fd.append('file', files[a.key]);
             const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
             const d = await r.json();
-            if (!d.embedding) throw new Error(`No embedding for ${a.label} angle`);
+            
+            if (!r.ok || d.error || d.face_detected === false || !d.embedding) {
+              console.warn(`Face not detected for ${a.label}: ${d.error || 'No embedding returned'}`);
+              embeddingsArray.push(null); // Soft-fail: record null for this angle
+              failedAngles.push(a.label);
+              verifiedAngles[a.key] = false;
+              continue;
+            }
             embeddingsArray.push(d.embedding);
           }
+          
+          // Filter out nulls for the backend
+          embeddingsArray = embeddingsArray.filter(e => e !== null);
+          if (embeddingsArray.length === 0) {
+            embeddingsArray = null; // No valid embeddings
+          }
+          
+          if (failedAngles.length > 0) {
+            alert(`⚠️ Face not detected in: ${failedAngles.join(', ')}. Profile will be marked as Incomplete.`);
+          }
+          
           console.log('[Electron] ✅ Local embeddings generated successfully!');
         } catch (aiErr) {
           console.error('[Electron] ❌ Local AI Error:', aiErr.message);
@@ -165,6 +190,8 @@ const StudentList = () => {
       if (embeddingsArray) {
         data.append('face_embeddings', JSON.stringify(embeddingsArray));
       }
+      
+      data.append('verified_angles', JSON.stringify(verifiedAngles));
 
       if (isEditMode) {
         await api.put(`/students/${currentEditId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -276,7 +303,11 @@ const StudentList = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="info-cell"><span className="student-name">{student.name}</span><span className="student-email">{student.email}</span></div>
+                    <div className="info-cell"><span className="student-name">{student.name}{!student.is_face_verified && (
+                      <span className="face-warning-badge" title="Face not verified. Please update photos for AI attendance.">
+                        ⚠️ Incomplete
+                      </span>
+                    )}</span><span className="student-email">{student.email}</span></div>
                   </td>
                   <td>
                     <div className="info-cell"><span className="student-id">Roll: {student.roll_number}</span><span className="student-id">Col: {student.college_id}</span></div>
@@ -331,14 +362,40 @@ const StudentList = () => {
                         {ANGLES.map(a => {
                           const currentStudent = isEditMode ? filteredStudents.find(s => s.id === currentEditId) : null;
                           const showEncodedState = isEditMode && a.key !== 'front' && currentStudent && currentStudent.angle_count >= 2;
+                          
+                          let isAngleUnverified = false;
+                          if (currentStudent) {
+                            let angleImagesParsed = {};
+                            if (currentStudent.angle_images) {
+                              angleImagesParsed = typeof currentStudent.angle_images === 'string'
+                                ? JSON.parse(currentStudent.angle_images)
+                                : currentStudent.angle_images;
+                            }
+                            
+                            if (a.key === 'front') {
+                              isAngleUnverified = currentStudent.is_face_verified === false || angleImagesParsed['front']?.is_verified === false;
+                            } else if (angleImagesParsed[a.key]) {
+                              isAngleUnverified = angleImagesParsed[a.key].is_verified === false;
+                            }
+                          }
+                          
+                          // If user selected a new file, clear the unverified state locally
+                          if (files[a.key]) {
+                            isAngleUnverified = false;
+                          }
+
                           return (
                             <div key={a.key} className="angle-card" style={{ position: 'relative' }}>
-                              <label className={`angle-slot ${files[a.key] || (showEncodedState && !previews[a.key]) ? 'filled' : ''} ${!a.required ? 'optional' : ''}`}>
+                              <label className={`angle-slot ${files[a.key] || (showEncodedState && !previews[a.key]) ? 'filled' : ''} ${!a.required ? 'optional' : ''} ${isAngleUnverified ? 'unverified' : ''}`}>
                                 {!a.required && <span className="angle-badge recommended">Recommended</span>}
                                 {previews[a.key] ? (
                                   <div className="angle-preview-wrap">
                                     <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
-                                    <div className="angle-check"><CheckCircle size={20}/></div>
+                                    {isAngleUnverified ? (
+                                      <div className="angle-check error" title="Face not detected!"><X size={14}/></div>
+                                    ) : (
+                                      <div className="angle-check"><CheckCircle size={20}/></div>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className="angle-illustration">
@@ -367,7 +424,11 @@ const StudentList = () => {
                             </button>
                             <div className="angle-info">
                               <span className="angle-label">{a.label}{a.required && <span className="req">*</span>}</span>
-                              <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
+                              {isAngleUnverified ? (
+                                <span className="angle-tip error" style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 500 }}>⚠️ Face not detected!</span>
+                              ) : (
+                                <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
+                              )}
                             </div>
                             </div>
                           );

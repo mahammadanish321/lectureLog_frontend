@@ -1,4 +1,4 @@
-﻿/* TeacherList.css - Structural Twin of StudentList.css */
+/* TeacherList.css - Structural Twin of StudentList.css */
 .teacher-list-container {
   padding: 0.5rem 1.5rem 1.5rem 1.5rem;
   display: flex;
@@ -162,6 +162,8 @@
 }
 
 .teacher-name {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
   color: #1e293b;
   font-size: 0.85rem;
@@ -413,3 +415,17 @@
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn { from { transform: scale(0.98) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
 .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+.face-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(255, 165, 0, 0.15);
+  color: #ff9800;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 8px;
+  cursor: help;
+}

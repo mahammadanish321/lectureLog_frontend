@@ -69,25 +69,37 @@ export const RegistrationQueueProvider = ({ children }) => {
       updateProgress(0, steps, steps[0]);
       
       let embeddingsArray = null;
-      if (isElectron) {
+      let failedAngles = [];
+      let verifiedAngles = {};
+      
+      // Initialize all selected angles to true
+      task.selectedAngles.forEach(a => {
+        verifiedAngles[a.key] = true;
+      });
+
+       if (isElectron) {
          embeddingsArray = [];
          for (let i = 0; i < task.selectedAngles.length; i++) {
-           if (cancelSet.current.has(task.id)) throw new Error('Cancelled');
-           
-           const a = task.selectedAngles[i];
-           const fd = new FormData();
-           fd.append('file', task.files[a.key]);
-           
-           updateProgress(i + 1, steps, steps[i + 1]);
-           
-           const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
-           const d = await r.json();
-           
-           if (!r.ok || d.error) throw new Error(d.error || `AI Error (${r.status})`);
-           if (!d.embedding) throw new Error(`No embedding for ${a.label} angle`);
-           
-           embeddingsArray.push(d.embedding);
-         }
+            if (cancelSet.current.has(task.id)) throw new Error('Cancelled');
+            
+            const a = task.selectedAngles[i];
+            const fd = new FormData();
+            fd.append('file', task.files[a.key]);
+            
+            updateProgress(i + 1, steps, steps[i + 1]);
+            
+            const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
+            const d = await r.json();
+            
+            if (!r.ok || d.error || d.face_detected === false || !d.embedding) {
+              console.warn(`Face not detected for ${a.label}: ${d.error || 'No embedding returned'}`);
+              embeddingsArray.push(null); // Soft-fail: record null for this angle
+              failedAngles.push(a.label);
+              verifiedAngles[a.key] = false;
+              continue;
+            }
+            embeddingsArray.push(d.embedding);
+          }
       }
       
       if (cancelSet.current.has(task.id)) throw new Error('Cancelled');
@@ -96,11 +108,11 @@ export const RegistrationQueueProvider = ({ children }) => {
       
       const data = new FormData();
       if (task.data instanceof FormData) {
-         for (let [key, value] of task.data.entries()) {
-           data.append(key, value);
-         }
+          for (let [key, value] of task.data.entries()) {
+            data.append(key, value);
+          }
       } else {
-         Object.keys(task.data).forEach(k => data.append(k, task.data[k]));
+          Object.keys(task.data).forEach(k => data.append(k, task.data[k]));
       }
       
       data.append('image', task.files['front']);
@@ -108,15 +120,22 @@ export const RegistrationQueueProvider = ({ children }) => {
         if (a.key !== 'front') data.append('image_' + a.key, task.files[a.key]);
       });
 
-      if (embeddingsArray) {
-        data.append('face_embeddings', JSON.stringify(embeddingsArray));
-      }
+       if (embeddingsArray) {
+         const validEmbeddings = embeddingsArray.filter(e => e !== null);
+         data.append('face_embeddings', JSON.stringify(validEmbeddings));
+       }
+       
+       data.append('verified_angles', JSON.stringify(verifiedAngles));
       
       const endpoint = task.type === 'teacher' ? '/teachers' : '/students';
       await api.post(endpoint, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       
-      updateProgress(steps.length, steps, '✅ Registered successfully!');
-      addToast(`${task.name} registered successfully!`, 'success');
+       updateProgress(steps.length, steps, '✅ Registered successfully!');
+       if (isElectron && embeddingsArray && failedAngles.length > 0) {
+         addToast(`${task.name} registered but face not detected in: ${failedAngles.join(', ')}. Please update these photos later.`, 'warning', 8000);
+       } else {
+         addToast(`${task.name} registered successfully!`, 'success');
+       }
       
       await new Promise(r => setTimeout(r, 2000));
       

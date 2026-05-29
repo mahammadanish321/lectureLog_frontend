@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, ShieldCheck, Camera } from 'lucide-react';
+import { Users, Search, Trash2, Edit2, Check, X, UserPlus, Upload, Loader2, CheckCircle, ShieldCheck, Camera, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -129,12 +129,19 @@ const TeacherList = () => {
     try {
       const selectedAngles = ANGLES.filter(a => files[a.key]);
       let embeddingsArray = null;
+      let verifiedAngles = {};
 
       // If in Electron, generate face embedding locally FIRST to avoid cloud-to-local mismatch
       if (isElectron && selectedAngles.length > 0) {
         console.log('[Electron] Generating local face embeddings for teacher...');
         try {
           embeddingsArray = [];
+          const failedAngles = [];
+          
+          selectedAngles.forEach(a => {
+            verifiedAngles[a.key] = true;
+          });
+
           for (let i = 0; i < selectedAngles.length; i++) {
             const a = selectedAngles[i];
             const fd = new FormData();
@@ -142,14 +149,26 @@ const TeacherList = () => {
             const r = await fetch(`${AI_SERVICE_URL}/embed`, { method: 'POST', body: fd });
             const d = await r.json();
             
-            if (!r.ok || d.error) {
-              throw new Error(d.error || `AI Service Error (${r.status})`);
-            }
-            if (!d.embedding || !Array.isArray(d.embedding)) {
-              throw new Error(`The AI could not extract a face signature from ${a.label} angle. Please try a clearer picture.`);
+            if (!r.ok || d.error || d.face_detected === false || !d.embedding) {
+              console.warn(`Face not detected for ${a.label}: ${d.error || 'No embedding returned'}`);
+              embeddingsArray.push(null); // Soft-fail: record null for this angle
+              failedAngles.push(a.label);
+              verifiedAngles[a.key] = false;
+              continue;
             }
             embeddingsArray.push(d.embedding);
           }
+          
+          // Filter out nulls for the backend
+          embeddingsArray = embeddingsArray.filter(e => e !== null);
+          if (embeddingsArray.length === 0) {
+            embeddingsArray = null; // No valid embeddings
+          }
+          
+          if (failedAngles.length > 0) {
+            addToast(`⚠️ Face not detected in: ${failedAngles.join(', ')}. Profile marked as Incomplete.`, 'error');
+          }
+          
           console.log('[Electron] ✅ Local teacher embeddings generated successfully!');
         } catch (aiErr) {
           console.error('[Electron] ❌ Local AI Error:', aiErr.message);
@@ -166,6 +185,7 @@ const TeacherList = () => {
       Object.keys(regData).forEach(key => data.append(key, regData[key]));
       
       if (embeddingsArray) data.append('face_embeddings', JSON.stringify(embeddingsArray));
+      data.append('verified_angles', JSON.stringify(verifiedAngles));
       
       // CRITICAL: Append file LAST for proper Multer parsing
       if (files.front) data.append('image', files.front);
@@ -279,7 +299,17 @@ const TeacherList = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="info-cell"><span className="teacher-name">{teacher.name}</span><span className="teacher-email">{teacher.email}</span></div>
+                    <div className="info-cell">
+                      <span className="teacher-name">
+                        {teacher.name}
+                        {!teacher.is_face_verified && (
+                          <span className="face-warning-badge" title="Face not verified. Please update photos for AI attendance.">
+                            ⚠️ Incomplete
+                          </span>
+                        )}
+                      </span>
+                      <span className="teacher-email">{teacher.email}</span>
+                    </div>
                   </td>
                   <td>
                     <div className="teacher-id-badge">ID: {teacher.college_id}</div>
@@ -328,37 +358,80 @@ const TeacherList = () => {
                       <span>Face Angle Photos <span className="req" style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.7rem' }}>* Front, Left, Right required</span></span>
                     </div>
                     <div className="angle-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      {ANGLES.map(a => (
-                        <div key={a.key} className="angle-card" style={{ position: 'relative' }}>
-                          <label className={`angle-slot ${files[a.key] ? 'filled' : ''} ${!a.required ? 'optional' : ''}`}>
-                            {!a.required && <span className="angle-badge recommended">Recommended</span>}
-                            {previews[a.key] ? (
-                              <div className="angle-preview-wrap">
-                                <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
-                                <div className="angle-check"><CheckCircle size={20}/></div>
-                              </div>
-                            ) : (
-                              <div className="angle-illustration">
-                                <AngleIllustration angle={a.key}/>
-                                <div className="angle-upload-hint"><Upload size={12}/></div>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" hidden onChange={e => handleFile(a.key, e.target.files[0])}/>
-                          </label>
-                          <button 
-                            type="button" 
-                            className="webcam-trigger-btn" 
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebcamState({ isOpen: true, angle: a }); }}
-                            title="Take Photo"
-                          >
-                            <Camera size={16} />
-                          </button>
-                          <div className="angle-info">
-                            <span className="angle-label">{a.label}{a.required && <span className="req">*</span>}</span>
-                            <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
+                      {ANGLES.map(a => {
+                        const currentTeacher = isEditMode ? filteredTeachers.find(t => t.id === currentEditId) : null;
+                        const showEncodedState = isEditMode && a.key !== 'front' && currentTeacher && currentTeacher.angle_count >= 2;
+                        
+                        let isAngleUnverified = false;
+                        if (currentTeacher) {
+                          let angleImagesParsed = {};
+                          if (currentTeacher.angle_images) {
+                            angleImagesParsed = typeof currentTeacher.angle_images === 'string'
+                              ? JSON.parse(currentTeacher.angle_images)
+                              : currentTeacher.angle_images;
+                          }
+                          
+                          if (a.key === 'front') {
+                            isAngleUnverified = currentTeacher.is_face_verified === false || angleImagesParsed['front']?.is_verified === false;
+                          } else if (angleImagesParsed[a.key]) {
+                            isAngleUnverified = angleImagesParsed[a.key].is_verified === false;
+                          }
+                        }
+                        
+                        // If user selected a new file, clear the unverified state locally
+                        if (files[a.key]) {
+                          isAngleUnverified = false;
+                        }
+
+                        return (
+                          <div key={a.key} className="angle-card" style={{ position: 'relative' }}>
+                            <label className={`angle-slot ${files[a.key] || (showEncodedState && !previews[a.key]) ? 'filled' : ''} ${!a.required ? 'optional' : ''} ${isAngleUnverified ? 'unverified' : ''}`}>
+                              {!a.required && <span className="angle-badge recommended">Recommended</span>}
+                              {previews[a.key] ? (
+                                <div className="angle-preview-wrap">
+                                  <img src={previews[a.key]} alt={a.label} className="angle-preview-img"/>
+                                  {isAngleUnverified ? (
+                                    <div className="angle-check error" title="Face not detected!"><X size={14}/></div>
+                                  ) : (
+                                    <div className="angle-check"><CheckCircle size={20}/></div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="angle-illustration">
+                                  <AngleIllustration angle={a.key}/>
+                                  {showEncodedState ? (
+                                    <div className="encoded-overlay">
+                                      <div className="encoded-badge">
+                                        <Lock size={12} />
+                                        <span>Encoded</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="angle-upload-hint"><Upload size={12}/></div>
+                                  )}
+                                </div>
+                              )}
+                              <input type="file" accept="image/*" hidden onChange={e => handleFile(a.key, e.target.files[0])}/>
+                            </label>
+                            <button 
+                              type="button" 
+                              className="webcam-trigger-btn" 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebcamState({ isOpen: true, angle: a }); }}
+                              title="Take Photo"
+                            >
+                              <Camera size={16} />
+                            </button>
+                            <div className="angle-info">
+                              <span className="angle-label">{a.label}{a.required && <span className="req">*</span>}</span>
+                              {isAngleUnverified ? (
+                                <span className="angle-tip error" style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 500 }}>⚠️ Face not detected!</span>
+                              ) : (
+                                <span className="angle-tip" style={{ fontSize: '0.65rem' }}>{a.tip}</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
