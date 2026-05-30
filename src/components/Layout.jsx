@@ -19,14 +19,15 @@ import {
   ChevronRight,
   AlertCircle,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import './Layout.css';
 
 const Layout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, restartTour } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllReadNotifications } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,7 +61,7 @@ const Layout = ({ children }) => {
 
   // Group navigation items based on role
   const menuItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', path: user?.role === 'student' ? '/student/dashboard' : '/dashboard', icon: LayoutDashboard },
     { name: 'Routine', path: '/routine', icon: Calendar },
   ];
 
@@ -113,7 +114,7 @@ const Layout = ({ children }) => {
           </button>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" data-tour="sidebar">
           {!isSidebarCollapsed && <div className="nav-section-label">MENU</div>}
           {menuItems.map((item) => (
             <NavLink
@@ -171,7 +172,7 @@ const Layout = ({ children }) => {
               <button className="circle-btn" title="Team">
                 <Users size={18} />
               </button>
-              <div className="user-profile-widget" onClick={() => setIsProfileOpen(!isProfileOpen)}>
+              <div className="user-profile-widget" data-tour="profile" onClick={() => setIsProfileOpen(!isProfileOpen)}>
                 <div className="user-avatar-wrapper">
                   <img
                     src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=105934&color=fff&bold=true`}
@@ -195,6 +196,14 @@ const Layout = ({ children }) => {
                       <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/you'); }}>
                         <User size={16} />
                         <span>My Profile</span>
+                      </button>
+                      <button className="dropdown-item" onClick={() => {
+                        setIsProfileOpen(false);
+                        restartTour();
+                        navigate(user?.role === 'student' ? '/student/dashboard' : '/dashboard');
+                      }}>
+                        <Award size={16} />
+                        <span>Replay Tour</span>
                       </button>
                       <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
                         <ShieldCheck size={16} />

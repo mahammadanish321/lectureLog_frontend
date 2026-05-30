@@ -61,9 +61,18 @@ function App() {
               <RegistrationQueueUI />
               <Routes>
                 <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/get-started" element={<GetStarted />} />
-            <Route path="/" element={<HomeOrLanding />} />
+                <Route path="/activate" element={<Login initialView="verify-email" />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/get-started" element={<GetStarted />} />
+                <Route path="/" element={<HomeOrLanding />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
             <Route
               path="/sessions"
               element={
@@ -173,21 +182,19 @@ const HomeOrLanding = () => {
     </div>
   );
 
-  // If not logged in: Desktop goes to Login, Web goes to Landing Page
-  if (!user) {
-    return isElectron ? <Navigate to="/login" /> : <GetStarted />;
+  // Electron Desktop App Flow:
+  if (isElectron) {
+    if (!user) return <Navigate to="/login" />;
+    if (user.role === 'admin') return <Navigate to="/login" />; // restricted to desktop login screen
+    return (
+      <Layout>
+        <HomeRedirect />
+      </Layout>
+    );
   }
 
-  // Admin Web Restriction
-  if (user.role === 'admin' && !isElectron) {
-    return <Navigate to="/login" />;
-  }
-  
-  return (
-    <Layout>
-      <HomeRedirect />
-    </Layout>
-  );
+  // Web Browser Flow: Always show the Landing Page (GetStarted)
+  return <GetStarted />;
 };
 
 // Helper to decide where to go on home page

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Shield, BookOpen, GraduationCap, Building, Award, Fingerprint, Calendar, Hash } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import './You.css';
 
 const You = () => {
-  const { user } = useAuth();
+  const { user, restartTour } = useAuth();
+  const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -161,6 +163,42 @@ const You = () => {
                 </div>
               </div>
             )}
+          </div>
+          
+          <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+            <button
+              className="premium-tour-btn"
+              onClick={() => {
+                restartTour();
+                navigate(user?.role === 'student' ? '/student/dashboard' : '/dashboard');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #105934, #15803d)',
+                border: '1px solid rgba(74, 222, 128, 0.2)',
+                color: '#ffffff',
+                fontWeight: '700',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(16, 89, 52, 0.2)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 89, 52, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 89, 52, 0.2)';
+              }}
+            >
+              <Award size={16} />
+              <span>Replay Guided Tour</span>
+            </button>
           </div>
         </div>
 

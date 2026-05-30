@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, CheckCircle, XCircle, Clock, BookOpen, MapPin, User, AlertCircle, Loader2, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
+import OnboardingTour from '../components/OnboardingTour/OnboardingTour';
+import { studentTourSteps } from '../config/tourSteps';
 import './StudentDashboard.css';
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, shouldShowTour, markTourComplete } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [stats, setStats] = useState({ present: 0, total: 0 });
   const [schedules, setSchedules] = useState([]);
@@ -289,7 +291,7 @@ const StudentDashboard = () => {
     <div className="student-dashboard animate-fade-in">
 
 
-      <div className="stats-grid">
+      <div className="stats-grid stu-stats-grid">
         <div className="stat-card glass">
           <div className="stat-top">
             <div className="stat-icon-wrapper blue">
@@ -333,7 +335,7 @@ const StudentDashboard = () => {
       </div>
 
       <div className="dashboard-main-content" style={{ gridTemplateColumns: '1fr' }}>
-        <section className="section-card glass animate-fade-in" style={{ width: '100%' }}>
+        <section className="section-card glass animate-fade-in student-attendance-section" style={{ width: '100%' }}>
           <div className="section-header" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div className="header-icon-pill" style={{ background: 'rgba(16, 89, 52, 0.08)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
@@ -448,6 +450,12 @@ const StudentDashboard = () => {
           </div>
         </section>
       </div>
+      <OnboardingTour
+        steps={studentTourSteps}
+        isActive={shouldShowTour}
+        onComplete={markTourComplete}
+        onSkip={markTourComplete}
+      />
     </div>
   );
 };

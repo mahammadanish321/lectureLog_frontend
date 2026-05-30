@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import OnboardingTour from '../components/OnboardingTour/OnboardingTour';
+import { adminTourSteps, teacherTourSteps } from '../config/tourSteps';
 import {
   Users,
   Calendar,
@@ -174,7 +176,8 @@ const DEMO_PRESENT_STUDENTS = [
 ];
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, shouldShowTour, markTourComplete } = useAuth();
+  const tourSteps = user?.role === 'admin' ? adminTourSteps : teacherTourSteps;
   const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [liveAttendance, setLiveAttendance] = useState([]);
@@ -1126,6 +1129,12 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      <OnboardingTour
+        steps={tourSteps}
+        isActive={shouldShowTour}
+        onComplete={markTourComplete}
+        onSkip={markTourComplete}
+      />
     </div>
   );
 };

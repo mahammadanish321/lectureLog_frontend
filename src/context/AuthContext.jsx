@@ -9,12 +9,19 @@ const isElectronEnv = () => !!(window.electronAPI && window.electronAPI.isElectr
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [shouldShowTour, setShouldShowTour] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
       setUser(parsed);
+
+      // Sync tour state
+      const tourKey = `merge_tour_v1_${parsed.id}`;
+      if (!localStorage.getItem(tourKey)) {
+        setShouldShowTour(true);
+      }
 
       // Sync role to main process on page reload
       if (isElectronEnv()) {
@@ -31,6 +38,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
 
+    const tourKey = `merge_tour_v1_${user.id}`;
+    if (!localStorage.getItem(tourKey)) {
+      setShouldShowTour(true);
+    }
+
     // Sync role to Electron main process
     if (isElectronEnv()) {
       window.electronAPI.setAuthRole(user.role);
@@ -44,6 +56,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
+
+    const tourKey = `merge_tour_v1_${user.id}`;
+    if (!localStorage.getItem(tourKey)) {
+      setShouldShowTour(true);
+    }
 
     // ── Start AI service only for admin on desktop ──
     if (isElectronEnv()) {
@@ -64,6 +81,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
+
+    const tourKey = `merge_tour_v1_${user.id}`;
+    if (!localStorage.getItem(tourKey)) {
+      setShouldShowTour(true);
+    }
 
     // Sync role — student never gets AI
     if (isElectronEnv()) {
@@ -89,10 +111,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setShouldShowTour(false);
+  };
+
+  const markTourComplete = () => {
+    if (user) {
+      const tourKey = `merge_tour_v1_${user.id}`;
+      localStorage.setItem(tourKey, 'true');
+      setShouldShowTour(false);
+    }
+  };
+
+  const restartTour = () => {
+    setShouldShowTour(true);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, logout, loading, isElectronEnv }}>
+    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, logout, loading, isElectronEnv, shouldShowTour, markTourComplete, restartTour }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   ChevronRight, ShieldCheck, Zap, BarChart3, Users,
   LayoutDashboard, CalendarDays, BookOpen, GraduationCap,
@@ -20,6 +21,12 @@ const fadeUp = {
 
 export default function GetStarted() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
 
   return (
     <div className="gs-root">
@@ -30,8 +37,23 @@ export default function GetStarted() {
           <span>Merge</span>
         </div>
         <div className="gs-nav-actions">
-          <button onClick={() => navigate("/login")} className="gs-btn-ghost">Sign In</button>
-          <button onClick={() => navigate("/signup")} className="gs-btn-primary">Get Started</button>
+          {user ? (
+            <>
+              <button
+                onClick={() => navigate(user.role === 'student' ? "/student/dashboard" : "/dashboard")}
+                className="gs-btn-primary"
+              >
+                Go to Dashboard
+              </button>
+              <button onClick={handleLogout} className="gs-btn-ghost">Sign Out</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => navigate("/login")} className="gs-btn-ghost">Sign In</button>
+              <button onClick={() => navigate("/activate")} className="gs-btn-ghost">Active Account</button>
+              <button onClick={() => navigate("/signup")} className="gs-btn-primary">Get Started</button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -219,7 +241,14 @@ export default function GetStarted() {
       <footer className="gs-footer">
         <div className="gs-footer-brand">
           <img src="/favicon.svg" alt="Merge" style={{ width: 24, height: 24 }} />
-          <span>Merge AI</span>
+          <span>Merge</span>
+        </div>
+        <div className="gs-footer-dev">
+          <span>Developed by</span>
+          <a href="https://mahammadanish.me" target="_blank" rel="noopener noreferrer" className="gs-dev-link">
+            <img src="https://github.com/mahammadanish321.png" alt="mahammadanish.me" className="gs-dev-logo" />
+            <span>mahammadanish.me</span>
+          </a>
         </div>
         <p className="gs-footer-copy">© 2026 Merge. All rights reserved.</p>
       </footer>

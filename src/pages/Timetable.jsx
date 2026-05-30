@@ -190,10 +190,12 @@ const Timetable = () => {
         start_time: start,
         end_time: end,
         raw_start: convertToRaw(start),
-        raw_end: convertToRaw(end)
+        raw_end: convertToRaw(end),
+        week_start: formatISODate(weekStart),
       });
       setSlotEditModal({ open: false, slot: null, start: '', end: '' });
       fetchTimeSlots();
+      fetchData(); // Also refresh schedules because they might have been duplicated/updated
     } catch { alert('Failed to update time slot'); }
   };
 

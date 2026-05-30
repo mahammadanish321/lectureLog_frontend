@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor, MonitorPlay } from 'lucide-react';
 import api from '../api';
@@ -88,10 +88,10 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
   );
 };
 
-const Login = () => {
+const Login = ({ initialView }) => {
   const isElectron = !!(window.electronAPI?.isElectron);
   const [loginMode, setLoginMode] = useState('teacher'); // 'teacher', 'admin', 'student'
-  const [view, setView] = useState('login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
+  const [view, setView] = useState(initialView || 'login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
   const [collegeName, setCollegeName] = useState('');
@@ -125,6 +125,20 @@ const Login = () => {
 
   const { login, adminLogin, studentLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (initialView) {
+      setView(initialView);
+    } else if (location.state?.initialView) {
+      setView(location.state.initialView);
+      if (location.state?.loginMode) {
+        setLoginMode(location.state.loginMode);
+      }
+    } else {
+      setView('login');
+    }
+  }, [initialView, location]);
 
   useEffect(() => {
     // Check for auth errors passed from api interceptor
@@ -246,7 +260,11 @@ const Login = () => {
       } else {
         await studentLogin(email, password, selectedOrg);
       }
-      navigate('/');
+      if (loginMode === 'student') {
+        navigate('/student/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -396,14 +414,49 @@ const Login = () => {
       <div className="login-form-section" style={{ position: 'relative' }}>
         <div className="form-wrapper animate-fade-in">
           <div className="form-header">
-            <h2 className="welcome-text">Welcome back!</h2>
-            <p className="subtitle">Please enter your credentials to access your dashboard.</p>
+            <h2 className="welcome-text">
+              {view === 'login' ? 'Welcome back!' : 'Activate Account'}
+            </h2>
+            <p className="subtitle">
+              {view === 'login'
+                ? 'Please enter your credentials to access your dashboard.'
+                : 'Please verify your details to activate your account.'}
+            </p>
           </div>
 
           <div className="login-tabs-unified">
-            <button type="button" className={`mode-tab ${loginMode === 'teacher' ? 'active' : ''}`} onClick={() => { setLoginMode('teacher'); setView('login'); }}>Teacher</button>
-            <button type="button" className={`mode-tab ${loginMode === 'student' ? 'active' : ''}`} onClick={() => { setLoginMode('student'); setView('login'); }}>Student</button>
-            <button type="button" className={`mode-tab ${loginMode === 'admin' ? 'active' : ''}`} onClick={() => { setLoginMode('admin'); setView('login'); }}>Admin</button>
+            <button
+              type="button"
+              className={`mode-tab ${loginMode === 'teacher' ? 'active' : ''}`}
+              onClick={() => {
+                setLoginMode('teacher');
+                if (view !== 'login') setView('verify-email');
+              }}
+            >
+              Teacher
+            </button>
+            <button
+              type="button"
+              className={`mode-tab ${loginMode === 'student' ? 'active' : ''}`}
+              onClick={() => {
+                setLoginMode('student');
+                if (view !== 'login') setView('verify-email');
+              }}
+            >
+              Student
+            </button>
+            {view === 'login' && (
+              <button
+                type="button"
+                className={`mode-tab ${loginMode === 'admin' ? 'active' : ''}`}
+                onClick={() => {
+                  setLoginMode('admin');
+                  setView('login');
+                }}
+              >
+                Admin
+              </button>
+            )}
           </div>
 
           {error && (
@@ -535,7 +588,7 @@ const Login = () => {
 
                   {loginMode !== 'admin' && (
                     <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                      <button type="button" onClick={() => setView('verify-email')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <button type="button" onClick={() => navigate('/activate')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}>
                         First time logging in? Activate account
                       </button>
                     </div>
@@ -689,7 +742,7 @@ const Login = () => {
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <button type="button" onClick={() => setView('login')} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
+                <button type="button" onClick={() => navigate('/login')} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
                   Back to Login
                 </button>
               </div>
