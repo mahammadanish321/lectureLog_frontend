@@ -90,16 +90,16 @@ export default function GetStarted() {
             >
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.2.exe" className="gs-cta-primary">
+                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" target="_blank" rel="noopener noreferrer" className="gs-cta-primary">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
-                  Download for Windows (v1.0.2)
+                  Download for Windows (v{__APP_VERSION__})
                 </a>
               </div>
               <div className="gs-cta-group">
-                <span className="gs-cta-note">Students & Teachers</span>
+                <span className="gs-cta-note">Students &amp; Teachers</span>
                 <a href="https://github.com/mahammadanish321/lectureLog_mobile/releases/latest/download/Merge.apk" className="gs-cta-outline">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg" alt="Android" style={{ width: '22px', height: '22px' }} />
-                  Download for Android (v1.0.2)
+                  Download for Android (v{__APP_VERSION__})
                 </a>
               </div>
             </motion.div>
