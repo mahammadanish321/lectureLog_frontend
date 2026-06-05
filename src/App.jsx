@@ -21,6 +21,7 @@ import TeacherList from './pages/TeacherList';
 import ClassroomManager from './pages/ClassroomManager';
 import You from './pages/You';
 import GetStarted from './pages/GetStarted';
+import AppUpdateBanner from './components/AppUpdateBanner';
 import './App.css';
 
 // Protected Route Component
@@ -58,6 +59,7 @@ function App() {
         <RegistrationQueueProvider>
           <Router>
             <NotificationProvider>
+              <AppUpdateBanner />
               <RegistrationQueueUI />
               <Routes>
                 <Route path="/login" element={<Login />} />

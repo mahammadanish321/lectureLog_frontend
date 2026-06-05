@@ -40,4 +40,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('force-logout', handler);
     return () => ipcRenderer.removeListener('force-logout', handler);
   },
+
+  // ── App Auto-Updater ─────────────────────────────────────────
+  onUpdateAvailable: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('app-update-available', handler);
+    return () => ipcRenderer.removeListener('app-update-available', handler);
+  },
+  onUpdateProgress: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('app-update-progress', handler);
+    return () => ipcRenderer.removeListener('app-update-progress', handler);
+  },
+  onUpdateReady: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('app-update-ready', handler);
+    return () => ipcRenderer.removeListener('app-update-ready', handler);
+  },
+  onUpdateError: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('app-update-error', handler);
+    return () => ipcRenderer.removeListener('app-update-error', handler);
+  },
+  installUpdate: () => ipcRenderer.send('install-update-now'),
 });

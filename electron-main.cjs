@@ -238,22 +238,37 @@ app.on('ready', () => {
   }
 });
 
-// Update Events
-autoUpdater.on('update-available', () => {
-  console.log('Update available.');
+// Update Events — notify the React UI instead of plain OS dialogs
+autoUpdater.on('checking-for-update', () => {
+  console.log('[UPDATER] Checking for updates...');
 });
 
-autoUpdater.on('update-downloaded', () => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Update Ready',
-    message: 'A new version of Merge Admin is ready. Restart now to update?',
-    buttons: ['Restart', 'Later']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
-    }
-  });
+autoUpdater.on('update-available', (info) => {
+  console.log(`[UPDATER] Update available: v${info.version}`);
+  notifyRenderer('app-update-available', { version: info.version });
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('[UPDATER] App is up to date.');
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  notifyRenderer('app-update-progress', { percent: Math.floor(progress.percent) });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log(`[UPDATER] Update v${info.version} downloaded — ready to install.`);
+  notifyRenderer('app-update-ready', { version: info.version });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('[UPDATER] Update error:', err.message);
+  notifyRenderer('app-update-error', { message: err.message });
+});
+
+// IPC: renderer triggers restart to apply update
+ipcMain.on('install-update-now', () => {
+  autoUpdater.quitAndInstall();
 });
 
 app.on('window-all-closed', async () => {

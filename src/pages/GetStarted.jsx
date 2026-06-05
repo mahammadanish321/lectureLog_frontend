@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { useNavigate } from "react-router-dom";
@@ -18,10 +18,72 @@ const fadeUp = {
     transition: { duration: 0.6, delay: i * 0.15, ease: "easeOut" },
   }),
 };
+const MotionSpan = motion.span;
+const MotionH1 = motion.h1;
+const MotionP = motion.p;
+const MotionDiv = motion.div;
+const DESKTOP_BUILD_VERSION = import.meta.env.VITE_APP_VERSION || "latest";
+
+const releaseDefaults = {
+  windows: {
+    version: DESKTOP_BUILD_VERSION,
+    downloadUrl: "https://github.com/mahammadanish321/lectureLog_frontend/releases/latest",
+  },
+  android: {
+    version: "latest",
+    downloadUrl: "https://github.com/mahammadanish321/lectureLog_mobile/releases/latest",
+  },
+};
+
+const releaseSources = {
+  windows: "https://api.github.com/repos/mahammadanish321/lectureLog_frontend/releases/latest",
+  android: "https://api.github.com/repos/mahammadanish321/lectureLog_mobile/releases/latest",
+};
+
+const normalizeVersion = (tagName) => (tagName || "").replace(/^v/i, "") || "latest";
+
+const findReleaseAsset = (release, matcher) => {
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  return assets.find((asset) => matcher.test(asset.name || ""))?.browser_download_url;
+};
 
 export default function GetStarted() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [releases, setReleases] = useState(releaseDefaults);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRelease = async (platform, assetMatcher) => {
+      try {
+        const response = await fetch(releaseSources[platform]);
+        if (!response.ok) return;
+
+        const release = await response.json();
+        const downloadUrl = findReleaseAsset(release, assetMatcher) || release.html_url;
+
+        if (active) {
+          setReleases((current) => ({
+            ...current,
+            [platform]: {
+              version: normalizeVersion(release.tag_name),
+              downloadUrl: downloadUrl || current[platform].downloadUrl,
+            },
+          }));
+        }
+      } catch (error) {
+        console.warn(`Could not load ${platform} release metadata`, error);
+      }
+    };
+
+    loadRelease("windows", /\.exe$/i);
+    loadRelease("android", /\.apk$/i);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -61,48 +123,48 @@ export default function GetStarted() {
       <ContainerScroll
         titleComponent={
           <div className="gs-hero-text">
-            <motion.span
+            <MotionSpan
               variants={fadeUp} initial="hidden" animate="visible" custom={0}
               className="gs-badge"
             >
               ✦ The Future of Institutional Management
-            </motion.span>
+            </MotionSpan>
 
-            <motion.h1
+            <MotionH1
               variants={fadeUp} initial="hidden" animate="visible" custom={1}
               className="gs-h1"
             >
               Revolutionize your <br />
               <span className="gs-h1-accent">Institutional Monitoring</span>
-            </motion.h1>
+            </MotionH1>
 
-            <motion.p
+            <MotionP
               variants={fadeUp} initial="hidden" animate="visible" custom={2}
               className="gs-subtitle"
             >
               AI-powered attendance, real-time classroom analytics, and secure
               multi-tenant isolation — built for the modern campus.
-            </motion.p>
+            </MotionP>
 
-            <motion.div
+            <MotionDiv
               variants={fadeUp} initial="hidden" animate="visible" custom={3}
               className="gs-cta-row"
             >
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Admins: Highly recommended to download for AI features</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_frontend/releases/latest" target="_blank" rel="noopener noreferrer" className="gs-cta-primary">
+                <a href={releases.windows.downloadUrl} target="_blank" rel="noopener noreferrer" className="gs-cta-primary">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Windows_logo_-_2021.svg" alt="Windows" style={{ width: '20px', height: '20px' }} />
-                  Download for Windows (v{__APP_VERSION__})
+                  Download for Windows (v{releases.windows.version})
                 </a>
               </div>
               <div className="gs-cta-group">
                 <span className="gs-cta-note">Students &amp; Teachers</span>
-                <a href="https://github.com/mahammadanish321/lectureLog_mobile/releases/latest/download/Merge.apk" className="gs-cta-outline">
+                <a href={releases.android.downloadUrl} target="_blank" rel="noopener noreferrer" className="gs-cta-outline">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg" alt="Android" style={{ width: '22px', height: '22px' }} />
-                  Download for Android (v{__APP_VERSION__})
+                  Download for Android (v{releases.android.version})
                 </a>
               </div>
-            </motion.div>
+            </MotionDiv>
           </div>
         }
       >
@@ -187,14 +249,14 @@ export default function GetStarted() {
 
       {/* ── Features ─────────────────────────────────── */}
       <section className="gs-features">
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }} viewport={{ once: true }}
           className="gs-features-header"
         >
           <h2 className="gs-features-title">Everything your campus needs</h2>
           <p className="gs-features-sub">One platform. Full control.</p>
-        </motion.div>
+        </MotionDiv>
 
         <div className="gs-features-grid">
           {[
@@ -203,7 +265,7 @@ export default function GetStarted() {
             { icon: <BarChart3 size={28} />, title: "Smart Analytics", desc: "Convert attendance into insights. Track trends, identify at-risk students, and act fast." },
             { icon: <Users size={28} />, title: "Role-Based Access", desc: "Admins, teachers, and students each have perfectly scoped dashboards and permissions." },
           ].map((f, i) => (
-            <motion.div
+            <MotionDiv
               key={i}
               className="gs-feature-card"
               initial={{ opacity: 0, y: 30 }}
@@ -215,14 +277,14 @@ export default function GetStarted() {
               <div className="gs-feature-icon">{f.icon}</div>
               <h3 className="gs-feature-title">{f.title}</h3>
               <p className="gs-feature-desc">{f.desc}</p>
-            </motion.div>
+            </MotionDiv>
           ))}
         </div>
       </section>
 
       {/* ── CTA Banner ───────────────────────────────── */}
       <section className="gs-cta-banner">
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
@@ -234,7 +296,7 @@ export default function GetStarted() {
           <button onClick={() => navigate("/signup")} className="gs-cta-big-btn">
             Register Your Institution <ChevronRight size={20} />
           </button>
-        </motion.div>
+        </MotionDiv>
       </section>
 
       {/* ── Footer ───────────────────────────────────── */}

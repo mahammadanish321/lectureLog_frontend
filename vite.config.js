@@ -11,5 +11,6 @@ export default defineConfig({
   define: {
     // Inject version from package.json at build time — use __APP_VERSION__ anywhere in JS
     __APP_VERSION__: JSON.stringify(pkg.version),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
   },
 })
