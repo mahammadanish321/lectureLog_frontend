@@ -142,6 +142,15 @@ const Layout = ({ children }) => {
           ))}
         </nav>
 
+        {/* Version Tag */}
+        <div className="sidebar-version-tag">
+          {isSidebarCollapsed ? (
+            <span className="version-dot" title="Merge v1.0.2">v</span>
+          ) : (
+            <span className="version-pill">v 1.0.2</span>
+          )}
+        </div>
+
       </aside>
 
       <main className="main-content">
