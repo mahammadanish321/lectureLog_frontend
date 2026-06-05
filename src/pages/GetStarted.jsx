@@ -22,7 +22,8 @@ const MotionSpan = motion.span;
 const MotionH1 = motion.h1;
 const MotionP = motion.p;
 const MotionDiv = motion.div;
-const DESKTOP_BUILD_VERSION = import.meta.env.VITE_APP_VERSION || "latest";
+const DESKTOP_BUILD_VERSION = import.meta.env.VITE_DESKTOP_APP_VERSION || "latest";
+const MOBILE_BUILD_VERSION = import.meta.env.VITE_MOBILE_APP_VERSION || "latest";
 
 const releaseDefaults = {
   windows: {
@@ -30,7 +31,7 @@ const releaseDefaults = {
     downloadUrl: "https://github.com/mahammadanish321/lectureLog_frontend/releases/latest",
   },
   android: {
-    version: "latest",
+    version: MOBILE_BUILD_VERSION,
     downloadUrl: "https://github.com/mahammadanish321/lectureLog_mobile/releases/latest",
   },
 };
@@ -39,8 +40,6 @@ const releaseSources = {
   windows: "https://api.github.com/repos/mahammadanish321/lectureLog_frontend/releases/latest",
   android: "https://api.github.com/repos/mahammadanish321/lectureLog_mobile/releases/latest",
 };
-
-const normalizeVersion = (tagName) => (tagName || "").replace(/^v/i, "") || "latest";
 
 const findReleaseAsset = (release, matcher) => {
   const assets = Array.isArray(release?.assets) ? release.assets : [];
@@ -67,7 +66,7 @@ export default function GetStarted() {
           setReleases((current) => ({
             ...current,
             [platform]: {
-              version: normalizeVersion(release.tag_name),
+              version: current[platform].version,
               downloadUrl: downloadUrl || current[platform].downloadUrl,
             },
           }));
