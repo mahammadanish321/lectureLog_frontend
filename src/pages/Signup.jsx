@@ -396,7 +396,7 @@ export default function Signup() {
                 <div className="admin-web-restriction" style={{ background: 'white', border: 'none', padding: 0 }}>
                   <a href="https://github.com/mahammadanish321/Merge_frontend/releases/latest" className="download-btn-wide" target="_blank" rel="noopener noreferrer">
                     <ChevronRight size={18} />
-                    <span>Download for Windows (v1.0.1)</span>
+                    <span>Download for Windows (v1.0.2)</span>
                   </a>
                   <button onClick={() => navigate('/login')} className="secondary-link" style={{ marginTop: '1rem' }}>
                     Go to Login
