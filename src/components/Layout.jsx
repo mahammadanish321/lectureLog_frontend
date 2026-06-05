@@ -145,9 +145,9 @@ const Layout = ({ children }) => {
         {/* Version Tag */}
         <div className="sidebar-version-tag">
           {isSidebarCollapsed ? (
-            <span className="version-dot" title="Merge v1.0.2">v</span>
+            <span className="version-dot" title={`Merge v${__APP_VERSION__}`}>v</span>
           ) : (
-            <span className="version-pill">v 1.0.2</span>
+            <span className="version-pill">v {__APP_VERSION__}</span>
           )}
         </div>
 
