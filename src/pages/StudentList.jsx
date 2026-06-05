@@ -261,14 +261,16 @@ const StudentList = () => {
           <h1>Student Management</h1>
         </div>
         <div className="management-context-pill">
-          <span className="meta">Admin</span>
+          <span className="meta">{isAdmin ? 'Admin' : 'Faculty'}</span>
           <span className="title">Student Database</span>
         </div>
         <div className="header-actions">
-          <button className="action-btn-primary" onClick={() => navigate('/students/register')}>
-            <UserPlus size={16} style={{ marginRight: '8px' }} />
-            Add Student
-          </button>
+          {isAdmin && (
+            <button className="action-btn-primary" onClick={() => navigate('/students/register')}>
+              <UserPlus size={16} style={{ marginRight: '8px' }} />
+              Add Student
+            </button>
+          )}
           <button className="action-btn-outline" onClick={fetchStudents}>
             Refresh List
           </button>

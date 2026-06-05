@@ -637,7 +637,10 @@ const Sessions = () => {
                 <div className="form-field">
                   <label>Stream</label>
                   <select value={formData.stream} onChange={e => setFormData({ ...formData, stream: e.target.value })} required>
-                    <option>CSE</option><option>ECE</option><option>ME</option><option>CE</option><option>EE</option>
+                    <option value="CSE">CSE</option>
+                    <option value="CSBS">CSBS</option>
+                    <option value="ECE">ECE</option>
+                    <option value="ME">ME</option>
                   </select>
                 </div>
               </div>

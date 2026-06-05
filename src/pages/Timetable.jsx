@@ -3,7 +3,7 @@ import api from '../api';
 import {
   Calendar, Clock, Plus, Trash2, User, MapPin,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
-  ZoomIn, ZoomOut, Edit3, Camera, CheckCircle2, XCircle, Loader2
+  ZoomIn, ZoomOut, Edit3, Camera, CheckCircle2, XCircle, Loader2, Users
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
@@ -73,7 +73,7 @@ const Timetable = () => {
   const [studentAttendance, setStudentAttendance] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [attendanceModal, setAttendanceModal] = useState({ open: false, loading: false, records: [], filter: 'present', title: '' });
+  const [attendanceModal, setAttendanceModal] = useState({ open: false, loading: false, records: [], filter: 'all', title: '' });
   const [isCustomSubmit, setIsCustomSubmit] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [editScheduleId, setEditScheduleId] = useState(null);
@@ -397,12 +397,12 @@ const Timetable = () => {
       alert('No completed session record exists for this class yet.');
       return;
     }
-    setAttendanceModal({ open: true, loading: true, records: [], filter: 'present', title });
+    setAttendanceModal({ open: true, loading: true, records: [], filter: 'all', title });
     try {
       const res = await api.get(`/attendance/session/${session.id}?include_absent=true`);
-      setAttendanceModal({ open: true, loading: false, records: res.data || [], filter: 'present', title });
+      setAttendanceModal({ open: true, loading: false, records: res.data || [], filter: 'all', title });
     } catch (err) {
-      setAttendanceModal({ open: true, loading: false, records: [], filter: 'present', title });
+      setAttendanceModal({ open: true, loading: false, records: [], filter: 'all', title });
     }
   };
 
@@ -948,14 +948,15 @@ const Timetable = () => {
               {(() => {
                 const presentCount = attendanceModal.records.filter(r => r.status !== 'absent').length;
                 const absentCount = attendanceModal.records.filter(r => r.status === 'absent').length;
-                return ['present', 'absent'].map(filter => (
+                const totalCount = attendanceModal.records.length;
+                return ['all', 'present', 'absent'].map(filter => (
                   <button
                     key={filter}
                     className={`attendance-filter-btn ${attendanceModal.filter === filter ? 'active' : ''}`}
                     onClick={() => setAttendanceModal(p => ({ ...p, filter }))}
                   >
-                    {filter === 'present' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-                    {filter === 'present' ? `Present (${presentCount})` : `Absent (${absentCount})`}
+                    {filter === 'all' ? <Users size={15} /> : filter === 'present' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                    {filter === 'all' ? `All (${totalCount})` : filter === 'present' ? `Present (${presentCount})` : `Absent (${absentCount})`}
                   </button>
                 ));
               })()}
@@ -966,7 +967,7 @@ const Timetable = () => {
             ) : (
               <div className="attendance-roster">
                 {attendanceModal.records
-                  .filter(rec => rec.status === attendanceModal.filter)
+                  .filter(rec => attendanceModal.filter === 'all' || rec.status === attendanceModal.filter)
                   .map(rec => (
                     <div key={rec.student_id || rec.id || Math.random()} className="attendance-roster-row">
                       <img
@@ -986,8 +987,10 @@ const Timetable = () => {
                       </span>
                     </div>
                   ))}
-                {attendanceModal.records.filter(rec => rec.status === attendanceModal.filter).length === 0 && (
-                  <div className="attendance-empty">No {attendanceModal.filter} students found.</div>
+                {attendanceModal.records.filter(rec => attendanceModal.filter === 'all' || rec.status === attendanceModal.filter).length === 0 && (
+                  <div className="attendance-empty">
+                    {attendanceModal.filter === 'all' ? 'No students found.' : `No ${attendanceModal.filter} students found.`}
+                  </div>
                 )}
               </div>
             )}
