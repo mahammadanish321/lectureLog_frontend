@@ -10,6 +10,14 @@ let authenticatedRole = null;  // Track current role in main process
 let aiStarting = false;        // Prevent concurrent start attempts
 let aiCrashCount = 0;          // Track crashes for recovery limiting
 const MAX_AUTO_RESTARTS = 2;
+let aiLogHistory = [];         // In-memory buffer for AI process logs
+
+function appendToLogHistory(type, text) {
+  aiLogHistory.push({ type, text });
+  if (aiLogHistory.length > 200) {
+    aiLogHistory.shift();
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -74,12 +82,13 @@ function createWindow() {
 
 // ── AI Process Management ───────────────────────────────────────
 
-function startAI() {
+function startAI(organizationId) {
   if (pythonProcess || aiStarting) {
     console.log('[ELECTRON] AI already running or starting, skipping.');
     return Promise.resolve(true);
   }
 
+  aiLogHistory = []; // Reset log history buffer for new run
   aiStarting = true;
 
   const isPackaged = app.isPackaged;
@@ -103,15 +112,39 @@ function startAI() {
 
   pythonProcess = spawn(pythonCmd, [aiPath], {
     cwd: path.dirname(aiPath),
-    env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    env: { 
+      ...process.env, 
+      PYTHONUNBUFFERED: '1',
+      ORGANIZATION_ID: organizationId ? String(organizationId) : (process.env.ORGANIZATION_ID || '')
+    }
   });
 
+  const cleanAnsi = (str) => str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+
   pythonProcess.stdout.on('data', (data) => {
-    console.log(`[AI-STDOUT] ${data.toString().trim()}`);
+    const raw = data.toString();
+    console.log(`[AI-STDOUT] ${raw.trim()}`);
+    const cleaned = cleanAnsi(raw);
+    cleaned.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed) {
+        notifyRenderer('ai-log', { type: 'stdout', text: trimmed });
+        appendToLogHistory('stdout', trimmed);
+      }
+    });
   });
 
   pythonProcess.stderr.on('data', (data) => {
-    console.error(`[AI-STDERR] ${data.toString().trim()}`);
+    const raw = data.toString();
+    console.error(`[AI-STDERR] ${raw.trim()}`);
+    const cleaned = cleanAnsi(raw);
+    cleaned.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed) {
+        notifyRenderer('ai-log', { type: 'stderr', text: trimmed });
+        appendToLogHistory('stderr', trimmed);
+      }
+    });
   });
 
   pythonProcess.on('error', (err) => {
@@ -201,6 +234,10 @@ function notifyRenderer(channel, data) {
 
 // ── IPC Handlers ────────────────────────────────────────────────
 
+ipcMain.handle('get-ai-logs', async () => {
+  return aiLogHistory;
+});
+
 // Refinement #2: Role verification in main process before starting AI
 ipcMain.handle('start-ai-service', async (_event, sessionInfo) => {
   // NEVER trust renderer blindly — verify role stored in main process
@@ -210,7 +247,7 @@ ipcMain.handle('start-ai-service', async (_event, sessionInfo) => {
   }
 
   aiCrashCount = 0; // Reset crash counter on intentional start
-  const started = await startAI();
+  const started = await startAI(sessionInfo?.organization_id);
   return { success: started };
 });
 

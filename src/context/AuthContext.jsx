@@ -23,9 +23,14 @@ export const AuthProvider = ({ children }) => {
         setShouldShowTour(true);
       }
 
-      // Sync role to main process on page reload
+      // Sync role to main process and start AI if admin on page reload
       if (isElectronEnv()) {
         window.electronAPI.setAuthRole(parsed.role);
+        if (parsed.role === 'admin') {
+          console.log('[AUTH] Reload detected for admin. Auto-starting local AI service...');
+          window.electronAPI.startAI({ role: 'admin', organization_id: parsed.organization_id })
+            .catch(err => console.warn('[AUTH] Auto-starting local AI failed:', err));
+        }
       }
     }
     setLoading(false);
@@ -66,7 +71,7 @@ export const AuthProvider = ({ children }) => {
     if (isElectronEnv()) {
       window.electronAPI.setAuthRole('admin');
       try {
-        const result = await window.electronAPI.startAI({ role: 'admin' });
+        const result = await window.electronAPI.startAI({ role: 'admin', organization_id: user.organization_id });
         console.log('[AUTH] AI start result:', result);
       } catch (err) {
         console.warn('[AUTH] Failed to start AI via IPC:', err);

@@ -840,6 +840,7 @@
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  height: 100%; /* Force height matching the grid cell */
 }
 
 .teacher-layout .recent-arrivals-section {
@@ -946,7 +947,7 @@
 
 /* THIN PREMIUM SCROLLBAR */
 .arrivals-list::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 
 .arrivals-list::-webkit-scrollbar-track {
@@ -1540,7 +1541,7 @@
 }
 
 .overlay-list::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 
 .overlay-list::-webkit-scrollbar-thumb {
@@ -1588,5 +1589,237 @@
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Custom terminal and full terminal button styling */
+.full-terminal-btn {
+  width: auto;
+  min-width: 140px;
+  padding: 0 1.5rem;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  background: #1e293b;
+  color: #38bdf8; /* terminal cyan */
+  border: 1px solid #334155;
+  font-family: monospace;
+}
+
+.full-terminal-btn:hover {
+  background: #0f172a;
+  transform: translateY(-1px);
+}
+
+.terminal.btn-header-action {
+  background: #1e293b;
+  color: #38bdf8; /* terminal cyan */
+  border: 1px solid #334155;
+  font-family: monospace;
+}
+
+.terminal.btn-header-action:hover {
+  background: #0f172a;
+}
+
+.recent-arrivals-btn {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Active states for tabs - High Contrast */
+.recent-arrivals-btn.active {
+  background: #105934 !important;
+  color: white !important;
+  border-color: #105934 !important;
+  box-shadow: 0 2px 6px rgba(16, 89, 52, 0.15);
+}
+
+.terminal.btn-header-action.active {
+  background: #0f172a !important;
+  color: #38bdf8 !important; /* terminal cyan */
+  border-color: #334155 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+
+/* Style for inactive tabs so they look greyed out */
+.recent-arrivals-btn:not(.active),
+.terminal.btn-header-action:not(.active) {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+  opacity: 0.65;
+  box-shadow: none !important;
+}
+
+.recent-arrivals-btn:not(.active):hover,
+.terminal.btn-header-action:not(.active):hover {
+  opacity: 1;
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+/* Terminal Log View Styles */
+.terminal-log-view {
+  background: #0f172a;
+  border-radius: 20px;
+  border: 1px solid #1e293b;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);
+  font-family: 'Courier New', Courier, monospace;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* Let it shrink on small screens without overflow */
+  height: 100%; /* Force it to stretch and fill all available container height */
+  margin-top: 0.5rem;
+}
+
+.terminal-header {
+  background: #1e293b;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-bottom: 1px solid #0f172a;
+  flex-shrink: 0;
+}
+
+.terminal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.terminal-dot.red { background: #ef4444; }
+.terminal-dot.yellow { background: #f59e0b; }
+.terminal-dot.green { background: #10b981; }
+
+.terminal-title {
+  color: #94a3b8;
+  font-size: 0.65rem;
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+
+.terminal-body {
+  padding: 1rem;
+  color: #38bdf8; /* Cyan output */
+  font-size: 0.72rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  flex: 1;
+  text-align: left;
+}
+
+.terminal-line {
+  margin-bottom: 0.4rem;
+}
+
+.terminal-line.command {
+  color: #e2e8f0;
+}
+
+.terminal-line.info {
+  color: #94a3b8;
+}
+
+.terminal-line.warning {
+  color: #f43f5e;
+}
+
+.terminal-line .time {
+  color: #64748b;
+}
+
+.terminal-line .tag.green {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.terminal-line .name {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.terminal-line .status-present { color: #4ade80; }
+.terminal-line .status-detected { color: #60a5fa; }
+.terminal-line .status-processing { color: #fbbf24; }
+
+.terminal-line.cursor {
+  color: #38bdf8;
+  animation: blink 1.2s step-end infinite;
+}
+
+@keyframes blink {
+  from, to { color: transparent }
+  50% { color: #38bdf8 }
+}
+
+.terminal-modal-body {
+  padding: 1.5rem !important;
+  background: #0f172a !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto !important;
+  flex: 1;
+}
+
+/* Custom premium scrollbar for Full Terminal Modal and sidebar Terminal */
+.terminal-modal-body::-webkit-scrollbar,
+.terminal-body::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+  display: block !important;
+}
+
+.terminal-modal-body::-webkit-scrollbar-track,
+.terminal-body::-webkit-scrollbar-track {
+  background: #0f172a !important;
+}
+
+.terminal-modal-body::-webkit-scrollbar-thumb,
+.terminal-body::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+  border-radius: 10px !important;
+  border: 2px solid #0f172a !important;
+}
+
+.terminal-modal-body::-webkit-scrollbar-thumb:hover,
+.terminal-body::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+.terminal-modal {
+  background: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+.terminal-modal-header {
+  background: #1e293b !important;
+  border-bottom: 1px solid #0f172a !important;
+  padding: 1rem 1.75rem !important;
+}
+
+.terminal-modal-header .dashboard-modal-close {
+  background: transparent !important;
+  border: 1px solid #334155 !important;
+  color: #94a3b8 !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.terminal-modal-header .dashboard-modal-close:hover {
+  background: #27272a !important;
+  color: white !important;
 }
 

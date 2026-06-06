@@ -34,6 +34,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('ai-process-crash', handler);
   },
 
+  onAILog: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('ai-log', handler);
+    return () => ipcRenderer.removeListener('ai-log', handler);
+  },
+
+  getAILogs: () => ipcRenderer.invoke('get-ai-logs'),
+
   // ── Session Force-Logout ────────────────────────────────────
   onForceLogout: (callback) => {
     const handler = (_event, data) => callback(data);

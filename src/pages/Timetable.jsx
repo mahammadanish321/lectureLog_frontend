@@ -196,7 +196,7 @@ const Timetable = () => {
       setSlotEditModal({ open: false, slot: null, start: '', end: '' });
       fetchTimeSlots();
       fetchData(); // Also refresh schedules because they might have been duplicated/updated
-    } catch { alert('Failed to update time slot'); }
+    } catch (err) { alert(err.response?.data?.message || 'Failed to update time slot'); }
   };
 
   const handleDeleteTimeSlot = async (slotId) => {
@@ -449,7 +449,7 @@ const Timetable = () => {
         week_start: formatISODate(weekStart),
       });
       fetchTimeSlots();
-    } catch { alert('Failed to add column'); }
+    } catch (err) { alert(err.response?.data?.message || 'Failed to add column'); }
   };
 
   /* ── Cell click ────────────────────────────────────────────── */

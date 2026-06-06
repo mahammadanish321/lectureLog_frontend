@@ -181,10 +181,19 @@ const Dashboard = () => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [liveAttendance, setLiveAttendance] = useState([]);
+  const [activeArrivalsTab, setActiveArrivalsTab] = useState('recent'); // 'recent' or 'terminal'
+  const [showFullTerminalModal, setShowFullTerminalModal] = useState(false);
+  const [aiConsoleLogs, setAiConsoleLogs] = useState([
+    { type: 'info', text: '[SYS] Initialize AI Face Recognition Service (Facenet512)...' },
+    { type: 'info', text: '[SYS] Ready. Listening for stdout/stderr logs...' }
+  ]);
   const [stats, setStats] = useState({ totalStudents: 0, presentToday: 0, avgAttendance: 0 });
   const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const videoContainerRef = useRef(null);
+  const terminalModalBodyRef = useRef(null);
+  const terminalEndRef = useRef(null);
+  const isAtBottomRef = useRef(true);
   const [showPresentStudentsModal, setShowPresentStudentsModal] = useState(false);
   const [presentStudents, setPresentStudents] = useState([]);
   const [presentStudentsLoading, setPresentStudentsLoading] = useState(false);
@@ -200,6 +209,96 @@ const Dashboard = () => {
   useEffect(() => {
     selectedSessionIdRef.current = selectedSessionId;
   }, [selectedSessionId]);
+
+  const logQueueRef = useRef([]);
+  const prevScrollHeightRef = useRef(0);
+  const terminalInnerWrapperRef = useRef(null);
+
+
+
+  // Fetch log history on full terminal modal open
+  useEffect(() => {
+    if (showFullTerminalModal && window.electronAPI?.getAILogs) {
+      logQueueRef.current = []; // Clear queue to avoid duplicate history processing
+      prevScrollHeightRef.current = 0; // Reset scroll height ref to prevent initial transition
+      isAtBottomRef.current = true; // Always start at bottom on open
+      window.electronAPI.getAILogs()
+        .then(logs => {
+          setAiConsoleLogs(logs.map(item => ({
+            type: item.type === 'stderr' ? 'error' : 'log',
+            text: item.text
+          })));
+
+          // Force scroll to bottom immediately after history loads
+          setTimeout(() => {
+            if (terminalModalBodyRef.current) {
+              terminalModalBodyRef.current.scrollTo({
+                top: terminalModalBodyRef.current.scrollHeight,
+                behavior: 'auto'
+              });
+            }
+          }, 100);
+        })
+        .catch(err => console.error('Failed to retrieve AI logs:', err));
+    }
+  }, [showFullTerminalModal]);
+
+  // Auto-scroll FLIP animation for terminal modal when logs update
+  useEffect(() => {
+    if (!showFullTerminalModal) return;
+
+    const container = terminalModalBodyRef.current;
+    if (!container) return;
+
+    const newScrollHeight = container.scrollHeight;
+    const prevScrollHeight = prevScrollHeightRef.current;
+    const diff = newScrollHeight - prevScrollHeight;
+
+    if (diff > 0 && prevScrollHeight > 0 && isAtBottomRef.current) {
+      const wrapper = terminalInnerWrapperRef.current;
+      if (wrapper) {
+        // 1. Instantly jump the scroll to the new bottom
+        container.scrollTop = newScrollHeight - container.clientHeight;
+
+        // 2. Invert: shift visual wrapper down by the height difference (no transition)
+        wrapper.style.transition = 'none';
+        wrapper.style.transform = `translateY(${diff}px)`;
+
+        // Force a style recalculation (reflow) to flush styles immediately
+        wrapper.offsetHeight;
+
+        // 3. Play: smoothly slide the translation back to 0
+        wrapper.style.transition = 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'; // easeOutExpo
+        wrapper.style.transform = 'translateY(0px)';
+      }
+    } else {
+      // On initial load or if not at bottom, snap or maintain position
+      if (isAtBottomRef.current) {
+        container.scrollTop = newScrollHeight - container.clientHeight;
+      }
+    }
+
+    prevScrollHeightRef.current = newScrollHeight;
+  }, [aiConsoleLogs, showFullTerminalModal]);
+
+
+
+  // Queue processor for incoming live logs (1-second cooldown)
+  useEffect(() => {
+    if (!showFullTerminalModal) {
+      logQueueRef.current = [];
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      if (logQueueRef.current.length > 0) {
+        const nextLog = logQueueRef.current.shift();
+        setAiConsoleLogs(prev => [...prev, nextLog].slice(-150));
+      }
+    }, 1000); // Render one by one every 1 second
+
+    return () => clearInterval(intervalId);
+  }, [showFullTerminalModal]);
 
   const scrollRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -391,6 +490,19 @@ const Dashboard = () => {
     // Initialize Socket
     const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
 
+    newSocket.on('connect', () => {
+      if (user) {
+        console.log('[Dashboard Socket] Connected. Authenticating user organization:', user.organization_id);
+        newSocket.emit('authenticate', {
+          id: user.id,
+          role: user.role,
+          organization_id: user.organization_id,
+          year: user.year,
+          stream: user.stream
+        });
+      }
+    });
+
     newSocket.on('session_started', (newSession) => {
       console.log('Real-time: Session started', newSession.id);
       const sessionWithStatus = { ...newSession, status: 'active' };
@@ -425,27 +537,43 @@ const Dashboard = () => {
     });
 
     newSocket.on('attendance_update', (data) => {
-      // 1. Update the sidebar feed
-      setLiveAttendance(prev => [
-        {
-          student_name: data.student_name,
-          subject_name: data.subject_name || 'Class',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'present'
-        },
-        ...prev.slice(0, 9)
-      ]);
-
-      // 2. If this hit belongs to the current selected session, update the list
-      if (selectedSessionIdRef.current === data.session_id) {
-        setPresentStudents(prev => [data, ...prev]);
+      // Safety isolation check: filter out data belonging to other organizations
+      if (data.organization_id && user?.organization_id && String(data.organization_id) !== String(user.organization_id)) {
+        console.log('[Dashboard Socket] Ignored attendance update from different organization:', data.organization_id);
+        return;
       }
 
-      // 3. Update global stats
+      // Update global stats
       setStats(prev => ({
         ...prev,
         presentToday: prev.presentToday + 1
       }));
+
+      // Only handle if this update belongs to the current active/selected session
+      if (selectedSessionIdRef.current === data.session_id) {
+        // 1. Update the sidebar feed
+        setLiveAttendance(prev => {
+          if (prev.some(p => p.student_id === data.student_id)) return prev;
+          return [
+            {
+              student_id: data.student_id,
+              student_name: data.student_name,
+              subject_name: data.subject_name || 'Class',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'present',
+              confidence: data.confidence || null,
+              threshold: data.threshold || 0.60
+            },
+            ...prev.slice(0, 9)
+          ];
+        });
+
+        // 2. Update the present students list
+        setPresentStudents(prev => {
+          if (prev.some(p => p.student_id === data.student_id)) return prev;
+          return [data, ...prev];
+        });
+      }
     });
 
     newSocket.on('ai_status_update', (data) => {
@@ -457,6 +585,7 @@ const Dashboard = () => {
     const isDesktopAdmin = !!(window.electronAPI?.isElectron) && user?.role === 'admin';
     let aiPollingInterval = null;
     let aiCrashCleanup = null;
+    let aiLogCleanup = null;
 
     if (isDesktopAdmin) {
       let failCount = 0;
@@ -469,7 +598,8 @@ const Dashboard = () => {
             setAiStatus({
               online: true,
               displayStatus: data.cameras_open.length > 0 ? 'AI Scanning Active' : 'AI Service Idle',
-              isError: !!data.global_error
+              isError: !!data.global_error,
+              details: data
             });
           } else {
             throw new Error('Not OK');
@@ -497,6 +627,15 @@ const Dashboard = () => {
           });
         });
       }
+
+      if (window.electronAPI?.onAILog) {
+        aiLogCleanup = window.electronAPI.onAILog((data) => {
+          logQueueRef.current.push({
+            type: data.type === 'stderr' ? 'error' : 'log', 
+            text: data.text 
+          });
+        });
+      }
     } else {
       // Non-admin or web: Fetch status from backend and poll it
       const fetchStatusFromBackend = async () => {
@@ -520,6 +659,7 @@ const Dashboard = () => {
       clearInterval(sessionRefreshInterval);
       if (aiPollingInterval) clearInterval(aiPollingInterval);
       if (aiCrashCleanup) aiCrashCleanup(); // Remove Electron listener
+      if (aiLogCleanup) aiLogCleanup(); // Remove Log listener
       newSocket.off('session_started');
       newSocket.off('session_ended');
       newSocket.off('attendance_update');
@@ -604,6 +744,15 @@ const Dashboard = () => {
     }
   };
 
+  const handleTerminalScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const threshold = 15;
+    const atBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+    isAtBottomRef.current = atBottom;
+  };
+
+
+
   const formatStatusLabel = (status) => {
     if (!status) return 'Present';
     return String(status).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
@@ -619,6 +768,53 @@ const Dashboard = () => {
   };
 
   const getStudentName = (student) => student.student_name || student.name || 'Unknown Student';
+
+  const parseLogLine = (text) => {
+    // 1. Primary format: [HH:MM:SS] icon [TAG] message
+    const match = text.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(.*?)\s*\[(.*?)\]\s*(.*)$/);
+    if (match) {
+      const [_, timestamp, icon, tag, message] = match;
+      
+      let tagColor = '#38bdf8'; // default cyan
+      if (tag === 'SYSTEM') tagColor = '#f43f5e'; // rose/red
+      else if (tag === 'AI') tagColor = '#fb923c'; // orange
+      else if (tag === 'SYNC') tagColor = '#60a5fa'; // blue
+      else if (tag === 'CAMERA') tagColor = '#34d399'; // green
+      
+      return (
+        <>
+          <span style={{ color: '#64748b', marginRight: '0.5rem', fontFamily: 'monospace' }}>[{timestamp}]</span>
+          {icon && <span style={{ marginRight: '0.5rem' }}>{icon}</span>}
+          <span style={{ color: tagColor, fontWeight: 'bold', marginRight: '0.5rem', fontFamily: 'monospace' }}>[{tag}]</span>
+          <span style={{ color: '#cbd5e1' }}>{message}</span>
+        </>
+      );
+    }
+    
+    // 2. Secondary format: [TAG] message (e.g. [SYS] Initialize...)
+    const secondaryMatch = text.match(/^\[(.*?)\]\s*(.*)$/);
+    if (secondaryMatch) {
+      const [_, tag, message] = secondaryMatch;
+      let tagColor = '#94a3b8';
+      if (tag === 'SYS') tagColor = '#a855f7'; // purple for system bootstrap
+      return (
+        <>
+          <span style={{ color: tagColor, fontWeight: 'bold', marginRight: '0.5rem', fontFamily: 'monospace' }}>[{tag}]</span>
+          <span style={{ color: '#cbd5e1' }}>{message}</span>
+        </>
+      );
+    }
+    
+    // 3. Warning / Error fallback
+    if (text.toLowerCase().includes('warning') || text.includes('deprecation')) {
+      return <span style={{ color: '#fbbf24' }}>{text}</span>;
+    }
+    if (text.toLowerCase().includes('error') || text.toLowerCase().includes('failed')) {
+      return <span style={{ color: '#f87171' }}>{text}</span>;
+    }
+    
+    return <span>{text}</span>;
+  };
 
   const openPresentStudentsModal = async () => {
     const sessionId = selectedSessionId || activeSessions[0]?.id;
@@ -657,6 +853,87 @@ const Dashboard = () => {
     ? activeSessions.find(s => s.id === selectedSessionId)
     : activeSession || null; // Only auto-select if it's currently ACTIVE, require click for scheduled
 
+  const sessionYear = currentSession ? String(currentSession.year || '').trim() : '';
+  const sessionStream = currentSession ? String(currentSession.stream || '').trim().toLowerCase() : '';
+
+  const currentSessionStudents = currentSession
+    ? allStudents.filter(s => {
+        const studentYear = String(s.year || '').trim();
+        const studentStream = String(s.stream || '').trim().toLowerCase();
+        return studentYear === sessionYear && studentStream === sessionStream;
+      })
+    : [];
+
+  const getProcessLogs = () => {
+    if (!currentSession) return [];
+
+    const logs = [];
+    const totalStudents = currentSessionStudents.length;
+
+    // Enrich students with present/absent data
+    const enriched = currentSessionStudents.map(student => {
+      const presentRecord = presentStudents.find(p => p.student_id === student.id);
+      return { ...student, presentRecord, isPresent: !!presentRecord };
+    });
+
+    const presentList = enriched
+      .filter(s => s.isPresent)
+      .sort((a, b) => new Date(a.presentRecord.marked_at || a.presentRecord.timestamp || 0) - new Date(b.presentRecord.marked_at || b.presentRecord.timestamp || 0));
+    const absentList = enriched
+      .filter(s => !s.isPresent)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    // 1. Session info
+    logs.push({ type: 'info', text: `[SESSION] ${currentSession.subject_name} — Year ${currentSession.year || '?'}, ${(currentSession.stream || 'N/A').toUpperCase()}` });
+    logs.push({ type: 'info', text: `[CLASS] ${totalStudents} student${totalStudents !== 1 ? 's' : ''} registered in this classroom` });
+    logs.push({ type: 'divider' });
+
+    // 2. Scanning phase
+    logs.push({ type: 'system', text: `[SCAN] 📷 Scanning classroom for faces...` });
+
+    if (presentList.length === 0) {
+      logs.push({ type: 'warn', text: `[CAMERA] No face detected on screen — waiting for students...` });
+    } else {
+      logs.push({ type: 'camera', text: `[CAMERA] ${presentList.length} face${presentList.length !== 1 ? 's' : ''} detected on camera` });
+    }
+    logs.push({ type: 'divider' });
+
+    // 3. Per-student recognition process (for each present student)
+    presentList.forEach((student, idx) => {
+      const timeStr = new Date(student.presentRecord.marked_at || student.presentRecord.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      const conf = student.presentRecord.confidence ? Number(student.presentRecord.confidence).toFixed(2) : '0.85';
+      const thresh = student.presentRecord.threshold ? Number(student.presentRecord.threshold).toFixed(2) : '0.60';
+      const roll = student.roll_number || student.college_id || 'N/A';
+      const name = student.name || student.student_name || 'Unknown';
+
+      logs.push({ type: 'ai', text: `[${timeStr}] [AI] Processing face ${idx + 1}/${presentList.length}...`, time: timeStr });
+      logs.push({ type: 'match', text: `[${timeStr}] [MATCH] ✓ "${name}" identified (Roll: ${roll})`, time: timeStr });
+      logs.push({ type: 'conf', text: `[${timeStr}] [CONF] Confidence: ${conf} | Threshold: ${thresh} ${Number(conf) >= Number(thresh) ? '✓ PASS' : '✗ LOW'}`, time: timeStr, pass: Number(conf) >= Number(thresh) });
+      logs.push({ type: 'attend', text: `[${timeStr}] [ATTEND] ✅ Marked "${name}" as PRESENT`, time: timeStr });
+      if (idx < presentList.length - 1 || absentList.length > 0) {
+        logs.push({ type: 'divider' });
+      }
+    });
+
+    // 4. Absent students — pending identification
+    if (absentList.length > 0) {
+      if (presentList.length > 0) {
+        logs.push({ type: 'divider' });
+      }
+      absentList.forEach(student => {
+        const roll = student.roll_number || student.college_id || 'N/A';
+        const name = student.name || student.student_name || 'Unknown';
+        logs.push({ type: 'pending', text: `[--:--:--] [PENDING] ⏳ "${name}" (Roll: ${roll}) — No face match yet` });
+      });
+    }
+
+    // 5. Summary
+    logs.push({ type: 'divider' });
+    logs.push({ type: 'summary', text: `[SUMMARY] ${presentList.length}/${totalStudents} students identified | ${absentList.length} remaining` });
+
+    return logs;
+  };
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header-row">
@@ -674,6 +951,7 @@ const Dashboard = () => {
 
         <div className="header-actions">
           <button className="view-all-btn" onClick={() => setShowSessionsModal(true)}>View All Sessions</button>
+          <button className="full-terminal-btn" onClick={() => setShowFullTerminalModal(true)}>Full Terminal</button>
           <button className="refresh-btn" onClick={() => window.location.reload()}>Refresh Data</button>
         </div>
       </div>
@@ -961,45 +1239,128 @@ const Dashboard = () => {
         {/* RECENT ARRIVALS */}
         <div className="recent-arrivals-section animate-fade-in">
           <div className="section-header-row">
-            <h3>Recent Arrivals</h3>
-            <button className="btn-header-action"><Plus size={14} /><span>Directory</span></button>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <button 
+                className={`btn-header-action recent-arrivals-btn ${activeArrivalsTab === 'recent' ? 'active' : ''}`}
+                onClick={() => setActiveArrivalsTab('recent')}
+              >
+                Recent Arrivals
+              </button>
+              <button 
+                className={`terminal btn-header-action ${activeArrivalsTab === 'terminal' ? 'active' : ''}`}
+                onClick={() => setActiveArrivalsTab('terminal')}
+              >
+                Terminal
+              </button>
+            </div>
           </div>
 
-          <div className="arrivals-list">
-            {currentSession ? (
-              liveAttendance.length > 0 ? (
-                liveAttendance.map((item, i) => (
-                  <div key={i} className="arrival-item animate-fade-in">
-                    <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
-                      <img
-                        src={item.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${item.student_id || item.id}.jpg`}
-                        alt={item.student_name}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.student_name)}&background=random`;
-                        }}
-                      />
+          {activeArrivalsTab === 'recent' ? (
+            <div className="arrivals-list">
+              {currentSession ? (
+                liveAttendance.length > 0 ? (
+                  liveAttendance.map((item, i) => (
+                    <div key={i} className="arrival-item animate-fade-in">
+                      <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][i % 4]}`}>
+                        <img
+                          src={item.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${item.student_id || item.id}.jpg`}
+                          alt={item.student_name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.student_name)}&background=random`;
+                          }}
+                        />
+                      </div>
+                      <div className="arrival-info">
+                        <h5>{item.student_name}</h5>
+                        <p>Attended <strong>{item.subject_name}</strong></p>
+                      </div>
+                      <div className={`status-badge-compact ${item.status === 'detected' ? 'status-detected' : item.status === 'processing' ? 'status-processing' : 'status-present'}`}>
+                        {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Present'}
+                      </div>
                     </div>
-                    <div className="arrival-info">
-                      <h5>{item.student_name}</h5>
-                      <p>Attended <strong>{item.subject_name}</strong></p>
-                    </div>
-                    <div className={`status-badge-compact ${item.status === 'detected' ? 'status-detected' : item.status === 'processing' ? 'status-processing' : 'status-present'}`}>
-                      {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Present'}
-                    </div>
+                  ))
+                ) : (
+                  <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', textAlign: 'center', height: '100%', padding: '2rem' }}>
+                    No detections yet for this session
                   </div>
-                ))
+                )
               ) : (
                 <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', textAlign: 'center', height: '100%', padding: '2rem' }}>
-                  No detections yet for this session
+                  Select an active session to see real-time arrivals
                 </div>
-              )
-            ) : (
-              <div className="no-active-sessions" style={{ border: 'none', background: 'transparent', textAlign: 'center', height: '100%', padding: '2rem' }}>
-                Select an active session to see real-time arrivals
+              )}
+            </div>
+          ) : (
+            <div className="terminal-log-view">
+              <div className="terminal-header">
+                <span className="terminal-dot red"></span>
+                <span className="terminal-dot yellow"></span>
+                <span className="terminal-dot green"></span>
+                <span className="terminal-title" style={{ fontFamily: 'Courier New, Courier, monospace', fontSize: '0.8rem', fontWeight: 700 }}>Merge Session Terminal</span>
               </div>
-            )}
-          </div>
+              <div className="terminal-body">
+                  <div className="terminal-line command" style={{ fontFamily: 'Consolas, Monaco, monospace' }}>$ tail -f /var/log/attendance.log</div>
+                  <div className="terminal-line info" style={{ fontFamily: 'Consolas, Monaco, monospace', color: '#38bdf8' }}>
+                    [INFO] {new Date().toLocaleDateString()} — Monitoring session {currentSession ? `"${currentSession.subject_name}"` : 'Idle'}
+                  </div>
+                  {currentSession ? (
+                    currentSessionStudents.length > 0 ? (
+                      getProcessLogs().map((log, i) => {
+                        if (log.type === 'divider') {
+                          return <div key={i} style={{ borderBottom: '1px solid rgba(100, 116, 139, 0.2)', margin: '0.4rem 0' }} />;
+                        }
+
+                        const colorMap = {
+                          info:    '#38bdf8', // cyan
+                          system:  '#f59e0b', // amber
+                          camera:  '#34d399', // emerald
+                          warn:    '#fbbf24', // yellow
+                          ai:      '#a78bfa', // violet
+                          match:   '#22c55e', // green
+                          conf:    '#60a5fa', // blue
+                          attend:  '#4ade80', // bright green
+                          pending: '#94a3b8', // slate
+                          summary: '#e2e8f0', // light
+                        };
+
+                        const tagMatch = log.text.match(/^\[.*?\]\s*(\[.*?\])/);
+                        const tag = tagMatch ? tagMatch[1] : '';
+                        const afterTag = tagMatch ? log.text.slice(log.text.indexOf(tag) + tag.length) : log.text;
+                        const timeMatch = log.text.match(/^\[([\d:]+|--:--:--)\]/);
+                        const timeStr = timeMatch ? timeMatch[1] : null;
+                        const restAfterTime = timeStr ? log.text.slice(log.text.indexOf(']') + 1).trim() : log.text;
+
+                        return (
+                          <div key={i} className="terminal-line log" style={{
+                            fontFamily: 'Consolas, Monaco, monospace',
+                            marginBottom: '0.2rem',
+                            fontSize: '0.78rem',
+                            lineHeight: '1.5',
+                            color: colorMap[log.type] || '#cbd5e1',
+                          }}>
+                            {timeStr && (
+                              <span style={{ color: '#64748b', marginRight: '0.4rem' }}>[{timeStr}]</span>
+                            )}
+                            {tag && (
+                              <span style={{ color: colorMap[log.type] || '#cbd5e1', fontWeight: 700, marginRight: '0.4rem' }}>{tag}</span>
+                            )}
+                            <span style={{ color: log.type === 'attend' || log.type === 'match' ? '#f8fafc' : (colorMap[log.type] || '#cbd5e1') }}>
+                              {timeStr ? afterTag.replace(tag, '').trim() : (tag ? afterTag.trim() : log.text)}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="terminal-line warning" style={{ fontFamily: 'Consolas, Monaco, monospace', color: '#fbbf24' }}>[WARN] No students registered in the group for "{currentSession.subject_name}".</div>
+                    )
+                  ) : (
+                    <div className="terminal-line warning" style={{ fontFamily: 'Consolas, Monaco, monospace', color: '#fbbf24' }}>[WARN] System Idle. Select an active session to begin logging.</div>
+                  )}
+                  <div className="terminal-line cursor">_</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1099,7 +1460,7 @@ const Dashboard = () => {
                   <div key={student.id || `${studentName}-${index}`} className="present-student-item animate-fade-in">
                     <div className={`avatar-ring ring-${['pink', 'green', 'blue', 'yellow'][index % 4]}`}>
                       <img
-                        src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.student_id || student.id}.jpg`}
+                        src={student.image_url || `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/students/${student.student_id || student.id}.jpg`}
                         alt={studentName}
                         onError={(e) => {
                           e.target.onerror = null;
@@ -1129,6 +1490,59 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* FULL SYSTEM TERMINAL MODAL */}
+      {showFullTerminalModal && (
+        <div className="dashboard-modal-overlay animate-fade-in" onClick={() => setShowFullTerminalModal(false)}>
+          <div className="dashboard-modal-container terminal-modal animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="dashboard-modal-header terminal-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span className="terminal-dot red"></span>
+                <span className="terminal-dot yellow"></span>
+                <span className="terminal-dot green"></span>
+                <span className="terminal-title" style={{ marginLeft: '0.5rem', color: '#cbd5e1', fontSize: '1rem', fontWeight: 700, fontFamily: 'Courier New, Courier, monospace' }}>Merge Terminal</span>
+              </div>
+              <button className="dashboard-modal-close" onClick={() => setShowFullTerminalModal(false)} aria-label="Close terminal popup"><X size={16} /></button>
+            </div>
+            <div className="terminal-modal-body" ref={terminalModalBodyRef} onScroll={handleTerminalScroll} style={{ background: '#0f172a', padding: '1.5rem' }}>
+              <div ref={terminalInnerWrapperRef} style={{ 
+                padding: 0, 
+                fontSize: '0.98rem', 
+                lineHeight: '1.6',
+                willChange: 'transform'
+              }}>
+                <div className="terminal-line command" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>$ journalctl -u merge-ai.service -n 50 -f</div>
+                <div className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                  {parseLogLine(`[SYS] Initialize AI Face Recognition Service (Facenet512)...`)}
+                </div>
+                <div className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                  {parseLogLine(`[SYS] Model loaded successfully. Threshold=${aiStatus.details?.confidence_threshold || 0.28}`)}
+                </div>
+                <div className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                  {parseLogLine(`[SYS] Connected to Backend: ${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}`)}
+                </div>
+                <div className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                  {parseLogLine(`[SYS] Active Sessions: ${activeSessions.length} | Cached Students: ${allStudents.length}`)}
+                </div>
+                <div className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                  {parseLogLine(`[SYS] Organization Isolation: ${user?.organization || 'N/A'} (ID: ${user?.organization_slug || user?.organization_id || 'N/A'})`)}
+                </div>
+                
+                {aiConsoleLogs.map((logItem, i) => {
+                  return (
+                    <div key={i} className="terminal-line" style={{ marginBottom: '0.35rem', fontFamily: 'Consolas, Monaco, monospace' }}>
+                      {parseLogLine(logItem.text)}
+                    </div>
+                  );
+                })}
+                <div className="terminal-line cursor">_</div>
+                <div ref={terminalEndRef} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <OnboardingTour
         steps={tourSteps}
         isActive={shouldShowTour}
