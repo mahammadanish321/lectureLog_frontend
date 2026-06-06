@@ -49,7 +49,8 @@
       {
         "provider": "github",
         "owner": "mahammadanish321",
-        "repo": "lectureLog_frontend"
+        "repo": "lectureLog_frontend",
+        "releaseType": "release"
       }
     ],
     "productName": "Merge Admin",
