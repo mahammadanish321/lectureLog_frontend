@@ -892,9 +892,10 @@ const Timetable = () => {
                 <label>Room / Lab (select multiple)</label>
                 <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.5rem' }}>
                   {classrooms.map(c => (
-                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.5rem', cursor: 'pointer', borderRadius: '6px', fontSize: '0.85rem', background: formData.classroom_ids.includes(c.id) ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.5rem', padding: '0.35rem 0.5rem', cursor: 'pointer', borderRadius: '6px', fontSize: '0.85rem', background: formData.classroom_ids.includes(c.id) ? 'rgba(59,130,246,0.08)' : 'transparent', margin: '0 0 4px 0', textTransform: 'none', width: '100%', boxSizing: 'border-box' }}>
                       <input
                         type="checkbox"
+                        style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
                         checked={formData.classroom_ids.includes(c.id)}
                         onChange={(e) => {
                           const ids = e.target.checked
