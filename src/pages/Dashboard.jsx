@@ -204,10 +204,16 @@ const Dashboard = () => {
   const selectedSessionIdRef = useRef(selectedSessionId);
   // Track whether the user has MANUALLY chosen a session — prevents auto-switching on 60s refresh
   const userManuallySelectedRef = useRef(false);
+  // Multi-camera feed selection
+  const [selectedClassroomId, setSelectedClassroomId] = useState(null);
+  const [selectedCameraUrl, setSelectedCameraUrl] = useState(null);
 
   // Keep the ref in sync with the state
   useEffect(() => {
     selectedSessionIdRef.current = selectedSessionId;
+    // Reset camera selections when session changes
+    setSelectedClassroomId(null);
+    setSelectedCameraUrl(null);
   }, [selectedSessionId]);
 
   const logQueueRef = useRef([]);
@@ -1175,9 +1181,63 @@ const Dashboard = () => {
                   {currentSession ? `Feed: ${currentSession.classroom_name}` : 'No active feed'}
                 </p>
               </div>
-              <div className={`status-badge-compact ${currentSession ? (currentSession.status === 'scheduled' ? 'status-processing' : 'status-present') : 'status-processing'}`}>
-                <div className={`dot ${currentSession?.status === 'active' ? 'busy' : ''}`}></div>
-                <span>{currentSession ? (currentSession.status === 'scheduled' ? 'Scheduled' : 'Active') : 'Idle'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {/* Multi-camera dropdowns */}
+                {currentSession && currentSession.status === 'active' && currentSession.classrooms && currentSession.classrooms.length > 0 && (
+                  <>
+                    <select
+                      value={selectedClassroomId || ''}
+                      onChange={(e) => {
+                        const crId = e.target.value ? parseInt(e.target.value) : null;
+                        setSelectedClassroomId(crId);
+                        // Auto-select first camera of the new classroom
+                        if (crId) {
+                          const cr = currentSession.classrooms.find(c => c.id === crId);
+                          const cams = cr?.cameras || [];
+                          setSelectedCameraUrl(cams.length > 0 ? cams[0].camera_url : (cr?.camera_url || null));
+                        } else {
+                          setSelectedCameraUrl(null);
+                        }
+                      }}
+                      style={{
+                        padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '6px',
+                        border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #fff)',
+                        color: 'var(--text-primary, #1e293b)', cursor: 'pointer', minWidth: '120px'
+                      }}
+                    >
+                      <option value="">All Rooms</option>
+                      {currentSession.classrooms.map(cr => (
+                        <option key={cr.id} value={cr.id}>{cr.name}</option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const selCr = selectedClassroomId
+                        ? currentSession.classrooms.find(c => c.id === selectedClassroomId)
+                        : currentSession.classrooms[0];
+                      const cameras = selCr?.cameras || [];
+                      if (cameras.length <= 1) return null;
+                      return (
+                        <select
+                          value={selectedCameraUrl || ''}
+                          onChange={(e) => setSelectedCameraUrl(e.target.value || null)}
+                          style={{
+                            padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '6px',
+                            border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #fff)',
+                            color: 'var(--text-primary, #1e293b)', cursor: 'pointer', minWidth: '120px'
+                          }}
+                        >
+                          {cameras.map((cam, ci) => (
+                            <option key={ci} value={cam.camera_url}>{cam.camera_name || `Camera ${ci + 1}`}</option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </>
+                )}
+                <div className={`status-badge-compact ${currentSession ? (currentSession.status === 'scheduled' ? 'status-processing' : 'status-present') : 'status-processing'}`}>
+                  <div className={`dot ${currentSession?.status === 'active' ? 'busy' : ''}`}></div>
+                  <span>{currentSession ? (currentSession.status === 'scheduled' ? 'Scheduled' : 'Active') : 'Idle'}</span>
+                </div>
               </div>
             </div>
 
@@ -1191,9 +1251,33 @@ const Dashboard = () => {
                 ) : currentSession.status === 'active' ? (
                   <div className={`video-feed-container ${isFullscreen ? 'is-fullscreen' : ''}`} ref={videoContainerRef}>
                     <img
-                      src={aiStatus.online 
-                        ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}` 
-                        : `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}?label=${encodeURIComponent(currentSession.camera_name || '')}`}
+                      src={(() => {
+                        // Determine camera URL for the feed
+                        let feedCameraUrl = selectedCameraUrl;
+                        if (!feedCameraUrl && currentSession.classrooms && currentSession.classrooms.length > 0) {
+                          const firstCr = selectedClassroomId
+                            ? currentSession.classrooms.find(c => c.id === selectedClassroomId)
+                            : currentSession.classrooms[0];
+                          const cams = firstCr?.cameras || [];
+                          feedCameraUrl = cams.length > 0 ? cams[0].camera_url : (firstCr?.camera_url || currentSession.camera_url);
+                        }
+                        if (aiStatus.online) {
+                          return feedCameraUrl
+                            ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}&camera_url=${encodeURIComponent(feedCameraUrl)}`
+                            : `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}`;
+                        }
+                        const fallbackUrl = feedCameraUrl || currentSession.camera_url || '0';
+                        const fallbackName = (() => {
+                          if (selectedCameraUrl && currentSession.classrooms) {
+                            for (const cr of currentSession.classrooms) {
+                              const cam = (cr.cameras || []).find(c => c.camera_url === selectedCameraUrl);
+                              if (cam) return cam.camera_name || '';
+                            }
+                          }
+                          return currentSession.camera_name || '';
+                        })();
+                        return `${CAMERA_BACKEND_URL}/video_feed/${fallbackUrl}?label=${encodeURIComponent(fallbackName)}`;
+                      })()}
                       alt="Live Feed"
                       className="live-video-feed"
                       onError={(e) => {
