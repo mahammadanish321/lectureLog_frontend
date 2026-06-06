@@ -34,7 +34,7 @@ function createWindow() {
   // In development, load from Vite dev server and open DevTools
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools(); 
+    mainWindow.webContents.openDevTools();
   } else {
     // In production, load the built index.html
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
@@ -83,7 +83,7 @@ function startAI() {
   aiStarting = true;
 
   const isPackaged = app.isPackaged;
-  const aiPath = isPackaged 
+  const aiPath = isPackaged
     ? path.join(process.resourcesPath, 'AI', 'main.py')
     : path.resolve(__dirname, '..', 'Merge_AI', 'main.py');
 
@@ -98,9 +98,9 @@ function startAI() {
   console.log(`[ELECTRON] ✅ AI script found at: ${aiPath}`);
   console.log(`[ELECTRON] Starting AI Service...`);
   console.log(`[ELECTRON] ⏳ Please wait ~45s for AI models (DeepFace/TensorFlow) to load...`);
-  
+
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-  
+
   pythonProcess = spawn(pythonCmd, [aiPath], {
     cwd: path.dirname(aiPath),
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
@@ -145,10 +145,10 @@ function startAI() {
         }, 3000);
       } else {
         console.error('[ELECTRON] ❌ Max auto-restart attempts reached. Manual restart required.');
-        notifyRenderer('ai-status-changed', { 
-          online: false, 
-          displayStatus: 'AI Crashed — Manual Restart Required', 
-          isError: true 
+        notifyRenderer('ai-status-changed', {
+          online: false,
+          displayStatus: 'AI Crashed — Manual Restart Required',
+          isError: true
         });
       }
     }
@@ -234,6 +234,7 @@ app.on('ready', () => {
   // AI is NOT started here — it starts only when admin logs in via IPC
 
   if (!isDev) {
+    autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.checkForUpdatesAndNotify();
   }
 });
