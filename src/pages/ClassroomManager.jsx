@@ -22,7 +22,7 @@ const ClassroomManager = () => {
   const [currentEditId, setCurrentEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [formData, setFormData] = useState({ name: '', camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' });
+  const [formData, setFormData] = useState({ name: '', cameras: [{ camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' }] });
 
   // Bulk Spreadsheet State
   const generateNewRow = () => ({ id: Date.now().toString() + Math.random(), name: '', camera_url: '', camera_type: 'webcam', camera_quality: '720p' });
@@ -124,7 +124,14 @@ const ClassroomManager = () => {
   const handleEditClick = (room) => {
     const isManual = room.camera_url?.includes('/') || room.camera_url?.includes(':');
     setUseManualInput(isManual);
-    setFormData({ name: room.name, camera_url: room.camera_url || '', camera_name: room.camera_name || '', camera_type: room.camera_type || 'webcam', camera_quality: room.camera_quality || '720p' });
+    // Build cameras array from room.cameras or legacy single camera
+    let cams = [];
+    if (room.cameras && room.cameras.length > 0) {
+      cams = room.cameras.map(c => ({ camera_url: c.camera_url || '', camera_name: c.camera_name || '', camera_type: c.camera_type || 'webcam', camera_quality: c.camera_quality || '720p' }));
+    } else {
+      cams = [{ camera_url: room.camera_url || '', camera_name: room.camera_name || '', camera_type: room.camera_type || 'webcam', camera_quality: room.camera_quality || '720p' }];
+    }
+    setFormData({ name: room.name, cameras: cams });
     setCurrentEditId(room.id);
     setIsEditMode(true);
     setShowModal(true);
@@ -134,7 +141,7 @@ const ClassroomManager = () => {
     setShowModal(false);
     setIsEditMode(false);
     setCurrentEditId(null);
-    setFormData({ name: '', camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' });
+    setFormData({ name: '', cameras: [{ camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' }] });
     setSuccess(false);
   };
 
@@ -143,9 +150,9 @@ const ClassroomManager = () => {
     setSubmitting(true);
     try {
       if (isEditMode) {
-        await api.put(`/classrooms/${currentEditId}`, formData);
+        await api.put(`/classrooms/${currentEditId}`, { name: formData.name, cameras: formData.cameras, camera_url: formData.cameras[0]?.camera_url, camera_name: formData.cameras[0]?.camera_name, camera_type: formData.cameras[0]?.camera_type, camera_quality: formData.cameras[0]?.camera_quality });
       } else {
-        await api.post('/classrooms', formData);
+        await api.post('/classrooms', { name: formData.name, cameras: formData.cameras, camera_url: formData.cameras[0]?.camera_url, camera_name: formData.cameras[0]?.camera_name, camera_type: formData.cameras[0]?.camera_type, camera_quality: formData.cameras[0]?.camera_quality });
       }
       setSuccess(true);
       setTimeout(() => {
@@ -277,7 +284,7 @@ const ClassroomManager = () => {
           <div className="classroom-data-table-wrapper">
             <table className="classroom-data-table">
               <thead>
-                <tr><th>Room / Lab Name</th><th>Camera Source / CCTV Input</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
+                <tr><th>Room / Lab Name</th><th>Cameras</th>{isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}</tr>
               </thead>
               <tbody>
                 {loading ? (
@@ -291,6 +298,11 @@ const ClassroomManager = () => {
                       <td>
                         <span className="camera-url-text">
                           {(() => {
+                            // Multi-camera: show count + names
+                            if (room.cameras && room.cameras.length > 0) {
+                              const names = room.cameras.map((c, i) => c.camera_name || `Camera ${i+1}`);
+                              return `${names.length} cam${names.length > 1 ? 's' : ''}: ${names.join(', ')}`;
+                            }
                             const rawId = room.camera_url;
                             if (!rawId) return 'No URL configured';
                             if (rawId.includes('/') || rawId.includes(':')) return rawId;
@@ -426,92 +438,87 @@ const ClassroomManager = () => {
 
                 <div className="form-group">
                   <div className="label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ margin: 0 }}>Camera / CCTV Input</label>
-                    <button 
-                      type="button" 
-                      className="text-toggle-btn" 
-                      onClick={() => setUseManualInput(!useManualInput)}
-                      style={{ fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      {useManualInput ? 'Use Hardware List' : 'Enter Manual URL'}
-                    </button>
-                  </div>
-                  
-                  {useManualInput ? (
-                    <input 
-                      type="text" 
-                      placeholder="RTSP, Web Stream URL or Manual ID" 
-                      value={formData.camera_url} 
-                      onChange={e => setFormData({...formData, camera_url: e.target.value})} 
-                      required 
-                    />
-                  ) : (
-                    <select 
-                      value={formData.camera_url} 
-                      onChange={e => {
-                        const selectedId = e.target.value;
-                        const cam = availableCameras.find(c => c.id === selectedId);
-                        setFormData({ ...formData, camera_url: selectedId, camera_name: cam ? cam.name : '' });
-                      }}
-                      required
-                    >
-                      <option value="">Select Connected Camera</option>
-                      {availableCameras.map(cam => (
-                        <option key={cam.id} value={cam.id}>{cam.name}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label>Camera Type</label>
-                  <select
-                    value={formData.camera_type}
-                    onChange={e => setFormData(prev => ({ ...prev, camera_type: e.target.value }))}
-                  >
-                    <option value="webcam">Webcam / USB Camera</option>
-                    <option value="cctv">CCTV (IP / RTSP)</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Camera Quality</label>
-                  <select
-                    value={formData.camera_quality}
-                    onChange={e => setFormData(prev => ({ ...prev, camera_quality: e.target.value }))}
-                  >
-                    <option value="480p">480p (Low)</option>
-                    <option value="720p">720p (Standard)</option>
-                    <option value="1080p">1080p (HD)</option>
-                    <option value="4k">4K (Ultra HD)</option>
-                  </select>
-                </div>
-
-                {formData.camera_url && !useManualInput && (
-                  <div className="camera-preview-box" style={{ marginTop: '1.5rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                    <div style={{ padding: '0.6rem 1rem', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Hardware Preview (Backend Index: {formData.camera_url})</span>
-                      <span style={{ color: '#22c55e' }}>● Live</span>
+                    <label style={{ margin: 0 }}>Cameras ({formData.cameras.length})</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        type="button" 
+                        className="text-toggle-btn" 
+                        onClick={() => setUseManualInput(!useManualInput)}
+                        style={{ fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        {useManualInput ? 'Use Hardware List' : 'Enter Manual URL'}
+                      </button>
                     </div>
-                    <img 
-                      src={`http://localhost:8002/video_feed/${encodeURIComponent(formData.camera_url)}`} 
-                      alt="Hardware Preview" 
-                      style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.style.display = 'none';
-                        const parent = e.target.parentElement;
-                        const msg = document.createElement('div');
-                        msg.style.padding = '2rem';
-                        msg.style.textAlign = 'center';
-                        msg.style.color = '#94a3b8';
-                        msg.style.fontSize = '0.8rem';
-                        msg.innerHTML = "Backend preview unavailable. Please ensure Camera Backend (Port 8002) is running.";
-                        parent.appendChild(msg);
-                      }}
-                    />
                   </div>
-                )}
+
+                  {formData.cameras.map((cam, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', padding: '0.6rem', background: 'rgba(0,0,0,0.02)', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', minWidth: '20px' }}>#{idx+1}</span>
+                      {useManualInput ? (
+                        <input 
+                          type="text" 
+                          placeholder="RTSP, Web Stream URL or Manual ID" 
+                          value={cam.camera_url} 
+                          onChange={e => {
+                            const updated = [...formData.cameras];
+                            updated[idx] = { ...updated[idx], camera_url: e.target.value };
+                            setFormData({ ...formData, cameras: updated });
+                          }}
+                          style={{ flex: 1 }}
+                          required={idx === 0}
+                        />
+                      ) : (
+                        <select 
+                          value={cam.camera_url} 
+                          onChange={e => {
+                            const selectedId = e.target.value;
+                            const found = availableCameras.find(c => c.id === selectedId);
+                            const updated = [...formData.cameras];
+                            updated[idx] = { ...updated[idx], camera_url: selectedId, camera_name: found ? found.name : '' };
+                            setFormData({ ...formData, cameras: updated });
+                          }}
+                          style={{ flex: 1 }}
+                          required={idx === 0}
+                        >
+                          <option value="">Select Camera</option>
+                          {availableCameras.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      )}
+                      <select value={cam.camera_type} onChange={e => {
+                        const updated = [...formData.cameras];
+                        updated[idx] = { ...updated[idx], camera_type: e.target.value };
+                        setFormData({ ...formData, cameras: updated });
+                      }} style={{ width: '110px' }}>
+                        <option value="webcam">Webcam</option>
+                        <option value="cctv">CCTV</option>
+                      </select>
+                      <select value={cam.camera_quality} onChange={e => {
+                        const updated = [...formData.cameras];
+                        updated[idx] = { ...updated[idx], camera_quality: e.target.value };
+                        setFormData({ ...formData, cameras: updated });
+                      }} style={{ width: '80px' }}>
+                        <option value="480p">480p</option>
+                        <option value="720p">720p</option>
+                        <option value="1080p">1080p</option>
+                        <option value="4k">4K</option>
+                      </select>
+                      {formData.cameras.length > 1 && (
+                        <button type="button" onClick={() => {
+                          setFormData({ ...formData, cameras: formData.cameras.filter((_, i) => i !== idx) });
+                        }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }} title="Remove camera">
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => {
+                    setFormData({ ...formData, cameras: [...formData.cameras, { camera_url: '', camera_name: '', camera_type: 'webcam', camera_quality: '720p' }] });
+                  }} style={{ fontSize: '0.75rem', background: 'none', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.4rem 0.8rem', cursor: 'pointer', color: '#64748b', fontWeight: 600, width: '100%', marginTop: '0.25rem' }}>
+                    <Plus size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Add Another Camera
+                  </button>
+                </div>
 
                 <div className="modal-actions-row">
                   <button type="button" className="btn-modal-cancel" onClick={closeModal}>Cancel</button>

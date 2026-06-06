@@ -81,7 +81,7 @@ const Timetable = () => {
   const [selectedStream, setSelectedStream] = useState(user?.stream || 'CSE');
   const [formData, setFormData] = useState({
     subject_id: '', subject_search: '', teacher_id: '', teacher_search: '',
-    classroom_id: '', classroom_search: '', camera_id: '0'
+    classroom_ids: [], classroom_search: '', camera_id: '0'
   });
   const [slotEditModal, setSlotEditModal] = useState({ open: false, slot: null, start: '', end: '' });
 
@@ -482,7 +482,10 @@ const Timetable = () => {
       setFormData({
         subject_id: existing.subject_id, subject_search: existing.subject_name || '',
         teacher_id: existing.teacher_id, teacher_search: existing.teacher_name || '',
-        classroom_id: existing.classroom_id, classroom_search: existing.classroom_name || '',
+        classroom_ids: existing.classrooms && existing.classrooms.length > 0
+          ? existing.classrooms.map(c => c.id || c.classroom_id)
+          : (existing.classroom_id ? [existing.classroom_id] : []),
+        classroom_search: existing.classroom_name || '',
         camera_id: existing.camera_id || '0',
       });
     } else {
@@ -492,7 +495,7 @@ const Timetable = () => {
         subject_id: '', subject_search: '',
         teacher_id: isTeacher ? user.id : '',
         teacher_search: isTeacher ? user.name : '',
-        classroom_id: '', classroom_search: '',
+        classroom_ids: [], classroom_search: '',
         camera_id: '0'
       });
     }
@@ -521,7 +524,7 @@ const Timetable = () => {
 
         await api.post('/sessions/start', {
           subject_id: parseInt(formData.subject_id),
-          classroom_id: parseInt(formData.classroom_id),
+          classroom_id: formData.classroom_ids.length > 0 ? parseInt(formData.classroom_ids[0]) : null,
           teacher_id: parseInt(formData.teacher_id),
           year: selectedYear,
           stream: selectedStream,
@@ -537,7 +540,10 @@ const Timetable = () => {
           year: selectedYear,
           stream: selectedStream,
           week_start: formatISODate(weekStart),
-          ...formData
+          subject_id: formData.subject_id,
+          teacher_id: formData.teacher_id,
+          classroom_ids: formData.classroom_ids.map(id => parseInt(id)),
+          classroom_id: formData.classroom_ids.length > 0 ? parseInt(formData.classroom_ids[0]) : null,
         };
         if (editScheduleId) await api.put(`/schedules/${editScheduleId}`, payload);
         else await api.post('/schedules', payload);
@@ -883,40 +889,42 @@ const Timetable = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Room / Lab</label>
-                <select value={formData.classroom_id} onChange={e => {
-                  const room = classrooms.find(c => c.id.toString() === e.target.value);
-                  setFormData({ ...formData, classroom_id: e.target.value, classroom_search: room?.name || '', camera_id: room?.camera_source || '0' });
-                }} required>
-                  <option value="">Select Room</option>
-                  {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <label>Room / Lab (select multiple)</label>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.5rem' }}>
+                  {classrooms.map(c => (
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.5rem', cursor: 'pointer', borderRadius: '6px', fontSize: '0.85rem', background: formData.classroom_ids.includes(c.id) ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.classroom_ids.includes(c.id)}
+                        onChange={(e) => {
+                          const ids = e.target.checked
+                            ? [...formData.classroom_ids, c.id]
+                            : formData.classroom_ids.filter(id => id !== c.id);
+                          setFormData({ ...formData, classroom_ids: ids, classroom_search: ids.map(id => classrooms.find(cr => cr.id === id)?.name).filter(Boolean).join(', ') });
+                        }}
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+                {formData.classroom_ids.length === 0 && <span style={{ fontSize: '0.7rem', color: '#ef4444' }}>Select at least one room</span>}
               </div>
-              {formData.classroom_id && (
+              {formData.classroom_ids.length > 0 && (
                 <div className="form-group animate-fade-in" style={{ marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800 }}>CAMERA / SENSOR LINK</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(16,89,52,0.03)', borderRadius: '16px', border: '1.5px dashed rgba(16,89,52,0.2)', marginTop: '4px' }}>
-                    <div style={{ width: '32px', height: '32px', background: 'white', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                      <Camera size={16} color="var(--primary)" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
-                        {(() => {
-                          const room = classrooms.find(c => c.id.toString() === formData.classroom_id.toString());
-                          if (!room) return 'Select a classroom';
-                          
-                          // Prioritize the name saved in the database during initialization
-                          if (room.camera_name) return room.camera_name;
-                          
-                          // Fallback to browser detection if database name is missing
-                          const rawId = room.camera_url;
-                          if (!rawId) return 'Hardware Internal';
-                          const cam = availableCams.find(c => c.id === rawId);
-                          return cam ? cam.name : `Camera Index ${rawId}`;
-                        })()}
-                      </span>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--primary)', opacity: 0.8 }}>Auto-detecting frames for AI analysis</span>
-                    </div>
+                  <label style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800 }}>SELECTED ROOMS & CAMERAS</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(16,89,52,0.03)', borderRadius: '12px', border: '1.5px dashed rgba(16,89,52,0.2)', marginTop: '4px' }}>
+                    {formData.classroom_ids.map(id => {
+                      const room = classrooms.find(c => c.id === id);
+                      if (!room) return null;
+                      const camCount = room.cameras ? room.cameras.length : 1;
+                      return (
+                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                          <Camera size={14} color="var(--primary)" />
+                          <span style={{ fontWeight: 600 }}>{room.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>({camCount} camera{camCount > 1 ? 's' : ''})</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
