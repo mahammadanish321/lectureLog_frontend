@@ -307,3 +307,98 @@
     text-align: center;
   }
 }
+
+
+/* Theme Control UI - Safe for Light Mode */
+.theme-toggle-container {
+  display: flex;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 6px;
+  gap: 6px;
+  border: 1px solid #f1f5f9;
+  width: fit-content;
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  color: #1e293b;
+}
+
+.theme-toggle-btn.active {
+  background: #ffffff;
+  color: #105934;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================= */
+/* DARK MODE OVERRIDES (NON-DESTRUCTIVE)     */
+/* ========================================= */
+
+html.dark .identity-card-wrapper {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+html.dark .id-display-name {
+  color: #f8fafc;
+}
+
+html.dark .id-role-badge {
+  background: #022c22;
+  color: #16a34a;
+  border-color: #064e3b;
+}
+
+html.dark .premium-info-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark .premium-info-card:hover {
+  background: #0f172a;
+  border-color: #16a34a;
+}
+
+html.dark .card-icon-box {
+  background: #0f172a;
+  border-color: #334155;
+  color: #16a34a;
+}
+
+html.dark .card-text-box p {
+  color: #f8fafc;
+}
+
+html.dark .identity-footer {
+  background: #1e293b;
+  border-top-color: #334155;
+}
+
+html.dark .theme-toggle-container {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark .theme-toggle-btn.active {
+  background: #0f172a;
+  color: #16a34a;
+}
+
+html.dark .theme-toggle-btn:hover {
+  color: #f8fafc;
+}

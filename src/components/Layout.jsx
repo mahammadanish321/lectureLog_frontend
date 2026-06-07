@@ -243,7 +243,7 @@ const Layout = ({ children }) => {
   if (isAdmin) {
     generalItems.push({ name: 'Subjects', path: '/subjects', icon: BookOpen });
     generalItems.push({ name: 'Classrooms', path: '/classrooms', icon: MonitorPlay });
-    generalItems.push({ name: 'Settings', path: '/settings', icon: ShieldCheck });
+    generalItems.push({ name: 'Settings', path: '/you', icon: ShieldCheck });
   }
   if (isTeacher) generalItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
   if (isTeacher || user?.role === 'student') generalItems.push({ name: 'Profile', path: '/you', icon: User });
@@ -350,7 +350,7 @@ const Layout = ({ children }) => {
                       <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); restartTour(); navigate(user?.role === 'student' ? '/student/dashboard' : '/dashboard'); }}>
                         <Award size={16} /><span>Replay Tour</span>
                       </button>
-                      <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
+                      <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/you'); }}>
                         <ShieldCheck size={16} /><span>Security</span>
                       </button>
                     </div>

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { RegistrationQueueProvider } from './context/RegistrationQueueContext';
+import { ThemeProvider } from './context/ThemeContext';
 import RegistrationQueueUI from './components/RegistrationQueueUI';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -54,8 +55,9 @@ function App() {
   const Router = isElectron ? HashRouter : BrowserRouter;
 
   return (
-    <ToastProvider>
-      <AuthProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
         <RegistrationQueueProvider>
           <Router>
             <NotificationProvider>
@@ -166,10 +168,11 @@ function App() {
             <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </NotificationProvider>
-        </Router>
+          </Router>
         </RegistrationQueueProvider>
       </AuthProvider>
     </ToastProvider>
+    </ThemeProvider>
   );
 }
 

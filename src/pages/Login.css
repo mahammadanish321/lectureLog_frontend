@@ -489,3 +489,95 @@
   color: var(--primary);
   opacity: 1;
 }
+
+
+/* ========================================= */
+/* DARK MODE OVERRIDES (NON-DESTRUCTIVE)     */
+/* ========================================= */
+
+html.dark .login-form-section {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+html.dark .admin-portal-link {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html.dark .admin-portal-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+html.dark .admin-portal-link.active {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+html.dark .mode-toggle-pill {
+  background-color: #1e293b;
+}
+
+html.dark .mode-tab {
+  color: #94a3b8;
+}
+
+html.dark .mode-tab.active {
+  background-color: #334155;
+  color: #16a34a;
+}
+
+html.dark .field-group label {
+  color: #e2e8f0;
+}
+
+html.dark .input-with-icon input {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+html.dark .input-with-icon input:focus {
+  border-color: var(--primary);
+}
+
+html.dark .input-with-icon svg {
+  color: #64748b;
+}
+
+html.dark .remember-me label {
+  color: #cbd5e1;
+}
+
+html.dark .remember-me input[type="checkbox"] {
+  border-color: #475569;
+}
+
+html.dark .error-box {
+  background-color: #450a0a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+html.dark .subtitle {
+  color: #94a3b8;
+}
+
+html.dark .form-footer {
+  color: #94a3b8;
+}
+
+html.dark .feature-card {
+  border-color: #334155;
+}
+
+html.dark .feature-card h3 {
+  color: #f8fafc;
+}
+
+html.dark .feature-card p {
+  color: #94a3b8;
+}

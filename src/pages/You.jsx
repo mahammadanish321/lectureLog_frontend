@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Shield, BookOpen, GraduationCap, Building, Award, Fingerprint, Calendar, Hash } from 'lucide-react';
+import { User, Mail, Shield, BookOpen, GraduationCap, Building, Award, Fingerprint, Calendar, Hash, Sun, Moon, Laptop } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import './You.css';
 
 const You = () => {
   const { user, restartTour } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +165,34 @@ const You = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Theme Settings Section */}
+          <div className="info-group" style={{ marginTop: '2.5rem' }}>
+            <h3 className="info-group-title">APPEARANCE</h3>
+            <div className="theme-toggle-container">
+              <button 
+                className={`theme-toggle-btn ${theme === 'light' ? 'active' : ''}`} 
+                onClick={() => setTheme('light')}
+              >
+                <Sun size={18} />
+                <span>Light</span>
+              </button>
+              <button 
+                className={`theme-toggle-btn ${theme === 'dark' ? 'active' : ''}`} 
+                onClick={() => setTheme('dark')}
+              >
+                <Moon size={18} />
+                <span>Dark</span>
+              </button>
+              <button 
+                className={`theme-toggle-btn ${theme === 'system' ? 'active' : ''}`} 
+                onClick={() => setTheme('system')}
+              >
+                <Laptop size={18} />
+                <span>System</span>
+              </button>
+            </div>
           </div>
           
           <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>

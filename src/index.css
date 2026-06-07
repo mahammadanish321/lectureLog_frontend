@@ -214,3 +214,21 @@ select option {
   font-weight: 600;
   padding: 12px;
 }
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --primary: #16a34a;
+  --primary-foreground: #022c22;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: #334155;
+  --input: #334155;
+  --ring: #16a34a;
+}
