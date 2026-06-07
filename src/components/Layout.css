@@ -952,3 +952,195 @@ body {
 
 
 
+
+
+/* ========================================= */
+/* DARK MODE OVERRIDES (NON-DESTRUCTIVE)     */
+/* ========================================= */
+
+html.dark body,
+html.dark .app-container {
+  background-color: #020617; /* Very dark slate for the backdrop */
+}
+
+html.dark .sidebar,
+html.dark .app-content {
+  background-color: #0f172a; /* Main content bg */
+}
+
+html.dark .sidebar-toggle-btn {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+html.dark .sidebar-toggle-btn:hover {
+  background-color: #334155;
+}
+
+html.dark .nav-item {
+  color: #94a3b8;
+}
+
+html.dark .nav-item:hover {
+  color: var(--primary);
+  background-color: rgba(22, 163, 74, 0.1);
+}
+
+html.dark .nav-item.active {
+  color: var(--primary);
+  background-color: rgba(22, 163, 74, 0.15);
+}
+
+html.dark .nav-item.active::before {
+  background-color: var(--primary);
+}
+
+html.dark .top-navbar-card {
+  background-color: #1e293b;
+}
+
+html.dark .search-wrapper {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+html.dark .search-wrapper input {
+  color: #f8fafc;
+}
+
+html.dark .search-wrapper input::placeholder {
+  color: #64748b;
+}
+
+html.dark .search-hint {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html.dark .circle-btn {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html.dark .circle-btn:hover {
+  background-color: #334155;
+  color: var(--primary);
+}
+
+html.dark .user-profile-widget {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+html.dark .user-profile-widget:hover {
+  background-color: #334155;
+}
+
+html.dark .user-name {
+  color: #f8fafc;
+}
+
+html.dark .user-role {
+  color: #94a3b8;
+}
+
+html.dark .dropdown-menu {
+  background-color: #1e293b;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
+}
+
+html.dark .dropdown-header p {
+  color: #f8fafc;
+}
+
+html.dark .dropdown-header span {
+  color: #94a3b8;
+}
+
+html.dark .dropdown-item {
+  color: #94a3b8;
+}
+
+html.dark .dropdown-item:hover {
+  background-color: #334155;
+  color: var(--primary);
+}
+
+html.dark .dropdown-divider {
+  background-color: #334155;
+}
+
+html.dark .dropdown-item.logout:hover {
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+html.dark .notif-modal {
+  background-color: #1e293b;
+}
+
+html.dark .notif-header {
+  background-color: #0f172a;
+  border-bottom-color: #334155;
+}
+
+html.dark .notif-header h3 {
+  color: #f8fafc;
+}
+
+html.dark .notif-close-btn {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+html.dark .notif-close-btn:hover {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+html.dark .notif-body {
+  background-color: #1e293b;
+}
+
+html.dark .notif-controls {
+  background-color: #0f172a;
+  border-bottom-color: #334155;
+}
+
+html.dark .notif-tab-btn {
+  background-color: #1e293b;
+  color: #94a3b8;
+}
+
+html.dark .notif-tab-btn.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+html.dark .notification-item {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+html.dark .notification-item.unread {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+html.dark .notif-text p {
+  color: #f8fafc;
+}
+
+html.dark .notif-text span {
+  color: #94a3b8;
+}
+
+html.dark .version-pill,
+html.dark .version-dot {
+  background: rgba(248, 250, 252, 0.05);
+  border-color: rgba(248, 250, 252, 0.1);
+}
