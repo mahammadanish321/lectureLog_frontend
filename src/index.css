@@ -300,3 +300,111 @@ html.dark .btn-header-action.active {
   background-color: var(--primary) !important;
   color: white !important;
 }
+
+
+/* ========================================= */
+/* MANAGER & LIST SPECIFIC DARK OVERRIDES    */
+/* ========================================= */
+
+/* Main Table Cards */
+html.dark .student-table-card,
+html.dark .teacher-table-card,
+html.dark .subject-table-card,
+html.dark .classroom-table-card,
+html.dark .timetable-container {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+/* Specific Tables */
+html.dark .student-data-table,
+html.dark .teacher-data-table,
+html.dark .subject-data-table,
+html.dark .classroom-data-table {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark .student-data-table th,
+html.dark .teacher-data-table th,
+html.dark .subject-data-table th,
+html.dark .classroom-data-table th {
+  background: #0f172a !important;
+  border-bottom-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .student-data-table td,
+html.dark .teacher-data-table td,
+html.dark .subject-data-table td,
+html.dark .classroom-data-table td {
+  border-bottom-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .student-data-table tr:hover td,
+html.dark .teacher-data-table tr:hover td,
+html.dark .subject-data-table tr:hover td,
+html.dark .classroom-data-table tr:hover td {
+  background: rgba(51, 65, 85, 0.4) !important;
+}
+
+/* Top Action Bar / Controls */
+html.dark .table-controls,
+html.dark .management-header-row {
+  border-color: #334155 !important;
+}
+
+html.dark .search-box input,
+html.dark .filter-box select {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .search-box input::placeholder {
+  color: #64748b !important;
+}
+
+/* Typography Overrides */
+html.dark .student-name,
+html.dark .teacher-name,
+html.dark .subject-name,
+html.dark .classroom-name {
+  color: #f8fafc !important;
+}
+
+html.dark .student-email,
+html.dark .student-id,
+html.dark .teacher-email,
+html.dark .teacher-department,
+html.dark .subject-code,
+html.dark .classroom-capacity {
+  color: #94a3b8 !important;
+}
+
+html.dark .year-badge,
+html.dark .stream-badge {
+  background: rgba(248, 250, 252, 0.1) !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+/* Action Buttons inside tables */
+html.dark .btn-edit,
+html.dark .btn-delete {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .btn-edit:hover {
+  background: #334155 !important;
+  color: #38bdf8 !important;
+}
+
+html.dark .btn-delete:hover {
+  background: #450a0a !important;
+  color: #f87171 !important;
+  border-color: #7f1d1d !important;
+}
