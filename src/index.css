@@ -232,3 +232,53 @@ select option {
   --input: #334155;
   --ring: #16a34a;
 }
+
+
+/* ========================================= */
+/* GLOBAL DARK MODE OVERRIDES                */
+/* ========================================= */
+
+html.dark .section-card,
+html.dark .card,
+html.dark .modal,
+html.dark .table-container,
+html.dark .form-container,
+html.dark .info-card,
+html.dark .stat-card,
+html.dark .explorer-card,
+html.dark .data-table,
+html.dark .detail-panel,
+html.dark .list-container,
+html.dark .settings-card {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark table th,
+html.dark table td {
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark table th {
+  background-color: #0f172a !important;
+}
+
+html.dark table tr:hover td {
+  background-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+html.dark .text-muted,
+html.dark .subtitle,
+html.dark .help-text {
+  color: #94a3b8 !important;
+}

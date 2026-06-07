@@ -1144,3 +1144,8 @@ html.dark .version-dot {
   background: rgba(248, 250, 252, 0.05);
   border-color: rgba(248, 250, 252, 0.1);
 }
+
+
+html.dark .main-content {
+  background-color: #0f172a !important;
+}

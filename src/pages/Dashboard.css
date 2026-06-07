@@ -1823,3 +1823,90 @@
   color: white !important;
 }
 
+
+
+/* ========================================= */
+/* DARK MODE OVERRIDES                       */
+/* ========================================= */
+
+html.dark .section-card,
+html.dark .analytics-section,
+html.dark .mini-stat-card,
+html.dark .teacher-hero-card,
+html.dark .table-container,
+html.dark .terminal-container {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark h1, 
+html.dark h2, 
+html.dark h3,
+html.dark .context-meta,
+html.dark .context-teacher {
+  color: #f8fafc !important;
+}
+
+html.dark .view-all-btn,
+html.dark .full-terminal-btn,
+html.dark .refresh-btn {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .view-all-btn:hover,
+html.dark .full-terminal-btn:hover,
+html.dark .refresh-btn:hover {
+  background: #334155 !important;
+}
+
+html.dark .active-sessions-infobar {
+  background: rgba(15, 23, 42, 0.4) !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .stats-separator {
+  background-color: #334155 !important;
+}
+
+html.dark .mini-stat-card .value {
+  color: #f8fafc !important;
+}
+
+html.dark .mini-stat-card .label {
+  color: #94a3b8 !important;
+}
+
+html.dark .meta-tag {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .session-mini-card {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: #334155 !important;
+}
+
+html.dark .session-mini-card:hover {
+  background: rgba(51, 65, 85, 0.9) !important;
+}
+
+html.dark .terminal-header {
+  border-bottom-color: #334155 !important;
+}
+
+html.dark .log-entry {
+  color: #94a3b8 !important;
+}
+
+html.dark .log-entry.connect { color: #4ade80 !important; }
+html.dark .log-entry.disconnect { color: #f87171 !important; }
+html.dark .log-entry.warning { color: #facc15 !important; }
+html.dark .log-entry.error { color: #f87171 !important; }
+
+html.dark .dashboard-container {
+  background: transparent !important;
+}

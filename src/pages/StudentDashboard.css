@@ -332,3 +332,70 @@
 
 
 
+
+
+/* ========================================= */
+/* DARK MODE OVERRIDES                       */
+/* ========================================= */
+
+html.dark .section-card,
+html.dark .analytics-section,
+html.dark .mini-stat-card,
+html.dark .student-hero-card,
+html.dark .table-container,
+html.dark .schedule-item {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark h1, 
+html.dark h2, 
+html.dark h3,
+html.dark .context-meta {
+  color: #f8fafc !important;
+}
+
+html.dark .view-all-btn,
+html.dark .refresh-btn {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .view-all-btn:hover,
+html.dark .refresh-btn:hover {
+  background: #334155 !important;
+}
+
+html.dark .active-sessions-infobar {
+  background: rgba(15, 23, 42, 0.4) !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .stats-separator {
+  background-color: #334155 !important;
+}
+
+html.dark .mini-stat-card .value {
+  color: #f8fafc !important;
+}
+
+html.dark .mini-stat-card .label {
+  color: #94a3b8 !important;
+}
+
+html.dark .meta-tag {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .schedule-item {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: #334155 !important;
+}
+
+html.dark .schedule-item:hover {
+  background: rgba(51, 65, 85, 0.9) !important;
+}
