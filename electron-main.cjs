@@ -309,6 +309,16 @@ ipcMain.on('install-update-now', () => {
   autoUpdater.quitAndInstall();
 });
 
+ipcMain.on('set-native-theme', (_event, theme) => {
+  if (!mainWindow) return;
+  const isDark = theme === 'dark';
+  mainWindow.setTitleBarOverlay({
+    color: isDark ? '#0f172a' : '#ffffff', // #0f172a matches our CSS main-content dark bg
+    symbolColor: isDark ? '#f8fafc' : '#105934',
+    height: 40
+  });
+});
+
 app.on('window-all-closed', async () => {
   await killAI();
   if (process.platform !== 'darwin') {

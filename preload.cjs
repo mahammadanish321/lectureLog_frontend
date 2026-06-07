@@ -71,4 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('app-update-error', handler);
   },
   installUpdate: () => ipcRenderer.send('install-update-now'),
+  
+  // ── Native Theme Sync ───────────────────────────────────────
+  setNativeTheme: (theme) => ipcRenderer.send('set-native-theme', theme),
 });

@@ -23,9 +23,15 @@ export function ThemeProvider({ children }) {
         // Only apply 'dark' if it's the system preference. Otherwise leave it clean for Light mode.
         if (systemTheme === 'dark') {
           root.classList.add('dark');
+          if (window.electronAPI?.setNativeTheme) window.electronAPI.setNativeTheme('dark');
+        } else {
+          if (window.electronAPI?.setNativeTheme) window.electronAPI.setNativeTheme('light');
         }
       } else if (currentTheme === 'dark') {
         root.classList.add('dark');
+        if (window.electronAPI?.setNativeTheme) window.electronAPI.setNativeTheme('dark');
+      } else {
+        if (window.electronAPI?.setNativeTheme) window.electronAPI.setNativeTheme('light');
       }
       // If 'light', we don't add any class, keeping the default index.css variables exactly as they are.
     };
