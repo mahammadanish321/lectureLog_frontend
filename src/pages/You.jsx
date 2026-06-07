@@ -147,7 +147,7 @@ const You = () => {
 
         {/* ================== RIGHT COL (INSTITUTIONAL SETTINGS) ================== */}
         <div className="profile-right-col animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="identity-card-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="identity-card-wrapper" style={{ height: 'fit-content', display: 'flex', flexDirection: 'column' }}>
             
             {/* Clean Header instead of Avatar Hero */}
             <div className="institutional-header" style={{ padding: '40px 40px 0', borderBottom: 'none' }}>
