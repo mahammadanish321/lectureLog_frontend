@@ -1,0 +1,199 @@
+.settings-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.settings-header {
+  margin-bottom: 2.5rem;
+}
+
+.settings-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin: 0 0 0.5rem 0;
+}
+
+.settings-header p {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.settings-section {
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.settings-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 0;
+}
+
+.settings-row:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-info h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.settings-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+.settings-action {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Custom Segmented Control for Theme */
+.theme-segmented-control {
+  display: flex;
+  background: var(--secondary);
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.theme-segment-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-segment-btn:hover {
+  color: var(--foreground);
+}
+
+.theme-segment-btn.active {
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom Standard Button */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+html.dark .settings-section {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+html.dark .settings-section-title {
+  border-color: #1e293b;
+}
+
+html.dark .settings-row:not(:last-child) {
+  border-bottom-color: #1e293b;
+}
+
+html.dark .theme-segmented-control {
+  background: #020617;
+  border-color: #1e293b;
+}
+
+html.dark .theme-segment-btn.active {
+  background: #1e293b;
+}
+
+/* Simple Toggle Switch (for future use) */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--secondary);
+  transition: .4s;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}

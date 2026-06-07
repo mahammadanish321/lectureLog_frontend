@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Moon, Laptop, Award, Settings as SettingsIcon } from 'lucide-react';
+import { Sun, Moon, Laptop, Award, Palette, MonitorPlay, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import './You.css'; // Reusing You.css for the premium container styles
+import './Settings.css';
 
 const Settings = () => {
   const { user, restartTour } = useAuth();
@@ -11,99 +11,87 @@ const Settings = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="you-premium-container">
-      <div className="identity-card-wrapper animate-slide-up">
+    <div className="settings-container">
+      <div className="settings-header animate-slide-down">
+        <h1>Settings</h1>
+        <p>Manage your application preferences and appearance.</p>
+      </div>
+
+      <div className="settings-content animate-slide-up">
         
-        {/* Cinematic Header Section */}
-        <div className="identity-hero" style={{ padding: '3rem 2rem', background: 'linear-gradient(to right, #0f172a, #1e293b)' }}>
-          <div className="hero-gradient-overlay"></div>
-          <div className="identity-status-floating">
-            <div className="status-dot-pulse"></div>
-            <span>PREFERENCES</span>
-          </div>
+        {/* Appearance Section */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">
+            <Palette size={20} className="text-primary" /> Appearance
+          </h2>
           
-          <div className="hero-avatar-container">
-            <div className="premium-avatar-ring" style={{ background: 'transparent' }}>
-              <div className="profile-avatar-main" style={{ background: '#105934', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <SettingsIcon size={48} color="#ffffff" />
+          <div className="settings-row">
+            <div className="settings-info">
+              <h4>Theme Preference</h4>
+              <p>Choose how Merge looks on this device.</p>
+            </div>
+            <div className="settings-action">
+              <div className="theme-segmented-control">
+                <button 
+                  className={`theme-segment-btn ${theme === 'light' ? 'active' : ''}`} 
+                  onClick={() => setTheme('light')}
+                >
+                  <Sun size={16} /> Light
+                </button>
+                <button 
+                  className={`theme-segment-btn ${theme === 'dark' ? 'active' : ''}`} 
+                  onClick={() => setTheme('dark')}
+                >
+                  <Moon size={16} /> Dark
+                </button>
+                <button 
+                  className={`theme-segment-btn ${theme === 'system' ? 'active' : ''}`} 
+                  onClick={() => setTheme('system')}
+                >
+                  <Laptop size={16} /> System
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Content Section */}
-        <div className="identity-body">
-          <div className="identity-core-info">
-            <h1 className="id-display-name">Application Settings</h1>
-            <div className="id-role-badge">
-              <span>General Preferences & Appearance</span>
+        {/* General Options Section */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">
+            <MonitorPlay size={20} className="text-primary" /> General Options
+          </h2>
+          
+          <div className="settings-row">
+            <div className="settings-info">
+              <h4>Replay Guided Tour</h4>
+              <p>Launch the interactive tutorial to learn the interface again.</p>
             </div>
-          </div>
-
-          {/* Theme Settings Section */}
-          <div className="info-group" style={{ marginTop: '2.5rem' }}>
-            <h3 className="info-group-title">APPEARANCE</h3>
-            <div className="theme-toggle-container">
-              <button 
-                className={`theme-toggle-btn ${theme === 'light' ? 'active' : ''}`} 
-                onClick={() => setTheme('light')}
+            <div className="settings-action">
+              <button
+                className="settings-btn"
+                onClick={() => {
+                  restartTour();
+                  navigate(user?.role === 'student' ? '/student/dashboard' : '/dashboard');
+                }}
               >
-                <Sun size={18} />
-                <span>Light</span>
-              </button>
-              <button 
-                className={`theme-toggle-btn ${theme === 'dark' ? 'active' : ''}`} 
-                onClick={() => setTheme('dark')}
-              >
-                <Moon size={18} />
-                <span>Dark</span>
-              </button>
-              <button 
-                className={`theme-toggle-btn ${theme === 'system' ? 'active' : ''}`} 
-                onClick={() => setTheme('system')}
-              >
-                <Laptop size={18} />
-                <span>System</span>
+                <Award size={16} /> Replay Tour
               </button>
             </div>
           </div>
           
-          <div style={{ marginTop: '3.5rem', display: 'flex', justifyContent: 'center' }}>
-            <button
-              className="premium-tour-btn"
-              onClick={() => {
-                restartTour();
-                navigate(user?.role === 'student' ? '/student/dashboard' : '/dashboard');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #105934, #15803d)',
-                border: '1px solid rgba(74, 222, 128, 0.2)',
-                color: '#ffffff',
-                fontWeight: '700',
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(16, 89, 52, 0.2)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 89, 52, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 89, 52, 0.2)';
-              }}
-            >
-              <Award size={16} />
-              <span>Replay Guided Tour</span>
-            </button>
+          <div className="settings-row">
+            <div className="settings-info">
+              <h4>Compact Mode</h4>
+              <p>Reduce padding and spacing to fit more content on screen.</p>
+            </div>
+            <div className="settings-action">
+              <label className="toggle-switch">
+                <input type="checkbox" className="toggle-input" />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
           </div>
-        </div>
+        </section>
 
       </div>
     </div>
