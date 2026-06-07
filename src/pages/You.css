@@ -1,404 +1,254 @@
-.you-premium-container {
-  padding: 2.5rem;
-  min-height: calc(100vh - 80px);
+.you-id-container {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: radial-gradient(circle at top right, rgba(16, 89, 52, 0.05), transparent),
-              radial-gradient(circle at bottom left, rgba(16, 89, 52, 0.03), transparent);
+  min-height: calc(100vh - 80px);
+  padding: 4rem 2rem;
+  animation: fadeIn 0.4s ease-out;
 }
 
-.identity-card-wrapper {
+.id-card-wrapper {
+  position: relative;
   width: 100%;
-  max-width: 900px;
-  background: #ffffff;
-  border-radius: 32px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  position: relative;
+  max-width: 420px;
+  margin-top: 40px; /* Space for lanyard */
 }
 
-/* Hero Section */
-.identity-hero {
-  height: 240px;
-  background: linear-gradient(135deg, #0f172a 0%, #105934 100%);
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-}
-
-.hero-gradient-overlay {
+/* The offset dark green card behind */
+.id-card-wrapper::after {
+  content: '';
   position: absolute;
-  inset: 0;
-  background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
-  opacity: 0.1;
-  mix-blend-mode: overlay;
+  top: 15px;
+  left: 15px;
+  right: -15px;
+  bottom: -15px;
+  background-color: #105934;
+  border-radius: 24px;
+  z-index: 0;
 }
 
-.identity-status-floating {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  padding: 8px 16px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.identity-status-floating span {
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.status-dot-pulse {
-  width: 8px;
-  height: 8px;
-  background: #4ade80;
-  border-radius: 50%;
-  box-shadow: 0 0 0 rgba(74, 222, 128, 0.4);
-  animation: pulse-green 2s infinite;
-}
-
-@keyframes pulse-green {
-  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-}
-
-.hero-avatar-container {
+/* The actual white card */
+.id-card-main {
   position: relative;
-  bottom: -60px;
-}
-
-.premium-avatar-ring {
-  padding: 8px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-}
-
-.profile-avatar-main {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #105934, #22c55e);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid #fff;
-}
-
-.profile-avatar-main img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.initials-fallback {
-  font-size: 3rem;
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -2px;
-}
-
-/* Body Section */
-.identity-body {
-  padding: 80px 48px 40px;
-}
-
-.identity-core-info {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.id-display-name {
-  font-size: 2.5rem;
-  font-weight: 900;
-  color: #0f172a;
-  letter-spacing: -0.03em;
-  margin-bottom: 12px;
-}
-
-.id-role-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #f0fdf4;
-  color: #105934;
-  padding: 6px 16px;
-  border-radius: 100px;
-  font-weight: 800;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: 1px solid #dcfce7;
-}
-
-.info-grid-container {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 2.5rem 2rem 2rem 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 40px;
-}
-
-.info-group-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.1em;
-  margin-bottom: 20px;
-  padding-left: 4px;
-  border-left: 4px solid #105934;
-  padding-left: 12px;
-}
-
-.info-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.premium-info-card {
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
-  padding: 20px;
-  border-radius: 20px;
-  display: flex;
   align-items: center;
-  gap: 20px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.premium-info-card:hover {
-  background: #fff;
-  border-color: #105934;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
+/* Dark Mode Overrides */
+html.dark .id-card-wrapper::after {
+  background-color: #15803d;
+}
+html.dark .id-card-main {
+  background-color: #1e293b;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
 }
 
-.card-icon-box {
-  width: 48px;
-  height: 48px;
-  background: #fff;
-  border-radius: 14px;
+/* Lanyard & Clip */
+.lanyard-container {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  pointer-events: none;
+}
+
+.lanyard-strap {
+  width: 30px;
+  height: 80px;
+  background: #111;
+  border-radius: 4px;
+  position: relative;
+}
+/* A simple SVG will be used for the clip in the JSX */
+
+/* Card Hole */
+.id-card-hole {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 12px;
+  background-color: var(--background);
+  border-radius: 10px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 2;
+}
+html.dark .id-card-hole {
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* Avatar */
+.id-avatar-container {
+  margin-top: 1rem;
+  width: 100%;
+  display: flex;
   justify-content: center;
-  color: #105934;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
-  border: 1px solid #f1f5f9;
 }
 
-.card-text-box label {
-  display: block;
-  font-size: 0.65rem;
+.id-avatar {
+  width: 220px;
+  height: 220px;
+  border-radius: 32px;
+  object-fit: cover;
+  background-color: #f1f5f9;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+html.dark .id-avatar {
+  background-color: #334155;
+}
+
+.id-avatar-fallback {
+  width: 220px;
+  height: 220px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #105934, #15803d);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 5rem;
   font-weight: 800;
-  color: #94a3b8;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
 
-.card-text-box p {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #1e293b;
+/* User Identity Info */
+.id-name {
+  margin: 1.5rem 0 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
 }
+html.dark .id-name { color: #f8fafc; }
 
-.card-full-width {
-  grid-column: 1 / -1;
+.id-role {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #105934;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
 }
+html.dark .id-role { color: #4ade80; }
 
-/* Footer Section */
-.identity-footer {
-  background: #f8fafc;
-  padding: 24px 48px;
+/* Details Section */
+.id-details-section {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #f1f5f9;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
-.id-watermark {
+.id-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
+.id-detail-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #94a3b8;
+  gap: 1rem;
+  font-size: 0.95rem;
+  color: #475569;
+  font-weight: 500;
+}
+html.dark .id-detail-item { color: #94a3b8; }
+
+.id-detail-item svg {
+  color: #64748b;
 }
 
-.id-watermark span {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+/* QR Code Section */
+.id-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.id-security-hash {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.75rem;
-  color: #cbd5e1;
+.id-qr-box {
+  width: 80px;
+  height: 80px;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #0f172a;
+}
+html.dark .id-qr-box {
+  background: #cbd5e1;
+  border-color: #94a3b8;
+}
+
+.id-qr-text {
+  font-size: 0.65rem;
   font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-/* Loading & Error States */
-.profile-loading {
-  height: 80vh;
+/* Footer */
+.id-footer {
+  width: 100%;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+html.dark .id-footer {
+  border-top-color: #334155;
+  color: #64748b;
+}
+
+/* Loading/Error States */
+.profile-loading, .profile-error {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #105934;
+  min-height: 50vh;
+  color: var(--foreground);
 }
 
 .profile-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(16, 89, 52, 0.1);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(16, 89, 52, 0.2);
   border-top-color: #105934;
   border-radius: 50%;
-  animation: spin 1s infinite linear;
-  margin-bottom: 20px;
-}
-
-.profile-error {
-  height: 80vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #ef4444;
-  text-align: center;
-  padding: 20px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(30px); }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@media (max-width: 640px) {
-  .you-premium-container {
-    padding: 1rem;
-  }
-  .identity-body {
-    padding: 80px 24px 30px;
-  }
-  .id-display-name {
-    font-size: 1.8rem;
-  }
-  .identity-footer {
-    padding: 20px 24px;
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-}
-
-
-/* Theme Control UI - Safe for Light Mode */
-.theme-toggle-container {
-  display: flex;
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 6px;
-  gap: 6px;
-  border: 1px solid #f1f5f9;
-  width: fit-content;
-}
-
-.theme-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.theme-toggle-btn:hover {
-  color: #1e293b;
-}
-
-.theme-toggle-btn.active {
-  background: #ffffff;
-  color: #105934;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* ========================================= */
-/* DARK MODE OVERRIDES (NON-DESTRUCTIVE)     */
-/* ========================================= */
-
-html.dark .identity-card-wrapper {
-  background: #0f172a;
-  border-color: #1e293b;
-}
-
-html.dark .id-display-name {
-  color: #f8fafc;
-}
-
-html.dark .id-role-badge {
-  background: #022c22;
-  color: #16a34a;
-  border-color: #064e3b;
-}
-
-html.dark .premium-info-card {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-html.dark .premium-info-card:hover {
-  background: #0f172a;
-  border-color: #16a34a;
-}
-
-html.dark .card-icon-box {
-  background: #0f172a;
-  border-color: #334155;
-  color: #16a34a;
-}
-
-html.dark .card-text-box p {
-  color: #f8fafc;
-}
-
-html.dark .identity-footer {
-  background: #1e293b;
-  border-top-color: #334155;
-}
-
-html.dark .theme-toggle-container {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-html.dark .theme-toggle-btn.active {
-  background: #0f172a;
-  color: #16a34a;
-}
-
-html.dark .theme-toggle-btn:hover {
-  color: #f8fafc;
 }

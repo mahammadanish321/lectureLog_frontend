@@ -1,35 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Mail, Shield, BookOpen, GraduationCap, Building, Award, Fingerprint, Calendar, Hash, Sun, Moon, Laptop } from 'lucide-react';
+import { Mail, Phone, Building, Hash, QrCode, Fingerprint, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import './You.css';
 
 const You = () => {
-  const { user, restartTour } = useAuth();
-  const { theme, setTheme } = useTheme();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        setLoading(true);
-        let response;
-        if (user?.role === 'student') {
-          response = await api.get('/students/me');
-        } else if (user?.role === 'teacher') {
-          response = await api.get('/teachers/me');
-        } else {
+        const endpoint = user?.role === 'student' ? '/api/students/profile' : '/api/teachers/profile';
+        const response = await api.get(endpoint);
+        
+        if (user?.role === 'admin' && !response.data) {
+          // Dummy data for admin
           setProfileData({
             name: user?.name || 'Administrator',
-            email: user?.email || 'admin@lecturelog.edu',
-            role: user?.role || 'admin',
-            college_id: 'ADMIN-001'
+            email: user?.email || 'admin@lecturelog.com',
+            role: 'admin',
+            college_id: 'ADMIN-001',
+            phone: '+91 98765 43210' // Placeholder phone
           });
           setLoading(false);
           return;
@@ -58,7 +53,7 @@ const You = () => {
   if (error || !profileData) {
     return (
       <div className="profile-error">
-        <Fingerprint size={48} />
+        <AlertCircle size={48} />
         <h2>Identity Verification Failed</h2>
         <p>{error || 'Access denied to profile services.'}</p>
       </div>
@@ -75,110 +70,88 @@ const You = () => {
     : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/public/teachers/${profileData?.id}.jpg`;
 
   return (
-    <div className="you-premium-container">
-      <div className="identity-card-wrapper animate-slide-up">
+    <div className="you-id-container">
+      <div className="id-card-wrapper">
         
-        {/* Cinematic Header Section */}
-        <div className="identity-hero">
-          <div className="hero-gradient-overlay"></div>
-          <div className="identity-status-floating">
-            <div className="status-dot-pulse"></div>
-            <span>SECURE IDENTITY</span>
-          </div>
-          
-          <div className="hero-avatar-container">
-            <div className="premium-avatar-ring">
-              <div className="profile-avatar-main">
-                {!imageError ? (
-                  <img 
-                    src={imageUrl} 
-                    alt={profileData.name} 
-                    onError={() => setImageError(true)} 
-                  />
-                ) : (
-                  <span className="initials-fallback">{getInitials(profileData.name)}</span>
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Lanyard and Clip Graphic */}
+        <div className="lanyard-container">
+          <div className="lanyard-strap"></div>
+          {/* Custom SVG for the lanyard clip */}
+          <svg width="40" height="60" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginTop: '-4px' }}>
+            {/* Top Connector */}
+            <path d="M10 0 L30 0 L32 10 L8 10 Z" fill="#222" />
+            <path d="M15 10 L25 10 L25 20 L15 20 Z" fill="#333" />
+            {/* Main Clip Body */}
+            <rect x="12" y="20" width="16" height="25" rx="4" fill="#111" />
+            {/* Clip Hook */}
+            <path d="M16 45 C16 55, 24 55, 24 45" stroke="#111" strokeWidth="4" strokeLinecap="round" fill="none" />
+            {/* Hook tip */}
+            <circle cx="24" cy="45" r="3" fill="#111" />
+          </svg>
         </div>
 
-        {/* Content Section */}
-        <div className="identity-body">
-          <div className="identity-core-info">
-            <h1 className="id-display-name">{profileData.name}</h1>
-            <div className="id-role-badge">
-              <Shield size={12} />
-              <span>{profileData.role || user?.role || 'Verified Member'}</span>
-            </div>
-          </div>
+        <div className="id-card-main">
+          {/* Hole punch */}
+          <div className="id-card-hole"></div>
 
-          <div className="info-grid-container">
-            <div className="info-group">
-              <h3 className="info-group-title">PRIMARY CREDENTIALS</h3>
-              <div className="info-card-grid">
-                <div className="premium-info-card">
-                  <div className="card-icon-box"><Mail size={20} /></div>
-                  <div className="card-text-box">
-                    <label>EMAIL ADDRESS</label>
-                    <p>{profileData.email}</p>
-                  </div>
-                </div>
-
-                <div className="premium-info-card">
-                  <div className="card-icon-box"><Hash size={20} /></div>
-                  <div className="card-text-box">
-                    <label>INSTITUTIONAL ID</label>
-                    <p>{profileData.college_id}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {(profileData.role === 'student' || user?.role === 'student') && (
-              <div className="info-group">
-                <h3 className="info-group-title">ACADEMIC PLACEMENT</h3>
-                <div className="info-card-grid">
-                  <div className="premium-info-card">
-                    <div className="card-icon-box"><Calendar size={20} /></div>
-                    <div className="card-text-box">
-                      <label>ACADEMIC YEAR</label>
-                      <p>Year {profileData.year}</p>
-                    </div>
-                  </div>
-
-                  <div className="premium-info-card">
-                    <div className="card-icon-box"><Building size={20} /></div>
-                    <div className="card-text-box">
-                      <label>STREAM / BRANCH</label>
-                      <p>{profileData.stream}</p>
-                    </div>
-                  </div>
-
-                  <div className="premium-info-card card-full-width">
-                    <div className="card-icon-box"><Award size={20} /></div>
-                    <div className="card-text-box">
-                      <label>OFFICIAL ROLL NUMBER</label>
-                      <p>{profileData.roll_number}</p>
-                    </div>
-                  </div>
-                </div>
+          {/* Avatar */}
+          <div className="id-avatar-container">
+            {!imageError ? (
+              <img 
+                src={imageUrl} 
+                alt={profileData.name} 
+                className="id-avatar"
+                onError={() => setImageError(true)} 
+              />
+            ) : (
+              <div className="id-avatar-fallback">
+                {getInitials(profileData.name)}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Card Footer / Decorative */}
-        <div className="identity-footer">
-          <div className="id-watermark">
-            <BookOpen size={14} />
-            <span>LECTURELOG DIGITAL PASSPORT</span>
-          </div>
-          <div className="id-security-hash">
-            {Math.random().toString(16).slice(2, 10).toUpperCase()}—SYSTEM_VERIFIED
-          </div>
-        </div>
+          {/* Name & Role */}
+          <h1 className="id-name">{profileData.name}</h1>
+          <div className="id-role">{profileData.role || user?.role || 'Verified Member'}</div>
 
+          {/* Details & QR */}
+          <div className="id-details-section">
+            <div className="id-details-list">
+              <div className="id-detail-item">
+                <Mail size={16} />
+                <span>{profileData.email}</span>
+              </div>
+              {(profileData.phone || user?.role === 'admin') && (
+                <div className="id-detail-item">
+                  <Phone size={16} />
+                  <span>{profileData.phone || '+91 98765 43210'}</span>
+                </div>
+              )}
+              <div className="id-detail-item">
+                <Building size={16} />
+                <span>{profileData.college_name || 'anishcollege'}</span>
+              </div>
+              <div className="id-detail-item">
+                <Hash size={16} />
+                <span>ID: {profileData.roll_number || profileData.college_id}</span>
+              </div>
+            </div>
+
+            <div className="id-qr-section">
+              <div className="id-qr-box">
+                <QrCode size={40} />
+              </div>
+              <span className="id-qr-text">SCAN TO VERIFY</span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="id-footer">
+            <span>SECURED BY MERGE</span>
+            <Fingerprint size={16} />
+          </div>
+
+        </div>
       </div>
     </div>
   );
