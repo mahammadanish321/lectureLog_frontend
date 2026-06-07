@@ -145,45 +145,18 @@ const You = () => {
           </div>
         </div>
 
-        {/* ================== RIGHT COL (OLD PROFILE LAYOUT) ================== */}
+        {/* ================== RIGHT COL (INSTITUTIONAL SETTINGS) ================== */}
         <div className="profile-right-col animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="identity-card-wrapper">
+          <div className="identity-card-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             
-            {/* Cinematic Header Section */}
-            <div className="identity-hero">
-              <div className="hero-gradient-overlay"></div>
-              <div className="identity-status-floating">
-                <div className="status-dot-pulse"></div>
-                <span>SECURE IDENTITY</span>
-              </div>
-              
-              <div className="hero-avatar-container">
-                <div className="premium-avatar-ring">
-                  <div className="profile-avatar-main">
-                    {!imageError ? (
-                      <img 
-                        src={imageUrl} 
-                        alt={profileData.name} 
-                        onError={() => setImageError(true)} 
-                      />
-                    ) : (
-                      <span className="initials-fallback">{getInitials(profileData.name)}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+            {/* Clean Header instead of Avatar Hero */}
+            <div className="institutional-header" style={{ padding: '40px 40px 0', borderBottom: 'none' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--foreground)', margin: 0 }}>Institutional Details</h2>
+              <p style={{ color: 'var(--muted-foreground)', margin: '5px 0 0 0', fontSize: '0.9rem' }}>Official records and placement information</p>
             </div>
 
             {/* Content Section */}
-            <div className="identity-body">
-              <div className="identity-core-info">
-                <h1 className="id-display-name">{profileData.name}</h1>
-                <div className="id-role-badge">
-                  <Shield size={12} />
-                  <span>{profileData.role || user?.role || 'Verified Member'}</span>
-                </div>
-              </div>
-
+            <div className="identity-body" style={{ padding: '30px 40px 40px', flex: 1 }}>
               <div className="info-grid-container">
                 <div className="info-group">
                   <h3 className="info-group-title">PRIMARY CREDENTIALS</h3>
