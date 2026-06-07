@@ -408,3 +408,36 @@ html.dark .btn-delete:hover {
   color: #f87171 !important;
   border-color: #7f1d1d !important;
 }
+
+
+/* ========================================= */
+/* EXTRA MISSING DARK OVERRIDES              */
+/* ========================================= */
+
+html.dark .management-context-pill {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .management-context-pill .title {
+  color: #f8fafc !important;
+}
+
+html.dark .action-btn-outline {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark .action-btn-outline:hover {
+  background: #334155 !important;
+}
+
+html.dark .search-box {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .search-box input {
+  background: transparent !important;
+}
