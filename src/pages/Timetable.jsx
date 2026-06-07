@@ -898,10 +898,17 @@ const Timetable = () => {
                         style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
                         checked={formData.classroom_ids.includes(c.id)}
                         onChange={(e) => {
-                          const ids = e.target.checked
-                            ? [...formData.classroom_ids, c.id]
-                            : formData.classroom_ids.filter(id => id !== c.id);
-                          setFormData({ ...formData, classroom_ids: ids, classroom_search: ids.map(id => classrooms.find(cr => cr.id === id)?.name).filter(Boolean).join(', ') });
+                          const checked = e.target.checked;
+                          setFormData(prev => {
+                            const newIds = checked 
+                              ? [...prev.classroom_ids, c.id] 
+                              : prev.classroom_ids.filter(id => id !== c.id);
+                            return {
+                              ...prev,
+                              classroom_ids: newIds,
+                              classroom_search: newIds.map(id => classrooms.find(cr => cr.id === id)?.name).filter(Boolean).join(', ')
+                            };
+                          });
                         }}
                       />
                       {c.name}
