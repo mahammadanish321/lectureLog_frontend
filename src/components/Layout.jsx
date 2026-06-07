@@ -29,6 +29,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import './Layout.css';
+import CommandPalette from './CommandPalette';
 
 // ── Sidebar Update Widget ─────────────────────────────────────────
 function SidebarUpdateWidget({ collapsed }) {
@@ -208,6 +209,7 @@ const Layout = ({ children }) => {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [filterTab, setFilterTab] = React.useState('all');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
 
   const filteredNotifs = React.useMemo(() => {
     if (filterTab === 'unread') return notifications.filter(n => !n.is_read);
@@ -311,10 +313,12 @@ const Layout = ({ children }) => {
               <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
                 <Menu size={24} color="var(--primary)" />
               </button>
-              <div className="search-wrapper">
+              <div className="search-wrapper" onClick={() => setIsCommandPaletteOpen(true)} style={{ cursor: 'pointer' }}>
                 <Search size={18} className="search-icon" />
-                <input type="text" placeholder="Search student, session or routine..." className="top-search-input" />
-                <div className="search-hint"><span>⌘ F</span></div>
+                <div className="top-search-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--muted-foreground)', userSelect: 'none' }}>
+                  Search students, sessions, commands...
+                </div>
+                <div className="search-hint"><span>⌘ K</span></div>
               </div>
             </div>
 
@@ -361,6 +365,7 @@ const Layout = ({ children }) => {
           </div>
         </header>
         <div className="content-area">{children}</div>
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       </main>
 
       {showNotifications && (
