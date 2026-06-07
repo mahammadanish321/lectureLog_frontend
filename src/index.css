@@ -497,3 +497,29 @@ html.dark .modal-state-message {
 html.dark .dashboard-modal-overlay {
   background: rgba(2, 6, 23, 0.7) !important;
 }
+
+
+/* ========================================= */
+/* MODAL BODY DARK OVERRIDES                 */
+/* ========================================= */
+
+html.dark .explorer-grid,
+html.dark .present-students-list,
+html.dark .dashboard-modal-body {
+  background: #1e293b !important;
+}
+
+html.dark .present-student-item {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .present-student-item .student-name {
+  color: #f8fafc !important;
+}
+
+html.dark .present-student-item .student-email,
+html.dark .present-student-item .student-id {
+  color: #94a3b8 !important;
+}
