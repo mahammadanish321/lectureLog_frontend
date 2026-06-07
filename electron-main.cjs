@@ -33,7 +33,7 @@ function createWindow() {
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#ffffff',
+      color: '#f1f5f9', // Changed from white to match light mode app backdrop
       symbolColor: '#105934',
       height: 35
     }
@@ -313,9 +313,9 @@ ipcMain.on('set-native-theme', (_event, theme) => {
   if (!mainWindow) return;
   const isDark = theme === 'dark';
   mainWindow.setTitleBarOverlay({
-    color: isDark ? '#0f172a' : '#ffffff', // #0f172a matches our CSS main-content dark bg
+    color: isDark ? '#020617' : '#f1f5f9', // Matches the .app-container backdrop
     symbolColor: isDark ? '#f8fafc' : '#105934',
-    height: 40
+    height: 35
   });
 });
 
