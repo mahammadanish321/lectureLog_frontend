@@ -14,10 +14,7 @@ const You = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const endpoint = user?.role === 'student' ? '/api/students/profile' : '/api/teachers/profile';
-        const response = await api.get(endpoint);
-        
-        if (user?.role === 'admin' && !response.data) {
+        if (user?.role === 'admin') {
           // Dummy data for admin
           setProfileData({
             name: user?.name || 'Administrator',
@@ -29,6 +26,9 @@ const You = () => {
           setLoading(false);
           return;
         }
+
+        const endpoint = user?.role === 'student' ? '/api/students/profile' : '/api/teachers/profile';
+        const response = await api.get(endpoint);
         setProfileData(response.data);
       } catch (err) {
         console.error('Error fetching profile:', err);
