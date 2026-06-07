@@ -282,3 +282,21 @@ html.dark .subtitle,
 html.dark .help-text {
   color: #94a3b8 !important;
 }
+
+
+html.dark .recent-arrivals-section {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .btn-header-action {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .btn-header-action.active {
+  background-color: var(--primary) !important;
+  color: white !important;
+}
