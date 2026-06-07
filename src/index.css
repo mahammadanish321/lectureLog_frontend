@@ -441,3 +441,59 @@ html.dark .search-box {
 html.dark .search-box input {
   background: transparent !important;
 }
+
+
+/* ========================================= */
+/* DASHBOARD MODALS DARK OVERRIDES           */
+/* ========================================= */
+
+html.dark .dashboard-modal-container {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .dashboard-modal-header {
+  border-bottom-color: #334155 !important;
+}
+
+html.dark .dashboard-modal-header h3 {
+  color: #f8fafc !important;
+}
+
+html.dark .dashboard-modal-close {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .dashboard-modal-close:hover {
+  background: #f87171 !important;
+  color: white !important;
+  border-color: #f87171 !important;
+}
+
+html.dark .no-active-sessions {
+  background: transparent !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .explorer-card {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .explorer-card-header .title {
+  color: #f8fafc !important;
+}
+
+html.dark .explorer-card-header p {
+  color: #94a3b8 !important;
+}
+
+html.dark .modal-state-message {
+  color: #f8fafc !important;
+}
+
+html.dark .dashboard-modal-overlay {
+  background: rgba(2, 6, 23, 0.7) !important;
+}
