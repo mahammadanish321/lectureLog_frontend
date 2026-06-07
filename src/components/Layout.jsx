@@ -220,6 +220,18 @@ const Layout = ({ children }) => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Command Palette Keyboard Shortcut
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   const handleLogout = async () => {
