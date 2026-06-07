@@ -22,6 +22,7 @@ import TeacherList from './pages/TeacherList';
 import ClassroomManager from './pages/ClassroomManager';
 import You from './pages/You';
 import GetStarted from './pages/GetStarted';
+import Settings from './pages/Settings';
 // import AppUpdateBanner from './components/AppUpdateBanner';
 import './App.css';
 
@@ -157,15 +158,23 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/you"
-              element={
-                <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
-                  <You />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" />} />
+              <Route
+                path="/you"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
+                    <You />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </NotificationProvider>
           </Router>
