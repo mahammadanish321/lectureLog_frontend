@@ -886,3 +886,109 @@ th.current-time-col .time-header .end {
   50% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); }
   100% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.3); }
 }
+
+
+/* ========================================= */
+/* DARK MODE OVERRIDES                       */
+/* ========================================= */
+
+html.dark .timetable-container {
+  background: transparent !important;
+}
+
+html.dark .timetable-grid-wrapper,
+html.dark .timetable-body {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .day-name {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark .corner-cell {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .cell-day,
+html.dark .cell-slot {
+  border-color: #334155 !important;
+}
+
+html.dark .year-select-dropdown,
+html.dark .btn-control,
+html.dark .btn-edit-mode.off,
+html.dark .attendance-filter-btn {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .btn-control:hover:not(:disabled),
+html.dark .btn-edit-mode.off:hover {
+  background: #334155 !important;
+  color: white !important;
+}
+
+html.dark .legend span {
+  color: #f8fafc !important;
+}
+
+html.dark .modal-content.glass {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .modal-icon-close {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+html.dark .modal-icon-close:hover {
+  background: #f87171 !important;
+  color: white !important;
+}
+
+html.dark .attendance-roster-row {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .form-group select,
+html.dark .form-group input,
+html.dark .form-group textarea {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .empty-slot.is-hovered {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark .control-cluster {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .timetable-header .week-label {
+  color: #f8fafc !important;
+}
+
+html.dark .time-label {
+  color: #f8fafc !important;
+}
+
+html.dark .slot-mgmt-btn.edit {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+html.dark .slot-mgmt-btn.edit:hover {
+  background: #334155 !important;
+  color: white !important;
+}

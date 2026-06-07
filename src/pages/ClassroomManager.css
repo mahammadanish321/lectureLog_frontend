@@ -499,3 +499,112 @@
 .add-row-btn:hover {
   background: #f0fdf4;
 }
+\n
+/* ========================================= */
+/* DARK MODE OVERRIDES                       */
+/* ========================================= */
+
+html.dark .manager-container,
+html.dark .list-container,
+html.dark .content-wrapper,
+html.dark .page-wrapper,
+html.dark .table-container,
+html.dark .students-container {
+  background: transparent !important;
+}
+
+html.dark .action-bar,
+html.dark .toolbar,
+html.dark .filters-row,
+html.dark .search-bar,
+html.dark .search-input-wrapper {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .action-bar input,
+html.dark .toolbar input,
+html.dark .filters-row input,
+html.dark .search-bar input,
+html.dark .filters-row select,
+html.dark .toolbar select {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .data-table,
+html.dark .list-table {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .data-table th,
+html.dark .list-table th {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .data-table td,
+html.dark .list-table td {
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .data-table tr:hover td,
+html.dark .list-table tr:hover td {
+  background: rgba(51, 65, 85, 0.5) !important;
+}
+
+html.dark .pagination,
+html.dark .pagination-controls {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .pagination button,
+html.dark .pagination-controls button,
+html.dark .btn-secondary,
+html.dark .btn-outline {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .pagination button:hover,
+html.dark .pagination-controls button:hover,
+html.dark .btn-secondary:hover,
+html.dark .btn-outline:hover {
+  background: #334155 !important;
+  color: white !important;
+}
+
+html.dark .modal-content,
+html.dark .dialog-content {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark .modal-header,
+html.dark .dialog-header {
+  border-bottom-color: #334155 !important;
+}
+
+html.dark .modal-footer,
+html.dark .dialog-footer {
+  border-top-color: #334155 !important;
+  background: #0f172a !important;
+}
+
+html.dark .form-group label,
+html.dark .form-label {
+  color: #94a3b8 !important;
+}
+
+html.dark .stats-summary {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
