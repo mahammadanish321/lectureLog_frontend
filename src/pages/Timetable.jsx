@@ -524,6 +524,7 @@ const Timetable = () => {
 
         await api.post('/sessions/start', {
           subject_id: parseInt(formData.subject_id),
+          classroom_ids: formData.classroom_ids.map(id => parseInt(id)),
           classroom_id: formData.classroom_ids.length > 0 ? parseInt(formData.classroom_ids[0]) : null,
           teacher_id: parseInt(formData.teacher_id),
           year: selectedYear,
