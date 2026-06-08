@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import './SubjectManager.css'; // Reuse existing styles for grid/cards
+import './Requests.css';
 
 const Requests = () => {
   const { user } = useAuth();
@@ -53,7 +53,7 @@ const Requests = () => {
 
       <div className="sub-mgr-content">
         <h2>Pending Requests ({pendingRequests.length})</h2>
-        <div className="sub-grid" style={{ marginBottom: '2rem' }}>
+        <div className="sub-grid">
           {pendingRequests.map(req => (
             <div key={req.id} className="sub-card">
               <div className="sub-card-header">
@@ -65,14 +65,14 @@ const Requests = () => {
                 <p><strong>Date:</strong> {new Date(req.request_date).toLocaleDateString()}</p>
                 {req.type === 'handover' && <p><strong>To:</strong> {req.target_teacher_name}</p>}
                 <p><strong>Reason:</strong> {req.reason || 'No reason provided'}</p>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                <p className="request-time" style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
                   Requested at: {new Date(req.created_at).toLocaleString()}
                 </p>
               </div>
-              <div className="sub-card-footer" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', marginTop: '1rem' }}>
+              <div className="sub-card-footer">
                 <button
                   className="sub-btn-del"
-                  style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  style={{ background: '#ef4444', color: '#fff' }}
                   onClick={() => handleAction(req.id, 'rejected')}
                   disabled={actionLoading}
                 >
@@ -80,7 +80,7 @@ const Requests = () => {
                 </button>
                 <button
                   className="sub-btn-edit"
-                  style={{ background: '#22c55e', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  style={{ background: '#22c55e', color: '#fff' }}
                   onClick={() => handleAction(req.id, 'approved')}
                   disabled={actionLoading}
                 >
@@ -95,7 +95,7 @@ const Requests = () => {
         <h2>Request History</h2>
         <div className="sub-grid">
           {pastRequests.map(req => (
-            <div key={req.id} className="sub-card" style={{ opacity: 0.8 }}>
+            <div key={req.id} className="sub-card history-card" style={{ opacity: 0.8 }}>
               <div className="sub-card-header">
                 <h3>{req.type === 'cancel' ? 'Cancellation' : 'Handover'} Request</h3>
                 <span className="sub-code" style={{ 
