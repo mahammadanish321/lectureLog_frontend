@@ -83,7 +83,7 @@ const Sessions = () => {
         api.get('/subjects'),
         api.get('/classrooms'),
         api.get('/time_slots'),
-        api.get('/admin/teachers')
+        api.get('/teachers')
       ]);
 
       if (sr.status === 'fulfilled' && sr.value?.data) {
