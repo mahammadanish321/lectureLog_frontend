@@ -8,6 +8,7 @@ import {
   Bell,
   Search,
   ShieldCheck,
+  Settings as SettingsIcon,
   User,
   Clock,
   BookOpen,
@@ -260,7 +261,7 @@ const Layout = ({ children }) => {
   
   // Everyone gets Profile and Settings
   generalItems.push({ name: 'Profile', path: '/you', icon: User });
-  generalItems.push({ name: 'Settings', path: '/settings', icon: ShieldCheck });
+  generalItems.push({ name: 'Settings', path: '/settings', icon: SettingsIcon });
 
   const allItems = [...menuItems, ...generalItems];
 
@@ -365,7 +366,7 @@ const Layout = ({ children }) => {
                         <Award size={16} /><span>Replay Tour</span>
                       </button>
                       <button className="dropdown-item" onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
-                        <ShieldCheck size={16} /><span>Settings & Appearance</span>
+                        <SettingsIcon size={16} /><span>Settings & Appearance</span>
                       </button>
                     </div>
                     <div className="dropdown-divider"></div>
