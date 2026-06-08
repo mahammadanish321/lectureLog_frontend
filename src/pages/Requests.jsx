@@ -57,13 +57,15 @@ const Requests = () => {
           {pendingRequests.map(req => (
             <div key={req.id} className="sub-card">
               <div className="sub-card-header">
-                <h3>{req.type === 'cancel' ? 'Cancellation' : 'Handover'} Request</h3>
+                <h3>{req.request_type === 'cancel' ? 'Cancellation' : 'Handover'} Request</h3>
                 <span className="sub-code" style={{ background: '#fef08a', color: '#854d0e' }}>Pending</span>
               </div>
               <div className="sub-card-body">
-                <p><strong>From:</strong> {req.teacher_name}</p>
+                <p><strong>From:</strong> {req.requester_name}</p>
                 <p><strong>Date:</strong> {new Date(req.request_date).toLocaleDateString()}</p>
-                {req.type === 'handover' && <p><strong>To:</strong> {req.target_teacher_name}</p>}
+                {req.subject_name && <p><strong>Class:</strong> {req.subject_name} {req.classroom_name ? `(${req.classroom_name})` : ''}</p>}
+                {req.start_time && <p><strong>Time:</strong> {req.start_time.substring(0,5)} - {req.end_time.substring(0,5)}</p>}
+                {req.request_type === 'handover' && <p><strong>To:</strong> {req.target_teacher_name}</p>}
                 <p><strong>Reason:</strong> {req.reason || 'No reason provided'}</p>
                 <p className="request-time" style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
                   Requested at: {new Date(req.created_at).toLocaleString()}
@@ -97,7 +99,7 @@ const Requests = () => {
           {pastRequests.map(req => (
             <div key={req.id} className="sub-card history-card" style={{ opacity: 0.8 }}>
               <div className="sub-card-header">
-                <h3>{req.type === 'cancel' ? 'Cancellation' : 'Handover'} Request</h3>
+                <h3>{req.request_type === 'cancel' ? 'Cancellation' : 'Handover'} Request</h3>
                 <span className="sub-code" style={{ 
                   background: req.status === 'approved' ? '#dcfce7' : '#fee2e2', 
                   color: req.status === 'approved' ? '#166534' : '#991b1b' 
@@ -106,9 +108,11 @@ const Requests = () => {
                 </span>
               </div>
               <div className="sub-card-body">
-                <p><strong>From:</strong> {req.teacher_name}</p>
+                <p><strong>From:</strong> {req.requester_name}</p>
                 <p><strong>Date:</strong> {new Date(req.request_date).toLocaleDateString()}</p>
-                {req.type === 'handover' && <p><strong>To:</strong> {req.target_teacher_name}</p>}
+                {req.subject_name && <p><strong>Class:</strong> {req.subject_name} {req.classroom_name ? `(${req.classroom_name})` : ''}</p>}
+                {req.start_time && <p><strong>Time:</strong> {req.start_time.substring(0,5)} - {req.end_time.substring(0,5)}</p>}
+                {req.request_type === 'handover' && <p><strong>To:</strong> {req.target_teacher_name}</p>}
                 <p><strong>Reason:</strong> {req.reason || 'No reason provided'}</p>
               </div>
             </div>
