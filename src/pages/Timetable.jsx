@@ -71,6 +71,7 @@ const Timetable = () => {
   const [classrooms, setClassrooms] = useState([]);
   const [availableCams, setAvailableCams] = useState([]);
   const [studentAttendance, setStudentAttendance] = useState([]);
+  const [notes, setNotes] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [attendanceModal, setAttendanceModal] = useState({ open: false, loading: false, records: [], filter: 'all', title: '' });
@@ -212,18 +213,20 @@ const Timetable = () => {
   const fetchData = async () => {
     try {
       const weekStartParam = formatISODate(weekStart);
-      const [schedRes, sessRes, subRes, teacherRes, classRes] = await Promise.all([
+      const [schedRes, sessRes, subRes, teacherRes, classRes, notesRes] = await Promise.all([
         api.get(`/schedules?year=${selectedYear}&stream=${selectedStream}&week_start=${weekStartParam}`).catch(() => ({ data: [] })),
         api.get(`/sessions?year=${selectedYear}&stream=${selectedStream}&week_start=${weekStartParam}`).catch(() => ({ data: [] })),
         api.get('/subjects').catch(() => ({ data: [] })),
         api.get('/teachers').catch(() => ({ data: [] })),
         api.get('/classrooms').catch(() => ({ data: [] })),
+        api.get('/notes').catch(() => ({ data: [] }))
       ]);
       setSchedules(schedRes.data);
       setActiveSessions(sessRes.data);
       setSubjects(subRes.data);
       setTeachers(teacherRes.data);
       setClassrooms(classRes.data);
+      setNotes(notesRes.data);
 
       if (isStudent) {
         const attRes = await api.get('/students/my-attendance').catch(() => ({ data: [] }));
@@ -772,7 +775,14 @@ const Timetable = () => {
                                         <button className="delete-sched-btn" onClick={e => handleDelete(e, schedule)}><Trash2 size={12} /></button>
                                       )}
                                     </div>
-                                    <span className="teacher"><User size={10} /> {schedule.teacher_name}</span>
+                                    <span className="teacher">
+                                      <User size={10} /> {schedule.teacher_name || 'No Teacher'}
+                                      {(schedule.teacher_id == null || schedule.teacher_is_active === false) && !isPastSlot(day, slot.raw_end) && !schedule.is_cancelled && !schedule.is_deleted_history && (
+                                        <span style={{ marginLeft: '4px', padding: '0.1rem 0.25rem', background: '#fef08a', color: '#854d0e', borderRadius: '3px', fontSize: '0.55rem', fontWeight: 'bold' }}>
+                                          ADD TEACHER
+                                        </span>
+                                      )}
+                                    </span>
                                     <span className="room-camera"><MapPin size={10} /> {schedule.classroom_name}</span>
                                     {(schedule.is_cancelled || schedule.is_deleted_history) && (
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.1rem' }}>
@@ -780,6 +790,19 @@ const Timetable = () => {
                                         {!customSessionsForSlot.length && <span className="free-indicator-mini"><Plus size={10} /> FREE</span>}
                                       </div>
                                     )}
+                                    {(() => {
+                                      const dateStr = formatISODate(getDateForDay(schedule.day_of_week));
+                                      const slotNotes = notes.filter(n => n.schedule_id === schedule.id && String(n.upload_date).startsWith(dateStr));
+                                      return slotNotes.length > 0 ? (
+                                        <div style={{ marginTop: '4px' }}>
+                                          {slotNotes.map(n => (
+                                            <a key={n.id} href={n.file_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#3b82f6', textDecoration: 'none', background: '#eff6ff', padding: '2px 6px', borderRadius: '4px', marginBottom: '2px', marginRight: '2px' }}>
+                                              <BookOpen size={10} /> {n.file_name}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      ) : null;
+                                    })()}
                                     {studentState && !customSessionsForSlot.length && !schedule.is_cancelled && !schedule.is_deleted_history && (
                                       <span className={`student-attendance-chip ${studentState.status}`}>
                                         {studentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
@@ -829,9 +852,28 @@ const Timetable = () => {
                                         }}><Trash2 size={12} /></button>
                                       )}
                                     </div>
-                                    <span className="teacher"><User size={10} /> {customItem.teacher_name || 'Faculty'}</span>
+                                    <span className="teacher">
+                                      <User size={10} /> {customItem.teacher_name || 'Faculty'}
+                                      {(customItem.teacher_id == null || customItem.teacher_is_active === false) && !isPastSlot(day, slot.raw_end) && customItem.status !== 'cancelled' && (
+                                        <span style={{ marginLeft: '4px', padding: '0.1rem 0.25rem', background: '#fef08a', color: '#854d0e', borderRadius: '3px', fontSize: '0.55rem', fontWeight: 'bold' }}>
+                                          ADD TEACHER
+                                        </span>
+                                      )}
+                                    </span>
                                     <span className="room-camera"><MapPin size={10} /> {customItem.classroom_name}</span>
                                     <span className="custom-badge">{customItem.status === 'cancelled' ? 'Cancelled Custom' : customItem.status === 'ended' ? 'Completed Custom' : 'Custom'}</span>
+                                    {(() => {
+                                      const slotNotes = notes.filter(n => n.session_id === customItem.id);
+                                      return slotNotes.length > 0 ? (
+                                        <div style={{ marginTop: '4px' }}>
+                                          {slotNotes.map(n => (
+                                            <a key={n.id} href={n.file_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: '#3b82f6', textDecoration: 'none', background: '#eff6ff', padding: '2px 6px', borderRadius: '4px', marginBottom: '2px', marginRight: '2px' }}>
+                                              <BookOpen size={10} /> {n.file_name}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      ) : null;
+                                    })()}
                                     {itemStudentState && (
                                       <span className={`student-attendance-chip ${itemStudentState.status}`}>
                                         {itemStudentState.status === 'present' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}

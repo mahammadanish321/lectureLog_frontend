@@ -20,6 +20,7 @@ import SubjectManager from './pages/SubjectManager';
 import StudentList from './pages/StudentList';
 import TeacherList from './pages/TeacherList';
 import ClassroomManager from './pages/ClassroomManager';
+import Requests from './pages/Requests';
 import You from './pages/You';
 import GetStarted from './pages/GetStarted';
 import Settings from './pages/Settings';
@@ -143,15 +144,23 @@ function App() {
               }
             />
             <Route
-              path="/classrooms"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <ClassroomManager />
-                </ProtectedRoute>
-              }
-            />
+                path="/classrooms"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <ClassroomManager />
+                  </ProtectedRoute>
+                }
+              />
             <Route
-              path="/routine"
+                path="/requests"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Requests />
+                  </ProtectedRoute>
+                }
+              />
+            <Route
+                path="/routine"
               element={
                 <ProtectedRoute allowedRoles={['teacher', 'admin', 'student']}>
                   <Timetable />

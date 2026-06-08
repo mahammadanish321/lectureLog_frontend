@@ -32,6 +32,7 @@ const Sessions = () => {
   const [teacherSchedules, setTeacherSchedules] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [classrooms, setClassrooms] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -60,15 +61,29 @@ const Sessions = () => {
     loading: false,
     title: '',
     subtitle: '',
+    action: 'cancel', // 'cancel' or 'handover'
+    target_teacher_id: '',
+    reason: '',
+    dateStr: ''
+  });
+
+  const [notesModal, setNotesModal] = useState({
+    open: false,
+    schedule_id: null,
+    session_id: null,
+    dateStr: '',
+    file: null,
+    uploading: false
   });
 
   /* ── fetch ─────────────────────────────────────────── */
   const fetchInitialData = async () => {
     try {
-      const [sr, cr, tr] = await Promise.allSettled([
+      const [sr, cr, tr, te] = await Promise.allSettled([
         api.get('/subjects'),
         api.get('/classrooms'),
-        api.get('/time_slots')
+        api.get('/time_slots'),
+        api.get('/admin/teachers')
       ]);
 
       if (sr.status === 'fulfilled' && sr.value?.data) {
@@ -77,6 +92,9 @@ const Sessions = () => {
       }
       if (cr.status === 'fulfilled' && cr.value?.data) {
         setClassrooms(cr.value.data);
+      }
+      if (te.status === 'fulfilled' && te.value?.data) {
+        setTeachers(te.value.data);
       }
 
       const trData = tr.status === 'fulfilled' ? tr.value?.data : null;
@@ -194,7 +212,7 @@ const Sessions = () => {
     }
   };
 
-  const handleCancelSession = async (id) => {
+  const handleCancelSession = async (id, dateStr) => {
     const session = sessions.find(s => s.id === id);
     if (!session) return;
     const now = new Date();
@@ -211,20 +229,28 @@ const Sessions = () => {
       isCustom: true,
       password: '',
       loading: false,
-      title: 'Cancel Custom Session',
-      subtitle: 'Enter your account password to cancel this custom session:',
+      title: 'Manage Custom Session',
+      subtitle: 'Cancel or Handover this custom session:',
+      action: 'cancel',
+      target_teacher_id: '',
+      reason: '',
+      dateStr: dateStr || new Date().toISOString().split('T')[0]
     });
   };
 
-  const handleCancelRoutine = async (id) => {
+  const handleCancelRoutine = async (id, dateStr) => {
     setPasswordModal({
       open: true,
       id,
       isCustom: false,
       password: '',
       loading: false,
-      title: 'Cancel Routine Class',
-      subtitle: 'Enter your account password to cancel this routine class:',
+      title: 'Manage Routine Class',
+      subtitle: 'Cancel or Handover this routine class:',
+      action: 'cancel',
+      target_teacher_id: '',
+      reason: '',
+      dateStr: dateStr || new Date().toISOString().split('T')[0]
     });
   };
 
@@ -233,18 +259,70 @@ const Sessions = () => {
       alert('Please enter your password.');
       return;
     }
+    if (passwordModal.action === 'handover' && !passwordModal.target_teacher_id) {
+      alert('Please select a teacher to handover to.');
+      return;
+    }
+    
     setPasswordModal((prev) => ({ ...prev, loading: true }));
     try {
-      if (passwordModal.isCustom) {
-        await api.post('/sessions/cancel', { id: passwordModal.id, password: passwordModal.password });
+      if (!isAdmin && passwordModal.action === 'handover') {
+        // Teacher submitting a handover request
+        await api.post('/requests/handover', {
+          schedule_id: !passwordModal.isCustom ? passwordModal.id : null,
+          session_id: passwordModal.isCustom ? passwordModal.id : null,
+          password: passwordModal.password,
+          reason: passwordModal.reason || '',
+          target_teacher_id: passwordModal.target_teacher_id,
+          request_date: [passwordModal.dateStr.split('/')[2], passwordModal.dateStr.split('/')[1], passwordModal.dateStr.split('/')[0]].join('-') // Convert dd/mm/yyyy to yyyy-mm-dd if needed, wait dateStr might be 'dd/mm/yyyy' from sessions
+        });
+        alert('Handover request submitted to Admin for approval.');
+      } else if (!isAdmin && passwordModal.action === 'cancel') {
+        // Teacher submitting a cancel request
+        await api.post('/requests/cancel', {
+          schedule_id: !passwordModal.isCustom ? passwordModal.id : null,
+          session_id: passwordModal.isCustom ? passwordModal.id : null,
+          password: passwordModal.password,
+          reason: passwordModal.reason || '',
+          request_date: passwordModal.dateStr.includes('/') ? [passwordModal.dateStr.split('/')[2], passwordModal.dateStr.split('/')[1], passwordModal.dateStr.split('/')[0]].join('-') : passwordModal.dateStr
+        });
+        alert('Cancellation request submitted to Admin for approval.');
       } else {
-        await api.post(`/schedules/${passwordModal.id}/cancel`, { password: passwordModal.password });
+        // Admin directly overriding
+        if (passwordModal.isCustom) {
+          await api.post('/sessions/cancel', { id: passwordModal.id, password: passwordModal.password });
+        } else {
+          await api.post(`/schedules/${passwordModal.id}/cancel`, { password: passwordModal.password });
+        }
       }
+      
       setPasswordModal((prev) => ({ ...prev, open: false, loading: false }));
       fetchSessions();
     } catch (err) {
-      alert(err.response?.data?.message || 'Cancellation failed');
+      alert(err.response?.data?.message || 'Operation failed');
       setPasswordModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleUploadNotes = async (e) => {
+    e.preventDefault();
+    if (!notesModal.file) return alert('Please select a file');
+    setNotesModal(prev => ({ ...prev, uploading: true }));
+    try {
+      const formData = new FormData();
+      formData.append('file', notesModal.file);
+      if (notesModal.schedule_id) formData.append('schedule_id', notesModal.schedule_id);
+      if (notesModal.session_id) formData.append('session_id', notesModal.session_id);
+      formData.append('upload_date', notesModal.dateStr.includes('/') ? [notesModal.dateStr.split('/')[2], notesModal.dateStr.split('/')[1], notesModal.dateStr.split('/')[0]].join('-') : notesModal.dateStr);
+
+      await api.post('/notes/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      alert('Notes uploaded successfully');
+      setNotesModal({ open: false, schedule_id: null, session_id: null, dateStr: '', file: null, uploading: false });
+    } catch (err) {
+      alert('Upload failed: ' + (err.response?.data?.message || err.message));
+      setNotesModal(prev => ({ ...prev, uploading: false }));
     }
   };
 
@@ -553,24 +631,33 @@ const Sessions = () => {
 
                             {/* Actions */}
                             <div className="sess-actions">
-                              {/* Cancel regular class */}
+                              {/* Manage regular class */}
                               {item.type === 'Regular' && !item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
-                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.scheduleId || item.originalId)}>
-                                  Cancel Class
+                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.scheduleId || item.originalId, item.date)}>
+                                  Manage Class
                                 </button>
                               )}
 
-                              {/* Cancel custom session */}
+                              {/* Manage custom session */}
                               {item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
-                                <button className="act-btn act-red" onClick={() => handleCancelSession(item.originalId)}>
-                                  Cancel Class
+                                <button className="act-btn act-red" onClick={() => handleCancelSession(item.originalId, item.date)}>
+                                  Manage Class
                                 </button>
                               )}
 
-                              {/* Admin delete any session */}
-                              {isAdmin && !item.isCustom && (item.status === 'active' || item.status === 'scheduled') && (
-                                <button className="act-btn act-red" onClick={() => handleCancelRoutine(item.scheduleId || item.originalId)}>
-                                  Cancel
+                              {/* Upload Notes */}
+                              {isTeacher && (item.status === 'ended' || item.status === 'scheduled' || item.status === 'active') && (
+                                <button className="act-btn act-primary" onClick={() => {
+                                  setNotesModal({
+                                    open: true,
+                                    schedule_id: !item.isCustom ? (item.scheduleId || item.originalId) : null,
+                                    session_id: item.isCustom ? item.originalId : null,
+                                    dateStr: item.date,
+                                    file: null,
+                                    uploading: false
+                                  });
+                                }}>
+                                  Upload Notes
                                 </button>
                               )}
 
@@ -775,11 +862,54 @@ const Sessions = () => {
               <button className="modal-close-btn" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))}>×</button>
             </div>
             <div className="sess-modal-form">
+              {!isAdmin && (
+                <>
+                  <div className="form-field">
+                    <label>Action</label>
+                    <select
+                      value={passwordModal.action}
+                      onChange={(e) => setPasswordModal((prev) => ({ ...prev, action: e.target.value }))}
+                      disabled={passwordModal.loading}
+                    >
+                      <option value="cancel">Cancel Class</option>
+                      <option value="handover">Handover Class</option>
+                    </select>
+                  </div>
+
+                  {passwordModal.action === 'handover' && (
+                    <div className="form-field">
+                      <label>Target Teacher</label>
+                      <select
+                        value={passwordModal.target_teacher_id}
+                        onChange={(e) => setPasswordModal((prev) => ({ ...prev, target_teacher_id: e.target.value }))}
+                        disabled={passwordModal.loading}
+                      >
+                        <option value="">Select a teacher...</option>
+                        {teachers.filter(t => t.id !== user.id).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-field">
+                    <label>Reason (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Reason for request..."
+                      value={passwordModal.reason}
+                      onChange={(e) => setPasswordModal((prev) => ({ ...prev, reason: e.target.value }))}
+                      disabled={passwordModal.loading}
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="form-field">
                 <label>Account Password</label>
                 <input
                   type="password"
-                  placeholder="Enter password..."
+                  placeholder="Enter password to confirm..."
                   value={passwordModal.password}
                   onChange={(e) => setPasswordModal((prev) => ({ ...prev, password: e.target.value }))}
                   disabled={passwordModal.loading}
@@ -789,11 +919,44 @@ const Sessions = () => {
               </div>
             </div>
             <div className="modal-footer-btns">
-              <button className="modal-cancel-btn" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))} disabled={passwordModal.loading}>Cancel</button>
+              <button className="modal-cancel-btn" onClick={() => setPasswordModal((prev) => ({ ...prev, open: false }))} disabled={passwordModal.loading}>Close</button>
               <button className="modal-submit-btn" style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.2)' }} onClick={submitCancelSession} disabled={passwordModal.loading}>
-                {passwordModal.loading ? <Loader2 className="animate-spin" size={18} /> : 'Confirm Cancel'}
+                {passwordModal.loading ? <Loader2 className="animate-spin" size={18} /> : (isAdmin ? 'Confirm Cancel' : 'Submit Request')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Notes Modal */}
+      {notesModal.open && (
+        <div className="sess-modal-overlay animate-fade-in" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))}>
+          <div className="sess-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="sess-modal-header">
+              <div>
+                <h2>Upload Class Notes</h2>
+                <p>Upload PDF or image notes for this class.</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))}>×</button>
+            </div>
+            <form onSubmit={handleUploadNotes} className="sess-modal-form">
+              <div className="form-field">
+                <label>Select File</label>
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  onChange={(e) => setNotesModal((prev) => ({ ...prev, file: e.target.files[0] }))}
+                  disabled={notesModal.uploading}
+                  required
+                />
+              </div>
+              <div className="modal-footer-btns">
+                <button type="button" className="modal-cancel-btn" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))} disabled={notesModal.uploading}>Close</button>
+                <button type="submit" className="modal-submit-btn" disabled={notesModal.uploading}>
+                  {notesModal.uploading ? <Loader2 className="animate-spin" size={18} /> : 'Upload'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

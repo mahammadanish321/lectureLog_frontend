@@ -25,7 +25,8 @@ import {
   Download,
   RefreshCw,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -256,6 +257,7 @@ const Layout = ({ children }) => {
   if (isAdmin) {
     generalItems.push({ name: 'Subjects', path: '/subjects', icon: BookOpen });
     generalItems.push({ name: 'Classrooms', path: '/classrooms', icon: MonitorPlay });
+    generalItems.push({ name: 'Requests', path: '/requests', icon: ClipboardList });
   }
   if (isTeacher) generalItems.push({ name: 'Sessions', path: '/sessions', icon: Clock });
   
