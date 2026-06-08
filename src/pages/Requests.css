@@ -1,35 +1,54 @@
 /* Requests.css - Styling for Class Requests Page */
 .sub-mgr-container {
-  padding: 2rem 2.5rem;
-  min-height: 100vh;
+  padding: 0.5rem 1.5rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sub-mgr-header {
-  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  padding: 12px 0 6px 0;
+  position: relative;
 }
 
 .sub-mgr-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1e293b;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #64748b;
   margin: 0;
 }
 
 .sub-mgr-subtitle {
-  color: #64748b;
-  margin-top: 0.5rem;
-  font-size: 0.95rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.sub-mgr-content {
+  background: white;
+  border-radius: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  padding: 2rem;
 }
 
 .sub-mgr-content h2 {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #334155;
-  margin: 2rem 0 1rem 0;
+  color: #64748b;
+  margin: 0 0 1rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
 }
 
 .sub-grid {
@@ -131,7 +150,7 @@
 
 /* Dark mode overrides */
 html.dark .sub-card {
-  background: #1e293b;
+  background: #0f172a;
   border-color: #334155;
 }
 html.dark .sub-mgr-title, html.dark .sub-card-header h3 {
@@ -144,6 +163,10 @@ html.dark .sub-card-body strong {
   color: #f1f5f9;
 }
 html.dark .sub-card-header, html.dark .sub-card-footer, html.dark .sub-mgr-content h2 {
+  border-color: #334155;
+}
+html.dark .sub-mgr-content {
+  background: #1e293b;
   border-color: #334155;
 }
 html.dark .sub-mgr-content h2 {
