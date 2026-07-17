@@ -17,7 +17,7 @@ const RoleIcon = ({ role }) => {
   }
 };
 
-const MessageBubble = ({ msg, isOwnMessage }) => {
+const MessageBubble = ({ msg, isOwnMessage, onDoubleClick }) => {
   const bubbleClass = isOwnMessage
     ? 'message-bubble own-message'
     : `message-bubble ${msg.senderType}-message`;
@@ -60,11 +60,19 @@ const MessageBubble = ({ msg, isOwnMessage }) => {
           </div>
         )}
         
-        <div className={bubbleClass}>
+        <div className={bubbleClass} onDoubleClick={() => onDoubleClick && onDoubleClick(msg)}>
           {msg.isDeleted ? (
             <div className="deleted-message">🚫 This message was deleted</div>
           ) : (
             <div className="message-content">
+              {/* Render Quoted Reply if exists */}
+              {msg.replyTo && (
+                <div className="quoted-message">
+                  <span className="quoted-sender">{msg.replyTo.senderName || 'Someone'}</span>
+                  <p className="quoted-text">{msg.replyTo.content || (msg.replyTo.attachmentUrls?.length ? 'Attachment' : '')}</p>
+                </div>
+              )}
+              
               {msg.content}
               
               {/* Render Multiple Attachments */}
@@ -117,6 +125,7 @@ const Chat = () => {
   const [attachments, setAttachments] = useState([]);
   const [attachmentPreviews, setAttachmentPreviews] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const fileInputRef = useRef(null);
   
   const [socket, setSocket] = useState(null);
@@ -239,12 +248,21 @@ const Chat = () => {
       senderName: user.name, 
       content: textContent || (attachments.length > 0 ? `Shared ${attachments.length} attachment(s)` : ''),
       attachmentUrls: tempPreviews,
+      replyTo: replyingTo ? {
+        _id: replyingTo._id || replyingTo.id,
+        content: replyingTo.content,
+        senderName: replyingTo.senderName || replyingTo.senderType,
+        attachmentUrls: replyingTo.attachmentUrls
+      } : null,
       createdAt: new Date().toISOString(),
       isLocal: true // Mark as optimistic
     };
     
     setMessages(prev => [...prev, localMessage]);
     setNewMessage('');
+    
+    const currentReplyId = replyingTo ? (replyingTo._id || replyingTo.id) : null;
+    setReplyingTo(null);
     
     // Store files locally before clearing state so they can upload in background
     const filesToUpload = [...attachments];
@@ -277,7 +295,8 @@ const Chat = () => {
     socket.emit('send_message', {
       groupId: activeGroup.id,
       content: textContent || (filesToUpload.length > 0 ? `Shared ${filesToUpload.length} attachment(s)` : ''),
-      attachmentUrls: uploadedUrls
+      attachmentUrls: uploadedUrls,
+      replyTo: currentReplyId
     });
   };
   
@@ -370,6 +389,7 @@ const Chat = () => {
                           key={msg._id || msg.id} 
                           msg={msg} 
                           isOwnMessage={msg.senderId === user.id && msg.senderType === user.role} 
+                          onDoubleClick={setReplyingTo}
                         />
                       ))}
                     </React.Fragment>
@@ -380,6 +400,21 @@ const Chat = () => {
             </div>
 
             <div className="chat-input-wrapper">
+              {/* Reply Preview Box */}
+              {replyingTo && (
+                <div className="reply-preview-container animate-fade-in-up">
+                  <div className="reply-preview-content">
+                    <span className="reply-preview-sender">Replying to {replyingTo.senderName || replyingTo.senderType}</span>
+                    <p className="reply-preview-text">
+                      {replyingTo.content || (replyingTo.attachmentUrls?.length ? 'Attachment' : '')}
+                    </p>
+                  </div>
+                  <button type="button" className="close-reply-btn" onClick={() => setReplyingTo(null)}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
               {attachmentPreviews.length > 0 && (
                 <div className="attachment-carousel-container animate-fade-in-up">
                   {attachmentPreviews.map((preview, idx) => (
