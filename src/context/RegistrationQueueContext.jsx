@@ -6,6 +6,7 @@ const RegistrationQueueContext = createContext();
 
 export const RegistrationQueueProvider = ({ children }) => {
   const [queue, setQueue] = useState([]);
+  const [failedTasks, setFailedTasks] = useState([]);
   const [activeTask, setActiveTask] = useState(null);
   const { addToast } = useToast();
   
@@ -22,6 +23,30 @@ export const RegistrationQueueProvider = ({ children }) => {
     setQueue(prev => [...prev, newTask]);
     addToast(`${taskPayload.name} added to registration queue.`, 'info');
   }, [addToast]);
+
+  const retryFailedTask = useCallback((taskId, updatedData) => {
+    setFailedTasks(prev => {
+      const task = prev.find(t => t.id === taskId);
+      if (!task) return prev;
+      
+      const updatedTask = {
+        ...task,
+        data: { ...task.data, ...updatedData },
+        status: 'queued',
+        progress: { current: 0, steps: [], label: 'Waiting...' },
+        error: null // clear error
+      };
+      
+      // Remove from failed and add back to queue
+      setQueue(q => [...q, updatedTask]);
+      return prev.filter(t => t.id !== taskId);
+    });
+    addToast(`Retrying registration for task.`, 'info');
+  }, [addToast]);
+
+  const dismissFailedTask = useCallback((taskId) => {
+    setFailedTasks(prev => prev.filter(t => t.id !== taskId));
+  }, []);
 
   const cancelTask = useCallback((taskId) => {
     cancelSet.current.add(taskId);
@@ -146,6 +171,7 @@ export const RegistrationQueueProvider = ({ children }) => {
         const msg = err.response?.data?.message || err.message;
         updateProgress(0, [], `❌ ${msg}`);
         addToast(`Failed to register ${task.name}: ${msg}`, 'error');
+        setFailedTasks(prev => [...prev, { ...task, error: msg }]);
         await new Promise(r => setTimeout(r, 4000));
       }
     } finally {
@@ -175,7 +201,7 @@ export const RegistrationQueueProvider = ({ children }) => {
   }, [activeTask, queue]);
 
   return (
-    <RegistrationQueueContext.Provider value={{ queue, activeTask, addRegistration, cancelTask, cancelAllTasks }}>
+    <RegistrationQueueContext.Provider value={{ queue, failedTasks, activeTask, addRegistration, cancelTask, cancelAllTasks, retryFailedTask, dismissFailedTask }}>
       {children}
     </RegistrationQueueContext.Provider>
   );
