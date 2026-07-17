@@ -93,6 +93,7 @@ const Login = ({ initialView }) => {
   const [loginMode, setLoginMode] = useState('teacher'); // 'teacher', 'admin', 'student'
   const [view, setView] = useState(initialView || 'login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
   const [organizations, setOrganizations] = useState([]);
+  const [pendingOrganizations, setPendingOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
   const [collegeName, setCollegeName] = useState('');
   const [collegeSlug, setCollegeSlug] = useState('');
@@ -253,13 +254,22 @@ const Login = ({ initialView }) => {
     setError('');
     setLoading(true);
     try {
+      let res;
       if (loginMode === 'teacher') {
-        await login(email, password, 'teacher', selectedOrg);
+        res = await login(email, password, 'teacher', selectedOrg);
       } else if (loginMode === 'admin') {
-        await adminLogin(email, password);
+        res = await adminLogin(email, password);
       } else {
-        await studentLogin(email, password, selectedOrg);
+        res = await studentLogin(email, password, selectedOrg);
       }
+      
+      if (res && res.status === 'select_organization') {
+        setPendingOrganizations(res.organizations);
+        setView('select-org');
+        setLoading(false);
+        return;
+      }
+
       if (loginMode === 'student') {
         navigate('/student/dashboard');
       } else {
@@ -596,6 +606,57 @@ const Login = ({ initialView }) => {
                 </>
               )}
             </form>
+          ) : view === 'select-org' ? (
+            <div className="auth-form">
+              <div className="form-fields">
+                <div className="field-group">
+                  <label>Select Organization</label>
+                  <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>Your email is registered with multiple organizations. Please choose one to continue.</p>
+                  <div className="org-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                    {pendingOrganizations.map(org => (
+                      <div 
+                        key={org.id}
+                        onClick={() => setSelectedOrg(org.id)}
+                        style={{
+                          padding: '1rem',
+                          border: `1.5px solid ${selectedOrg === org.id ? 'var(--primary)' : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          background: selectedOrg === org.id ? '#f0fdf4' : 'white',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: selectedOrg === org.id ? '600' : '500', color: '#1e293b' }}>{org.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{org.slug}</div>
+                        </div>
+                        {selectedOrg === org.id && <CheckCircle2 size={20} color="var(--primary)" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                type="button" 
+                className="submit-btn" 
+                onClick={handleLogin} 
+                disabled={loading || !selectedOrg}
+                style={{ marginTop: '1.5rem' }}
+              >
+                {loading ? <Loader2 className="animate-spin" /> : <span>Continue to Dashboard</span>}
+                {!loading && <ChevronRight size={18} />}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  Back to Login
+                </button>
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleClaimAccount} className="auth-form">
               <div className="form-fields">
