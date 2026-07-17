@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
@@ -24,7 +24,6 @@ const MessageBubble = ({ msg, isOwnMessage }) => {
 
   const senderName = msg.senderName || `${msg.senderType} ${msg.senderId}`;
   
-  // Try to use provided avatar, fallback to student id, or use ui-avatars
   let avatarUrl = msg.senderAvatar;
   if (!avatarUrl && msg.senderType === 'student') {
     avatarUrl = `${BACKEND_URL}/public/students/${msg.senderId}.jpg`;
@@ -33,7 +32,7 @@ const MessageBubble = ({ msg, isOwnMessage }) => {
     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`;
   }
 
-  const isImage = msg.attachmentUrl && msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+  const isLocalMessage = msg.isLocal; // Optimistic UI flag
 
   return (
     <div className={`message-wrapper animate-fade-in-up ${isOwnMessage ? 'align-right' : 'align-left'}`}>
@@ -50,7 +49,7 @@ const MessageBubble = ({ msg, isOwnMessage }) => {
         </div>
       )}
       
-      <div className="message-content-box">
+      <div className={`message-content-box ${isLocalMessage ? 'optimistic-message' : ''}`}>
         {!isOwnMessage && (
           <div className="message-header">
             <span className="sender-name">{senderName}</span>
@@ -67,17 +66,33 @@ const MessageBubble = ({ msg, isOwnMessage }) => {
           ) : (
             <div className="message-content">
               {msg.content}
-              {msg.attachmentUrl && (
-                <div className="message-attachment">
-                  {isImage ? (
-                    <a href={msg.attachmentUrl} target="_blank" rel="noreferrer">
-                      <img src={msg.attachmentUrl} alt="attachment" className="attachment-image" />
-                    </a>
-                  ) : (
-                    <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" className="attachment-file-link">
-                      <FileIcon size={16} /> View Attachment
-                    </a>
-                  )}
+              
+              {/* Render Multiple Attachments */}
+              {msg.attachmentUrls && msg.attachmentUrls.length > 0 && (
+                <div className={`message-attachments-grid ${msg.attachmentUrls.length > 1 ? 'multi-grid' : ''}`}>
+                  {msg.attachmentUrls.map((url, idx) => {
+                    // Quick check if image
+                    const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) || url.includes('cloudinary');
+                    if (isImage) {
+                      return (
+                        <a key={idx} href={url} target="_blank" rel="noreferrer" className="attachment-image-link">
+                          <img src={url} alt="attachment" className="attachment-image" />
+                        </a>
+                      );
+                    }
+                    return (
+                      <a key={idx} href={url} target="_blank" rel="noreferrer" className="attachment-file-link">
+                        <FileIcon size={16} /> File Attachment
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Show Loading state for optimistic UI */}
+              {isLocalMessage && (
+                <div className="optimistic-loading">
+                  <Loader2 size={14} className="spinner" /> Sending...
                 </div>
               )}
             </div>
@@ -99,8 +114,8 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   
-  const [attachment, setAttachment] = useState(null);
-  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentPreviews, setAttachmentPreviews] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   
@@ -108,14 +123,13 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, attachmentPreview]); // also scroll when attachment preview shows up
+  }, [messages, attachmentPreviews]);
 
   // Fetch groups
   useEffect(() => {
@@ -135,11 +149,10 @@ const Chat = () => {
     fetchGroups();
   }, []);
 
-  // Initialize Socket and fetch messages when active group changes
+  // Initialize Socket and fetch messages
   useEffect(() => {
     if (!activeGroup) return;
 
-    // Fetch message history
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/chat/messages/${activeGroup.id}`);
@@ -150,23 +163,22 @@ const Chat = () => {
     };
     fetchMessages();
 
-    // Setup socket
     const token = localStorage.getItem('token');
-    const newSocket = io(`${SOCKET_URL}/chat`, {
-      auth: { token }
-    });
+    const newSocket = io(`${SOCKET_URL}/chat`, { auth: { token } });
 
     newSocket.on('connect', () => {
       console.log('Connected to Chat Socket');
-      newSocket.emit('join_group', activeGroup.id, (response) => {
-        if (response?.error) {
-          console.error('Failed to join group:', response.error);
-        }
-      });
+      newSocket.emit('join_group', activeGroup.id);
     });
 
     newSocket.on('receive_message', (message) => {
-      setMessages((prev) => [...prev, message]);
+      // Replace optimistic message if it exists
+      setMessages((prev) => {
+        // Find if we have a local ghost message from this user with similar content/time
+        // For simplicity, just remove any local message that was sent within the last few seconds
+        const filtered = prev.filter(m => !(m.isLocal && m.senderId === user.id && m.content === message.content));
+        return [...filtered, message];
+      });
     });
 
     setSocket(newSocket);
@@ -175,71 +187,105 @@ const Chat = () => {
       newSocket.emit('leave_group', activeGroup.id);
       newSocket.disconnect();
     };
-  }, [activeGroup]);
+  }, [activeGroup, user.id]);
 
-  // Handle file selection
+  // Handle file selection (Multiple files)
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAttachment(file);
-      // Create preview
-      if (file.type.startsWith('image/')) {
-        setAttachmentPreview({ type: 'image', url: URL.createObjectURL(file), name: file.name });
-      } else {
-        setAttachmentPreview({ type: 'file', url: null, name: file.name });
-      }
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setAttachments(prev => [...prev, ...files]);
+      
+      const newPreviews = files.map(file => {
+        if (file.type.startsWith('image/')) {
+          return { id: Math.random(), type: 'image', url: URL.createObjectURL(file), name: file.name };
+        } else {
+          return { id: Math.random(), type: 'file', url: null, name: file.name };
+        }
+      });
+      setAttachmentPreviews(prev => [...prev, ...newPreviews]);
     }
   };
 
-  const clearAttachment = () => {
-    setAttachment(null);
-    if (attachmentPreview?.url) URL.revokeObjectURL(attachmentPreview.url);
-    setAttachmentPreview(null);
+  const removeAttachment = (indexToRemove) => {
+    setAttachments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setAttachmentPreviews(prev => {
+      const preview = prev[indexToRemove];
+      if (preview && preview.url) URL.revokeObjectURL(preview.url);
+      return prev.filter((_, idx) => idx !== indexToRemove);
+    });
+  };
+
+  const clearAllAttachments = () => {
+    setAttachments([]);
+    attachmentPreviews.forEach(p => p.url && URL.revokeObjectURL(p.url));
+    setAttachmentPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((!newMessage.trim() && !attachment) || !socket || !activeGroup || isUploading) return;
+    if ((!newMessage.trim() && attachments.length === 0) || !socket || !activeGroup || isUploading) return;
 
-    let uploadedUrl = null;
+    // Optimistic UI updates
+    const textContent = newMessage.trim();
+    const tempPreviews = attachmentPreviews.map(p => p.url || ''); 
+    
+    // Create a local ghost message instantly
+    const localMessage = {
+      id: `local-${Date.now()}`,
+      groupId: activeGroup.id,
+      senderId: user.id,
+      senderType: user.role,
+      senderName: user.name, 
+      content: textContent || (attachments.length > 0 ? `Shared ${attachments.length} attachment(s)` : ''),
+      attachmentUrls: tempPreviews,
+      createdAt: new Date().toISOString(),
+      isLocal: true // Mark as optimistic
+    };
+    
+    setMessages(prev => [...prev, localMessage]);
+    setNewMessage('');
+    
+    // Store files locally before clearing state so they can upload in background
+    const filesToUpload = [...attachments];
+    clearAllAttachments();
+    
+    let uploadedUrls = [];
 
-    if (attachment) {
+    // Background upload
+    if (filesToUpload.length > 0) {
       setIsUploading(true);
       const formData = new FormData();
-      formData.append('attachment', attachment);
+      filesToUpload.forEach(file => formData.append('attachments', file));
+      
       try {
         const res = await api.post('/chat/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        uploadedUrl = res.data.url;
+        uploadedUrls = res.data.urls || [];
       } catch (err) {
         console.error('Upload failed:', err);
+        // Remove optimistic message if upload fails completely
+        setMessages(prev => prev.filter(m => m.id !== localMessage.id));
         setIsUploading(false);
-        return; // Stop if upload fails
+        return; 
       }
       setIsUploading(false);
     }
 
+    // Emit socket event with final URLs
     socket.emit('send_message', {
       groupId: activeGroup.id,
-      content: newMessage.trim() || (attachment ? 'Shared an attachment' : ''),
-      attachmentUrl: uploadedUrl
+      content: textContent || (filesToUpload.length > 0 ? `Shared ${filesToUpload.length} attachment(s)` : ''),
+      attachmentUrls: uploadedUrls
     });
-
-    setNewMessage('');
-    clearAttachment();
   };
   
-  // Helper to group messages by date
   const groupMessagesByDate = (msgs) => {
     const groups = {};
     msgs.forEach((msg) => {
       const dateStr = new Date(msg.createdAt).toLocaleDateString(undefined, { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+        weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' 
       });
       if (!groups[dateStr]) groups[dateStr] = [];
       groups[dateStr].push(msg);
@@ -334,19 +380,23 @@ const Chat = () => {
             </div>
 
             <div className="chat-input-wrapper">
-              {attachmentPreview && (
-                <div className="attachment-preview-container animate-fade-in-up">
-                  <button type="button" className="close-preview-btn" onClick={clearAttachment}>
-                    <X size={16} />
-                  </button>
-                  {attachmentPreview.type === 'image' ? (
-                    <img src={attachmentPreview.url} alt="preview" className="preview-image" />
-                  ) : (
-                    <div className="preview-file">
-                      <FileIcon size={32} className="file-icon" />
-                      <span className="file-name">{attachmentPreview.name}</span>
+              {attachmentPreviews.length > 0 && (
+                <div className="attachment-carousel-container animate-fade-in-up">
+                  {attachmentPreviews.map((preview, idx) => (
+                    <div key={preview.id} className="preview-card">
+                      <button type="button" className="close-preview-btn" onClick={() => removeAttachment(idx)}>
+                        <X size={12} />
+                      </button>
+                      {preview.type === 'image' ? (
+                        <img src={preview.url} alt="preview" className="preview-image" />
+                      ) : (
+                        <div className="preview-file">
+                          <FileIcon size={24} className="file-icon" />
+                          <span className="file-name">{preview.name}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -356,13 +406,13 @@ const Chat = () => {
                   ref={fileInputRef} 
                   style={{ display: 'none' }} 
                   onChange={handleFileChange} 
+                  multiple
                 />
                 <button 
                   type="button" 
                   className="attach-btn" 
                   title="Attach file"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
                 >
                   <Paperclip size={20} />
                 </button>
@@ -371,14 +421,13 @@ const Chat = () => {
                   placeholder="Type your message..." 
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  disabled={isUploading}
                 />
                 <button 
                   type="submit" 
-                  className={`send-btn ${(newMessage.trim() || attachment) && !isUploading ? 'active' : ''}`} 
-                  disabled={(!newMessage.trim() && !attachment) || isUploading}
+                  className={`send-btn ${(newMessage.trim() || attachments.length > 0) ? 'active' : ''}`} 
+                  disabled={!newMessage.trim() && attachments.length === 0}
                 >
-                  {isUploading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
+                  <Send size={18} />
                 </button>
               </form>
             </div>
