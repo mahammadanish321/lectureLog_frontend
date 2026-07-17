@@ -26,7 +26,10 @@ import {
   RefreshCw,
   AlertTriangle,
   Loader2,
-  ClipboardList
+  ClipboardList,
+  CreditCard,
+  Crown,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -248,6 +251,7 @@ const Layout = ({ children }) => {
   const menuItems = [
     { name: 'Dashboard', path: user?.role === 'student' ? '/student/dashboard' : '/dashboard', icon: LayoutDashboard },
     { name: 'Routine', path: '/routine', icon: Calendar },
+    { name: 'Nodes', path: '/chat', icon: MessageSquare },
   ];
 
   if (isAdmin || isTeacher) menuItems.push({ name: 'Students', path: '/students', icon: Users });
