@@ -201,6 +201,8 @@ const Dashboard = () => {
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [aiStatus, setAiStatus] = useState({ online: false, displayStatus: 'Connecting...', isError: false });
+  const [aiFeedError, setAiFeedError] = useState(false); // Track if AI stream broke to prevent infinite blinking
+  
   const selectedSessionIdRef = useRef(selectedSessionId);
   // Track whether the user has MANUALLY chosen a session — prevents auto-switching on 60s refresh
   const userManuallySelectedRef = useRef(false);
@@ -214,6 +216,7 @@ const Dashboard = () => {
     // Reset camera selections when session changes
     setSelectedClassroomId(null);
     setSelectedCameraUrl(null);
+    setAiFeedError(false); // Reset error state for new sessions
   }, [selectedSessionId]);
 
   const logQueueRef = useRef([]);
@@ -1261,11 +1264,7 @@ const Dashboard = () => {
                           const cams = firstCr?.cameras || [];
                           feedCameraUrl = cams.length > 0 ? cams[0].camera_url : (firstCr?.camera_url || currentSession.camera_url);
                         }
-                        if (aiStatus.online) {
-                          return feedCameraUrl
-                            ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}&camera_url=${encodeURIComponent(feedCameraUrl)}`
-                            : `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}`;
-                        }
+                        
                         const fallbackUrl = feedCameraUrl || currentSession.camera_url || '0';
                         const fallbackName = (() => {
                           if (selectedCameraUrl && currentSession.classrooms) {
@@ -1276,7 +1275,16 @@ const Dashboard = () => {
                           }
                           return currentSession.camera_name || '';
                         })();
-                        return `${CAMERA_BACKEND_URL}/video_feed/${fallbackUrl}?label=${encodeURIComponent(fallbackName)}`;
+                        const rawUrl = `${CAMERA_BACKEND_URL}/video_feed/${fallbackUrl}?label=${encodeURIComponent(fallbackName)}`;
+
+                        // If AI is online and hasn't failed, use AI stream
+                        if (aiStatus.online && !aiFeedError) {
+                          return feedCameraUrl
+                            ? `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}&camera_url=${encodeURIComponent(feedCameraUrl)}`
+                            : `${AI_SERVICE_URL}/video_feed?v=${currentSession.id}`;
+                        }
+                        
+                        return rawUrl;
                       })()}
                       alt="Live Feed"
                       className="live-video-feed"
@@ -1284,8 +1292,8 @@ const Dashboard = () => {
                         const rawUrl = `${CAMERA_BACKEND_URL}/video_feed/${currentSession.camera_url || '0'}?label=${encodeURIComponent(currentSession.camera_name || '')}`;
                         if (e.target.src !== rawUrl) {
                            console.warn("AI Stream failed, falling back to Raw Feed");
+                           setAiFeedError(true);
                            e.target.src = rawUrl;
-                           setAiStatus(prev => ({ ...prev, online: false, displayStatus: 'AI Service Error (Using Raw Feed)', isError: true }));
                         }
                       }}
                     />
