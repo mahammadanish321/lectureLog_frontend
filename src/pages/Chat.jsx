@@ -5,8 +5,8 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const RoleIcon = ({ role }) => {
   switch (role) {
