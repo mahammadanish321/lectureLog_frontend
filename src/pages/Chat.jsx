@@ -1,39 +1,81 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const RoleIcon = ({ role }) => {
+  switch (role) {
+    case 'admin': return <Shield size={12} />;
+    case 'teacher': return <GraduationCap size={12} />;
+    case 'student': return <Users size={12} />;
+    default: return null;
+  }
+};
 
 const MessageBubble = ({ msg, isOwnMessage }) => {
   const bubbleClass = isOwnMessage
     ? 'message-bubble own-message'
-    : msg.senderType === 'student'
-    ? 'message-bubble student-message'
-    : 'message-bubble staff-message';
+    : `message-bubble ${msg.senderType}-message`;
+
+  const senderName = msg.senderName || `${msg.senderType} ${msg.senderId}`;
+  
+  // Try to use provided avatar, fallback to student id, or use ui-avatars
+  let avatarUrl = msg.senderAvatar;
+  if (!avatarUrl && msg.senderType === 'student') {
+    avatarUrl = `${BACKEND_URL}/public/students/${msg.senderId}.jpg`;
+  }
+  if (!avatarUrl) {
+    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`;
+  }
 
   return (
-    <div className={`message-wrapper ${isOwnMessage ? 'align-right' : 'align-left'}`}>
-      <div className={bubbleClass}>
+    <div className={`message-wrapper animate-fade-in-up ${isOwnMessage ? 'align-right' : 'align-left'}`}>
+      {!isOwnMessage && (
+        <div className="message-avatar">
+          <img 
+            src={avatarUrl} 
+            alt={senderName} 
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`;
+            }}
+          />
+        </div>
+      )}
+      
+      <div className="message-content-box">
         {!isOwnMessage && (
           <div className="message-header">
-            <span className="sender-name">{msg.senderType} {msg.senderId}</span>
-            <span className={`role-badge ${msg.senderType}`}>{msg.senderType}</span>
+            <span className="sender-name">{senderName}</span>
+            <span className={`role-badge ${msg.senderType}`}>
+              <RoleIcon role={msg.senderType} />
+              {msg.senderType}
+            </span>
           </div>
         )}
-        {msg.isDeleted ? (
-          <div className="deleted-message">🚫 This message was deleted</div>
-        ) : (
-          <div className="message-content">
-            {msg.content}
-            {msg.attachmentUrl && (
-              <div className="message-attachment">
-                <a href={msg.attachmentUrl} target="_blank" rel="noreferrer">View Attachment</a>
-              </div>
-            )}
-          </div>
-        )}
+        
+        <div className={bubbleClass}>
+          {msg.isDeleted ? (
+            <div className="deleted-message">🚫 This message was deleted</div>
+          ) : (
+            <div className="message-content">
+              {msg.content}
+              {msg.attachmentUrl && (
+                <div className="message-attachment">
+                  <a href={msg.attachmentUrl} target="_blank" rel="noreferrer">
+                    <Paperclip size={14} /> View Attachment
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
         <div className="message-footer">
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
@@ -103,7 +145,7 @@ const Chat = () => {
     newSocket.on('connect', () => {
       console.log('Connected to Chat Socket');
       newSocket.emit('join_group', activeGroup.id, (response) => {
-        if (response.error) {
+        if (response?.error) {
           console.error('Failed to join group:', response.error);
         }
       });
@@ -133,13 +175,23 @@ const Chat = () => {
     setNewMessage('');
   };
 
-  if (loading) return <div className="chat-loading">Loading Groups...</div>;
+  if (loading) {
+    return (
+      <div className="chat-loading-screen">
+        <Loader2 className="spinner" size={40} />
+        <p>Loading Nodes...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="chat-layout">
+    <div className="chat-layout premium-glass">
       {/* Sidebar */}
       <div className="chat-sidebar">
-        <h2 className="sidebar-title">Nodes</h2>
+        <div className="sidebar-header">
+          <MessageSquare size={20} className="sidebar-icon" />
+          <h2 className="sidebar-title">Nodes</h2>
+        </div>
         <div className="group-list">
           {groups.length === 0 ? (
             <div className="no-groups">No nodes available.</div>
@@ -150,8 +202,13 @@ const Chat = () => {
                 className={`group-item ${activeGroup?.id === group.id ? 'active' : ''}`}
                 onClick={() => setActiveGroup(group)}
               >
-                <div className="group-name">{group.name}</div>
-                <div className="group-meta">Yr {group.year} • {group.stream}</div>
+                <div className="group-avatar">
+                  {group.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="group-info">
+                  <div className="group-name">{group.name}</div>
+                  <div className="group-meta">Year {group.year} • {group.stream}</div>
+                </div>
               </div>
             ))
           )}
@@ -162,7 +219,10 @@ const Chat = () => {
       <div className="chat-main">
         {activeGroup ? (
           <>
-            <div className="chat-header">
+            <div className="chat-header glass-header">
+              <div className="header-avatar">
+                {activeGroup.name.charAt(0).toUpperCase()}
+              </div>
               <div className="header-info">
                 <h3>{activeGroup.name}</h3>
                 <span>Year {activeGroup.year} • {activeGroup.stream}</span>
@@ -171,33 +231,53 @@ const Chat = () => {
 
             <div className="chat-messages">
               {messages.length === 0 ? (
-                <div className="no-messages">Start the conversation!</div>
+                <div className="empty-chat-state">
+                  <div className="empty-icon">
+                    <MessageSquare size={48} />
+                  </div>
+                  <h3>Welcome to the {activeGroup.name} Node</h3>
+                  <p>Start the conversation! Messages sent here will be visible to all members of this node.</p>
+                </div>
               ) : (
-                messages.map((msg) => (
-                  <MessageBubble 
-                    key={msg._id || msg.id} 
-                    msg={msg} 
-                    isOwnMessage={msg.senderId === user.id && msg.senderType === user.role} 
-                  />
-                ))
+                <div className="messages-container">
+                  {messages.map((msg) => (
+                    <MessageBubble 
+                      key={msg._id || msg.id} 
+                      msg={msg} 
+                      isOwnMessage={msg.senderId === user.id && msg.senderType === user.role} 
+                    />
+                  ))}
+                  <div ref={messagesEndRef} className="scroll-anchor" />
+                </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            <form className="chat-input-area" onSubmit={handleSendMessage}>
-              <button type="button" className="attach-btn">📎</button>
-              <input 
-                type="text" 
-                placeholder="Type a message..." 
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-              <button type="submit" className="send-btn" disabled={!newMessage.trim()}>Send</button>
-            </form>
+            <div className="chat-input-wrapper">
+              <form className="chat-input-area" onSubmit={handleSendMessage}>
+                <button type="button" className="attach-btn" title="Attach file">
+                  <Paperclip size={20} />
+                </button>
+                <input 
+                  type="text" 
+                  placeholder="Type your message..." 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                />
+                <button 
+                  type="submit" 
+                  className={`send-btn ${newMessage.trim() ? 'active' : ''}`} 
+                  disabled={!newMessage.trim()}
+                >
+                  <Send size={18} />
+                </button>
+              </form>
+            </div>
           </>
         ) : (
           <div className="no-active-group">
-            <p>Select a node from the sidebar to start chatting</p>
+            <MessageSquare size={64} className="placeholder-icon" />
+            <h3>Select a Node</h3>
+            <p>Choose a node from the sidebar to start chatting</p>
           </div>
         )}
       </div>
