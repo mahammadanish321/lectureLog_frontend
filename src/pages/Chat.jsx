@@ -113,7 +113,7 @@ const MessageBubble = ({ msg, isOwnMessage, onDoubleClick, totalMembers }) => {
             <span 
               className="read-receipt-dot" 
               style={{ 
-                backgroundColor: msg.seenBy?.length >= totalMembers ? '#22c55e' : (msg.seenBy?.length > 0 ? '#eab308' : '#ef4444') 
+                backgroundColor: (totalMembers > 0 && (msg.seenBy?.length || 0) / totalMembers >= 0.9) ? '#22c55e' : (msg.seenBy?.length > 0 ? '#eab308' : '#ef4444') 
               }} 
               title={`Seen by ${msg.seenBy?.length || 0}/${totalMembers}`}
             ></span>
