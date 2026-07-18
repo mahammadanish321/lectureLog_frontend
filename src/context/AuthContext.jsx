@@ -38,6 +38,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, role, organization_id) => {
     const response = await api.post('/auth/login', { email, password, role, organization_id });
+    
+    if (response.data.status === 'select_organization') {
+      return response.data;
+    }
+
     const { token, user } = response.data;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
@@ -82,6 +87,11 @@ export const AuthProvider = ({ children }) => {
 
   const studentLogin = async (email, password, organization_id) => {
     const response = await api.post('/auth/student/login', { email, password, organization_id });
+    
+    if (response.data.status === 'select_organization') {
+      return response.data;
+    }
+
     const { token, user } = response.data;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));

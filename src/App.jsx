@@ -24,6 +24,7 @@ import Requests from './pages/Requests';
 import You from './pages/You';
 import GetStarted from './pages/GetStarted';
 import Settings from './pages/Settings';
+import Chat from './pages/Chat';
 // import AppUpdateBanner from './components/AppUpdateBanner';
 import './App.css';
 
@@ -92,6 +93,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}>
+                  <Chat />
                 </ProtectedRoute>
               }
             />
