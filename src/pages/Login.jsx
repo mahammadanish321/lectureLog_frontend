@@ -114,6 +114,7 @@ const Login = ({ initialView }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailCheckResult, setEmailCheckResult] = useState(null); // NEW: Track email check result
   const [emailChecked, setEmailChecked] = useState(false); // NEW: Track if email has been checked
+  const isForgotPasswordView = view === 'forgot-otp' || view === 'forgot-password';
 
   const [mouseX, setMouseX] = useState(0);
   const [mouseY, setMouseY] = useState(0);
@@ -395,9 +396,54 @@ const Login = ({ initialView }) => {
         });
         setView('login');
         setSuccess('Account activated! You can now log in.');
+      } else if (view === 'forgot-otp') {
+        await api.post('/auth/forgot-password-verify', {
+          email,
+          otp,
+          organization_id: selectedOrg,
+          role: loginMode
+        });
+        setView('forgot-password');
+        setSuccess('OTP verified. Set your new password.');
+      } else if (view === 'forgot-password') {
+        if (newPassword !== confirmPassword) {
+          setError('Passwords do not match. Please try again.');
+          return;
+        }
+        await api.post('/auth/forgot-password-finalize', {
+          email,
+          password: newPassword,
+          organization_id: selectedOrg,
+          role: loginMode
+        });
+        setView('login');
+        setSuccess('Password reset successfully. You can now log in.');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Action failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      await api.post('/auth/forgot-password-init', {
+        email,
+        organization_id: selectedOrg,
+        role: loginMode
+      });
+      setOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setView('forgot-otp');
+      setSuccess('A password-reset OTP has been sent to your email.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to start password reset. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -493,12 +539,14 @@ const Login = ({ initialView }) => {
         <div className="form-wrapper animate-fade-in">
           <div className="form-header">
             <h2 className="welcome-text">
-              {view === 'login' ? 'Welcome back!' : 'Activate Account'}
+              {view === 'login' ? 'Welcome back!' : isForgotPasswordView ? 'Reset Password' : 'Activate Account'}
             </h2>
             <p className="subtitle">
               {view === 'login'
                 ? 'Please enter your credentials to access your dashboard.'
-                : 'Please verify your details to activate your account.'}
+                : isForgotPasswordView
+                  ? 'Verify your email and choose a new password.'
+                  : 'Please verify your details to activate your account.'}
             </p>
           </div>
 
@@ -754,7 +802,7 @@ const Login = ({ initialView }) => {
                         <input type="checkbox" />
                         <span>Keep me logged in</span>
                       </label>
-                      <a href="#" className="forgot-pass">Forgot Password?</a>
+                      <a href="#" className="forgot-pass" onClick={handleForgotPassword}>Forgot Password?</a>
                     </div>
                   )}
 
@@ -945,7 +993,7 @@ const Login = ({ initialView }) => {
                   </>
                 )}
 
-                {view === 'verify-otp' && (
+                {(view === 'verify-otp' || view === 'forgot-otp') && (
                   <div className="field-group">
                     <label>Enter 6-Digit OTP</label>
                     <div className="input-with-icon">
@@ -955,7 +1003,7 @@ const Login = ({ initialView }) => {
                   </div>
                 )}
 
-                {view === 'set-password' && (
+                {(view === 'set-password' || view === 'forgot-password') && (
                   <>
                     <div className="field-group">
                       <label>Create New Password</label>
@@ -994,7 +1042,8 @@ const Login = ({ initialView }) => {
                 {loading ? <Loader2 className="animate-spin" /> : (
                   <span>
                     {view === 'verify-email' ? 'Send Verification OTP' :
-                      view === 'verify-otp' ? 'Verify Code' : 'Activate My Account'}
+                      view === 'verify-otp' || view === 'forgot-otp' ? 'Verify Code' :
+                        view === 'forgot-password' ? 'Reset Password' : 'Activate My Account'}
                   </span>
                 )}
                 {!loading && <ChevronRight size={18} />}
