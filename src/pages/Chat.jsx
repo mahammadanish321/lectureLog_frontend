@@ -380,6 +380,12 @@ const Chat = () => {
       content: textContent || (filesToUpload.length > 0 ? `Shared ${filesToUpload.length} attachment(s)` : ''),
       attachmentUrls: uploadedUrls,
       replyTo: currentReplyId
+    }, (response) => {
+      if (response && response.error) {
+        console.error('Server error sending message:', response.error);
+        alert('Failed to send message: ' + response.error);
+        setMessages(prev => prev.filter(m => m.id !== localMessage.id));
+      }
     });
   };
   
