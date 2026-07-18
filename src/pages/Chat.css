@@ -438,8 +438,14 @@
   color: #475569;
 }
 
-.chat-input-area input {
+.chat-input-container {
   flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.chat-input-container input {
+  width: 100%;
   border: none;
   outline: none;
   padding: 10px;
@@ -448,7 +454,7 @@
   color: #1e293b;
 }
 
-.chat-input-area input::placeholder {
+.chat-input-container input::placeholder {
   color: #94a3b8;
 }
 
