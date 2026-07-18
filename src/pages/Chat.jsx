@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon } from 'lucide-react';
+import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon, Search } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
@@ -127,6 +127,11 @@ const Chat = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const fileInputRef = useRef(null);
+  
+  // Search and Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedStream, setSelectedStream] = useState('');
   
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -323,6 +328,19 @@ const Chat = () => {
 
   const groupedMessages = groupMessagesByDate(messages);
 
+  // Compute unique filters dynamically
+  const availableYears = [...new Set(groups.map(g => g.year))].sort();
+  const availableStreams = [...new Set(groups.map(g => g.stream))].sort();
+
+  // Filter groups
+  const filteredGroups = groups.filter(g => {
+    const matchesSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          g.stream.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesYear = selectedYear ? g.year === parseInt(selectedYear) : true;
+    const matchesStream = selectedStream ? g.stream === selectedStream : true;
+    return matchesSearch && matchesYear && matchesStream;
+  });
+
   return (
     <div className="chat-layout premium-glass">
       {/* Sidebar */}
@@ -331,11 +349,48 @@ const Chat = () => {
           <MessageSquare size={20} className="sidebar-icon" />
           <h2 className="sidebar-title">Nodes</h2>
         </div>
+        
+        {/* Dynamic Search & Filter Bar */}
+        <div className="sidebar-filters">
+          <div className="search-input-wrapper">
+            <Search size={16} className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Search nodes..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="node-search-input"
+            />
+          </div>
+          <div className="filter-dropdowns">
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="node-filter-select"
+            >
+              <option value="">All Years</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>Year {year}</option>
+              ))}
+            </select>
+            <select 
+              value={selectedStream} 
+              onChange={(e) => setSelectedStream(e.target.value)}
+              className="node-filter-select"
+            >
+              <option value="">All Streams</option>
+              {availableStreams.map(stream => (
+                <option key={stream} value={stream}>{stream}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="group-list">
-          {groups.length === 0 ? (
-            <div className="no-groups">No nodes available.</div>
+          {filteredGroups.length === 0 ? (
+            <div className="no-groups">No nodes found.</div>
           ) : (
-            groups.map((group) => (
+            filteredGroups.map((group) => (
               <div 
                 key={group.id} 
                 className={`group-item ${activeGroup?.id === group.id ? 'active' : ''}`}
