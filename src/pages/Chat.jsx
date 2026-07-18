@@ -17,7 +17,7 @@ const RoleIcon = ({ role }) => {
   }
 };
 
-const MessageBubble = ({ msg, isOwnMessage, onDoubleClick }) => {
+const MessageBubble = ({ msg, isOwnMessage, onDoubleClick, totalMembers }) => {
   const bubbleClass = isOwnMessage
     ? 'message-bubble own-message'
     : `message-bubble ${msg.senderType}-message`;
@@ -109,6 +109,15 @@ const MessageBubble = ({ msg, isOwnMessage, onDoubleClick }) => {
         
         <div className="message-footer">
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {isOwnMessage && !isLocalMessage && (
+            <span 
+              className="read-receipt-dot" 
+              style={{ 
+                backgroundColor: msg.seenBy?.length >= totalMembers ? '#22c55e' : (msg.seenBy?.length > 0 ? '#eab308' : '#ef4444') 
+              }} 
+              title={`Seen by ${msg.seenBy?.length || 0}/${totalMembers}`}
+            ></span>
+          )}
         </div>
       </div>
     </div>
@@ -132,6 +141,12 @@ const Chat = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedStream, setSelectedStream] = useState('');
+  
+  // Stats & Presence State
+  const [groupStats, setGroupStats] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(0);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const typingTimeoutRef = useRef(null);
   
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -171,11 +186,25 @@ const Chat = () => {
       try {
         const res = await api.get(`/chat/messages/${activeGroup.id}`);
         setMessages(res.data);
-      } catch (err) {
-        console.error('Error fetching messages:', err);
+        scrollToBottom();
+      } catch (error) {
+        console.error("Failed to load messages", error);
+      } finally {
+        setLoading(false);
       }
     };
+    
+    const fetchStats = async () => {
+      try {
+        const res = await api.get(`/chat/groups/${activeGroup.id}/stats`);
+        setGroupStats(res.data);
+      } catch (error) {
+        console.error("Failed to load stats", error);
+      }
+    };
+
     fetchMessages();
+    fetchStats();
 
     const token = localStorage.getItem('token');
     const newSocket = io(`${SOCKET_URL}/chat`, { auth: { token } });
@@ -185,38 +214,87 @@ const Chat = () => {
       newSocket.emit('join_group', activeGroup.id);
     });
 
-    newSocket.on('receive_message', (message) => {
-      // Replace optimistic message if it exists
-      setMessages((prev) => {
-        // Find if we have a local ghost message from this user with similar content/time
-        // For simplicity, just remove any local message that was sent within the last few seconds
-        const filtered = prev.filter(m => !(m.isLocal && m.senderId === user.id && m.content === message.content));
-        return [...filtered, message];
+    newSocket.on("receive_message", (msg) => {
+      setMessages(prev => {
+        const index = prev.findIndex(m => m.isLocal && m.content === msg.content);
+        if (index !== -1) {
+          const newMsgs = [...prev];
+          newMsgs[index] = msg;
+          return newMsgs;
+        }
+        return [...prev, msg];
       });
+      scrollToBottom();
+    });
+
+    newSocket.on("user_typing", ({ userId, name }) => {
+      setTypingUsers(prev => {
+        if (!prev.find(u => u.userId === userId)) return [...prev, { userId, name }];
+        return prev;
+      });
+    });
+
+    newSocket.on("user_stop_typing", ({ userId }) => {
+      setTypingUsers(prev => prev.filter(u => u.userId !== userId));
+    });
+
+    newSocket.on("presence_update", ({ onlineClassmates }) => {
+      setOnlineUsers(onlineClassmates.length);
+    });
+
+    newSocket.on("message_seen", ({ messageId, seenBy }) => {
+      setMessages(prev => prev.map(m => (m._id === messageId || m.id === messageId) ? { ...m, seenBy } : m));
     });
 
     setSocket(newSocket);
 
     return () => {
       newSocket.emit('leave_group', activeGroup.id);
+      setMessages([]);
+      setGroupStats(null);
+      setTypingUsers([]);
+      setOnlineUsers(0);
       newSocket.disconnect();
     };
-  }, [activeGroup, user.id]);
+  }, [activeGroup, user.token]);
+
+  // Mark unseen messages as seen
+  useEffect(() => {
+    if (socket && activeGroup && messages.length > 0) {
+      messages.forEach(msg => {
+        if (msg.senderId !== user.id && !msg.isLocal) {
+          const hasSeen = msg.seenBy && msg.seenBy.find(s => s.userId === user.id);
+          if (!hasSeen) {
+            socket.emit('mark_seen', { messageId: msg._id || msg.id, groupId: activeGroup.id });
+          }
+        }
+      });
+    }
+  }, [messages, socket, activeGroup, user.id]);
 
   // Handle file selection (Multiple files)
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      setAttachments(prev => [...prev, ...files]);
+    setAttachments(prev => [...prev, ...files]);
+    
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachmentPreviews(prev => [...prev, { name: file.name, url: reader.result }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    if (socket && activeGroup) {
+      socket.emit('typing', { groupId: activeGroup.id, name: user.name });
       
-      const newPreviews = files.map(file => {
-        if (file.type.startsWith('image/')) {
-          return { id: Math.random(), type: 'image', url: URL.createObjectURL(file), name: file.name };
-        } else {
-          return { id: Math.random(), type: 'file', url: null, name: file.name };
-        }
-      });
-      setAttachmentPreviews(prev => [...prev, ...newPreviews]);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', { groupId: activeGroup.id });
+      }, 2000);
     }
   };
 
@@ -237,7 +315,7 @@ const Chat = () => {
   };
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault();
     if ((!newMessage.trim() && attachments.length === 0) || !socket || !activeGroup || isUploading) return;
 
     // Optimistic UI updates
@@ -417,9 +495,18 @@ const Chat = () => {
               <div className="header-avatar">
                 {activeGroup.name.charAt(0).toUpperCase()}
               </div>
-              <div className="header-info">
-                <h3>{activeGroup.name}</h3>
-                <span>Year {activeGroup.year} • {activeGroup.stream}</span>
+              <div className="active-group-header">
+                <div className="header-info">
+                  <h2>{activeGroup.name}</h2>
+                  <div className="header-meta">
+                    Year {activeGroup.year} • {activeGroup.stream}
+                    {groupStats && ` • ${groupStats.totalStudents} Students • ${groupStats.totalTeachers} Teachers`}
+                    {onlineUsers > 0 && ` • 🟢 ${onlineUsers} Online`}
+                  </div>
+                </div>
+                <button className="close-group-btn" onClick={() => setActiveGroup(null)}>
+                  <X size={20} />
+                </button>
               </div>
             </div>
 
@@ -445,6 +532,7 @@ const Chat = () => {
                           msg={msg} 
                           isOwnMessage={msg.senderId === user.id && msg.senderType === user.role} 
                           onDoubleClick={setReplyingTo}
+                          totalMembers={groupStats?.totalMembers || 0}
                         />
                       ))}
                     </React.Fragment>
@@ -455,6 +543,16 @@ const Chat = () => {
             </div>
 
             <div className="chat-input-wrapper">
+              {/* Typing Indicator */}
+              {typingUsers.length > 0 && (
+                <div className="typing-indicator animate-fade-in-up">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <span>{typingUsers.map(u => u.name).join(', ')} {typingUsers.length > 1 ? 'are' : 'is'} typing...</span>
+                </div>
+              )}
+
               {/* Reply Preview Box */}
               {replyingTo && (
                 <div className="reply-preview-container animate-fade-in-up">
@@ -473,11 +571,11 @@ const Chat = () => {
               {attachmentPreviews.length > 0 && (
                 <div className="attachment-carousel-container animate-fade-in-up">
                   {attachmentPreviews.map((preview, idx) => (
-                    <div key={preview.id} className="preview-card">
+                    <div key={idx} className="preview-card">
                       <button type="button" className="close-preview-btn" onClick={() => removeAttachment(idx)}>
                         <X size={12} />
                       </button>
-                      {preview.type === 'image' ? (
+                      {preview.url ? (
                         <img src={preview.url} alt="preview" className="preview-image" />
                       ) : (
                         <div className="preview-file">
@@ -506,12 +604,16 @@ const Chat = () => {
                 >
                   <Paperclip size={20} />
                 </button>
-                <input 
-                  type="text" 
-                  placeholder="Type your message..." 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                />
+                <div className="chat-input-container">
+                  <input 
+                    type="text" 
+                    placeholder="Type your message..." 
+                    value={newMessage}
+                    onChange={handleTyping}
+                    onKeyPress={(e) => e.key === 'Enter' && !isUploading && handleSendMessage()}
+                    disabled={isUploading}
+                  />
+                </div>
                 <button 
                   type="submit" 
                   className={`send-btn ${(newMessage.trim() || attachments.length > 0) ? 'active' : ''}`} 
