@@ -495,18 +495,13 @@ const Chat = () => {
               <div className="header-avatar">
                 {activeGroup.name.charAt(0).toUpperCase()}
               </div>
-              <div className="active-group-header">
-                <div className="header-info">
-                  <h2>{activeGroup.name}</h2>
-                  <div className="header-meta">
-                    Year {activeGroup.year} • {activeGroup.stream}
-                    {groupStats && ` • ${groupStats.totalStudents} Students • ${groupStats.totalTeachers} Teachers`}
-                    {onlineUsers > 0 && ` • 🟢 ${onlineUsers} Online`}
-                  </div>
+              <div className="header-info">
+                <h2>{activeGroup.name}</h2>
+                <div className="header-meta">
+                  Year {activeGroup.year} • {activeGroup.stream}
+                  {groupStats && ` • ${groupStats.totalStudents} Students • ${groupStats.totalTeachers} Teachers`}
+                  {onlineUsers > 0 && ` • 🟢 ${onlineUsers} Online`}
                 </div>
-                <button className="close-group-btn" onClick={() => setActiveGroup(null)}>
-                  <X size={20} />
-                </button>
               </div>
             </div>
 
