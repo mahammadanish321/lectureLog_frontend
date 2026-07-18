@@ -190,7 +190,8 @@ export default function Signup() {
     try {
       await api.post('/auth/claim-finalize', {
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        role: 'admin'
       });
       setStep(4);
     } catch (err) {

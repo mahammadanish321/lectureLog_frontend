@@ -91,7 +91,7 @@ const EyeBall = ({ size = 48, pupilSize = 16, maxDistance = 10, eyeColor = "whit
 const Login = ({ initialView }) => {
   const isElectron = !!(window.electronAPI?.isElectron);
   const [loginMode, setLoginMode] = useState('teacher'); // 'teacher', 'admin', 'student'
-  const [view, setView] = useState(initialView || 'login'); // 'login', 'verify-email', 'verify-otp', 'set-password', 'onboard'
+  const [view, setView] = useState(initialView || 'login'); // 'login', 'check-email', 'select-org', 'verify-email', 'verify-otp', 'set-password', 'onboard'
   const [organizations, setOrganizations] = useState([]);
   const [pendingOrganizations, setPendingOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
@@ -112,6 +112,8 @@ const Login = ({ initialView }) => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailCheckResult, setEmailCheckResult] = useState(null); // NEW: Track email check result
+  const [emailChecked, setEmailChecked] = useState(false); // NEW: Track if email has been checked
 
   const [mouseX, setMouseX] = useState(0);
   const [mouseY, setMouseY] = useState(0);
@@ -254,27 +256,83 @@ const Login = ({ initialView }) => {
     setError('');
     setLoading(true);
     try {
-      let res;
-      if (loginMode === 'teacher') {
-        res = await login(email, password, 'teacher', selectedOrg);
-      } else if (loginMode === 'admin') {
-        res = await adminLogin(email, password);
+      // If email not checked yet, do email check first
+      if (!emailChecked) {
+        // NEW: First, check if email+role combination exists and get org list
+        const checkRes = await api.get('/auth/check-email', {
+          params: { email, role: loginMode }
+        });
+
+        if (!checkRes.data.found) {
+          setError(`No ${loginMode} account found with this email.`);
+          setLoading(false);
+          return;
+        }
+
+        setEmailCheckResult(checkRes.data);
+        setEmailChecked(true);
+
+        // If only 1 organization, auto-select and show password field
+        if (checkRes.data.count === 1) {
+          setSelectedOrg(checkRes.data.organizations[0].id);
+          setLoading(false);
+          return; // Show password field now
+        } else if (checkRes.data.count > 1) {
+          // Multiple orgs - show selector
+          setPendingOrganizations(checkRes.data.organizations);
+          setLoading(false);
+          return;
+        }
+      } else if (emailChecked && !selectedOrg) {
+        // Email checked but org not selected - skip for now
+        setLoading(false);
+        return;
       } else {
-        res = await studentLogin(email, password, selectedOrg);
+        // Email checked, org selected, password submitted - proceed with login
+        const loginRes = await attemptLogin(email, password, loginMode, selectedOrg);
+        if (loginRes.redirectTo) navigate(loginRes.redirectTo);
       }
-      
-      if (res && res.status === 'select_organization') {
-        setPendingOrganizations(res.organizations);
-        setView('select-org');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Email check failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const attemptLogin = async (emailVal, passwordVal, roleVal, orgId) => {
+    try {
+      let res;
+      if (roleVal === 'teacher') {
+        res = await login(emailVal, passwordVal, 'teacher', orgId);
+      } else if (roleVal === 'admin') {
+        res = await adminLogin(emailVal, passwordVal);
+      } else {
+        res = await studentLogin(emailVal, passwordVal, orgId);
+      }
+
+      if (roleVal === 'student') {
+        return { redirectTo: '/student/dashboard' };
+      } else {
+        return { redirectTo: '/dashboard' };
+      }
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const handleLoginWithOrgSelected = async (e) => {
+    e?.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (!selectedOrg) {
+        setError('Please select an organization.');
         setLoading(false);
         return;
       }
 
-      if (loginMode === 'student') {
-        navigate('/student/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      const loginRes = await attemptLogin(email, password, loginMode, selectedOrg);
+      if (loginRes.redirectTo) navigate(loginRes.redirectTo);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -315,7 +373,12 @@ const Login = ({ initialView }) => {
         setSuccess('OTP sent to your institutional email.');
       } else if (view === 'verify-otp') {
         // Step 2: Verify OTP
-        await api.post('/auth/claim-verify', { email, otp });
+        await api.post('/auth/claim-verify', {
+          email,
+          otp,
+          organization_id: selectedOrg,
+          role: loginMode
+        });
         setView('set-password');
         setSuccess('OTP verified! Now set your new password.');
       } else if (view === 'set-password') {
@@ -324,7 +387,12 @@ const Login = ({ initialView }) => {
           return;
         }
         // Step 3: Set Password
-        await api.post('/auth/claim-finalize', { email, password: newPassword });
+        await api.post('/auth/claim-finalize', {
+          email,
+          password: newPassword,
+          organization_id: selectedOrg,
+          role: loginMode
+        });
         setView('login');
         setSuccess('Account activated! You can now log in.');
       }
@@ -503,9 +571,62 @@ const Login = ({ initialView }) => {
                     <button type="button" className="submit-btn" onClick={(e) => { e.preventDefault(); window.location.href = 'https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.0.exe'; }}>Download Desktop App</button>
                   </div>
                 </div>
+              ) : emailChecked && pendingOrganizations.length > 1 ? (
+                // Show org selector if email check found multiple orgs
+                <div className="auth-form">
+                  <div className="form-fields">
+                    <div className="field-group">
+                      <label>Select Your Organization</label>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>You're registered with multiple organizations. Please select one to continue.</p>
+                      <div className="org-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                        {pendingOrganizations.map(org => (
+                          <div 
+                            key={org.id}
+                            onClick={() => setSelectedOrg(org.id)}
+                            style={{
+                              padding: '1rem',
+                              border: `1.5px solid ${selectedOrg === org.id ? 'var(--primary)' : '#e2e8f0'}`,
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              background: selectedOrg === org.id ? '#f0fdf4' : 'white',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: selectedOrg === org.id ? '600' : '500', color: '#1e293b' }}>{org.name}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{org.slug}</div>
+                            </div>
+                            {selectedOrg === org.id && <CheckCircle2 size={20} color="var(--primary)" />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="submit-btn" 
+                    onClick={handleLoginWithOrgSelected}
+                    disabled={loading || !selectedOrg}
+                    style={{ marginTop: '1.5rem' }}
+                  >
+                    {loading ? <Loader2 className="animate-spin" /> : <span>Sign In to {loginMode}</span>}
+                    {!loading && <ChevronRight size={18} />}
+                  </button>
+
+                  <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                    <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); setEmailChecked(false); setEmailCheckResult(null); setError(''); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      Back
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <>
                   <div className="form-fields">
+                    {/* Email Field - Always visible initially */}
                     {loginMode !== 'student' ? (
                       <>
                         <div className="field-group">
@@ -519,29 +640,33 @@ const Login = ({ initialView }) => {
                               onChange={(e) => setEmail(e.target.value)}
                               onFocus={() => setIsTyping(true)}
                               onBlur={() => setIsTyping(false)}
+                              disabled={emailChecked}
                               required
                             />
                           </div>
                         </div>
 
-                        <div className="field-group">
-                          <label>{loginMode === 'teacher' ? 'Password / College ID' : 'Password'}</label>
-                          <div className="input-with-icon">
-                            <Lock size={18} />
-                            <input
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="••••••••"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              onFocus={() => setIsTyping(true)}
-                              onBlur={() => setIsTyping(false)}
-                              required
-                            />
-                            <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
-                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
+                        {/* Password Field - Only shown after email check and org selection */}
+                        {emailChecked && selectedOrg && (
+                          <div className="field-group">
+                            <label>{loginMode === 'teacher' ? 'Password / College ID' : 'Password'}</label>
+                            <div className="input-with-icon">
+                              <Lock size={18} />
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onFocus={() => setIsTyping(true)}
+                                onBlur={() => setIsTyping(false)}
+                                required
+                              />
+                              <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </>
                     ) : (
                       <>
@@ -556,47 +681,120 @@ const Login = ({ initialView }) => {
                               onChange={(e) => setEmail(e.target.value)}
                               onFocus={() => setIsTyping(true)}
                               onBlur={() => setIsTyping(false)}
+                              disabled={emailChecked}
                               required
                             />
                           </div>
                         </div>
 
-                        <div className="field-group">
-                          <label>Password</label>
-                          <div className="input-with-icon">
-                            <Lock size={18} />
-                            <input
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="••••••••"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              onFocus={() => setIsTyping(true)}
-                              onBlur={() => setIsTyping(false)}
-                              required
-                            />
-                            <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
-                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
+                        {/* Password Field - Only shown after email check and org selection */}
+                        {emailChecked && selectedOrg && (
+                          <div className="field-group">
+                            <label>Password</label>
+                            <div className="input-with-icon">
+                              <Lock size={18} />
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onFocus={() => setIsTyping(true)}
+                                onBlur={() => setIsTyping(false)}
+                                required
+                              />
+                              <button type="button" className="toggle-pass" onClick={() => setShowPassword(!showPassword)}>
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </>
                     )}
                   </div>
 
-                  <div className="form-utils">
-                    <label className="remember-me">
-                      <input type="checkbox" />
-                      <span>Keep me logged in</span>
-                    </label>
-                    <a href="#" className="forgot-pass">Forgot Password?</a>
-                  </div>
+                  {/* Show org selector if multiple orgs found after email check */}
+                  {emailChecked && pendingOrganizations.length > 1 && !selectedOrg && (
+                    <div className="form-fields" style={{ marginTop: '1.5rem' }}>
+                      <div className="field-group">
+                        <label>Select Your Organization</label>
+                        <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>You're registered with multiple organizations. Please select one to continue.</p>
+                        <div className="org-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                          {pendingOrganizations.map(org => (
+                            <div 
+                              key={org.id}
+                              onClick={() => setSelectedOrg(org.id)}
+                              style={{
+                                padding: '1rem',
+                                border: `1.5px solid ${selectedOrg === org.id ? 'var(--primary)' : '#e2e8f0'}`,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                background: selectedOrg === org.id ? '#f0fdf4' : 'white',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: selectedOrg === org.id ? '600' : '500', color: '#1e293b' }}>{org.name}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{org.slug}</div>
+                              </div>
+                              {selectedOrg === org.id && <CheckCircle2 size={20} color="var(--primary)" />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                  <button type="submit" className="submit-btn" disabled={loading}>
-                    {loading ? <Loader2 className="animate-spin" /> : <span>Sign In to {loginMode}</span>}
+                  {/* Form Utils - Only show after password field is visible */}
+                  {emailChecked && selectedOrg && (
+                    <div className="form-utils">
+                      <label className="remember-me">
+                        <input type="checkbox" />
+                        <span>Keep me logged in</span>
+                      </label>
+                      <a href="#" className="forgot-pass">Forgot Password?</a>
+                    </div>
+                  )}
+
+                  {/* Submit Button - Changes based on state */}
+                  <button 
+                    type="submit" 
+                    className="submit-btn" 
+                    disabled={loading || (!emailChecked && !email) || (emailChecked && pendingOrganizations.length > 1 && !selectedOrg)}
+                  >
+                    {loading ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <span>
+                        {!emailChecked ? `Check Email & Sign In to ${loginMode}` : `Sign In to ${loginMode}`}
+                      </span>
+                    )}
                     {!loading && <ChevronRight size={18} />}
                   </button>
 
-                  {loginMode !== 'admin' && (
+                  {/* Back Button - Show if email checked */}
+                  {emailChecked && (
+                    <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => { 
+                          setEmailChecked(false); 
+                          setSelectedOrg(''); 
+                          setPendingOrganizations([]); 
+                          setEmailCheckResult(null); 
+                          setPassword('');
+                          setError(''); 
+                        }} 
+                        style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  )}
+
+                  {loginMode !== 'admin' && !emailChecked && (
                     <div style={{ textAlign: 'center', marginTop: '1rem' }}>
                       <button type="button" onClick={() => navigate('/activate')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}>
                         First time logging in? Activate account
