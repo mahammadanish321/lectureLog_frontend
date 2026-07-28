@@ -44,6 +44,7 @@ api.interceptors.response.use(
         : 'Your session expired due to inactivity. Please log in again.';
       
       localStorage.setItem('auth_error_msg', msg);
+      window.dispatchEvent(new Event('auth_logout'));
       window.location.href = window.electronAPI?.isElectron ? '#/login' : '/login';
       
       // Reset flag after a delay

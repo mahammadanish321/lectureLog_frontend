@@ -1,0 +1,320 @@
+/* Dashboard Styles */
+.pad-dashboard-container {
+  padding: 2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.pad-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.pad-dashboard-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+}
+
+.pad-dashboard-header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.pad-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.pad-empty-state .empty-icon {
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.pad-empty-state h3 {
+  font-size: 1.25rem;
+  color: #334155;
+  margin: 0 0 0.5rem 0;
+}
+
+.pad-empty-state p {
+  margin: 0 0 1.5rem 0;
+}
+
+.pad-loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  gap: 1rem;
+}
+
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.pad-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.pad-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transform: translateY(-2px);
+}
+
+.pad-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.pad-icon {
+  color: var(--primary-color, #10b981);
+}
+
+.pad-delete-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.pad-card:hover .pad-delete-btn {
+  opacity: 1;
+}
+
+.pad-delete-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.pad-card-body {
+  flex: 1;
+}
+
+.pad-card-body h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pad-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+
+/* Editor Styles */
+.smart-pad-wrapper {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--bg-color);
+}
+
+.pad-editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.pad-editor-header {
+  position: absolute;
+  top: 16px;
+  left: 68px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.pad-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.pad-title-input {
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+  max-width: 150px;
+  min-width: 100px;
+  background: transparent;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn-ghost {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.icon-btn-ghost:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+
+
+.pad-title-input:hover, .pad-title-input:focus {
+  background: #f8fafc;
+}
+
+.pad-save-status {
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.status-text.saved {
+  color: #10b981;
+}
+
+.status-text.saving {
+  color: #94a3b8;
+}
+
+.status-text.error {
+  color: #ef4444;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.pad-editor-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Excalidraw Brand Color Overrides */
+.smart-pad-wrapper .excalidraw {
+  --color-primary: #105934;
+  --color-primary-darker: #0d4a2b;
+  --color-primary-darkest: #0a3a22;
+  --color-primary-light: #d6e8df;
+  --color-primary-light-darker: #c2dccf;
+  --color-surface-primary-container: #ebf5ee;
+  --color-on-primary-container: #0d4a2b;
+  --color-surface-high: #e6f0eb;
+  --color-surface-mid: #f1f5f3;
+  --color-surface-low: #f4f7f5;
+}
+
+html.dark .smart-pad-wrapper .excalidraw {
+  --color-primary: #16a34a;
+  --color-primary-darker: #15803d;
+  --color-primary-darkest: #166534;
+  --color-primary-light: #22c55e;
+  --color-primary-light-darker: #4ade80;
+  --color-surface-primary-container: #113620;
+  --color-on-primary-container: #4ade80;
+  --color-surface-high: #1e293b;
+  --color-surface-mid: #0f172a;
+  --color-surface-low: #0b1120;
+}
+
+/* Hide native Excalidraw Library button as it is moved to the Hamburger menu */
+.smart-pad-wrapper .excalidraw .layer-ui__wrapper .App-menu__left .sidebar-trigger,
+.smart-pad-wrapper .excalidraw .layer-ui__wrapper .sidebar-trigger[title*="Library"],
+.smart-pad-wrapper .excalidraw .layer-ui__wrapper .sidebar-trigger {
+  display: none !important;
+}
+
+/* Force Excalidraw Library Panel to open on the left side */
+.smart-pad-wrapper .excalidraw .sidebar-container,
+.smart-pad-wrapper .excalidraw .layer-ui__sidebar,
+.smart-pad-wrapper .excalidraw .sidebar {
+  right: auto !important;
+  left: 0 !important;
+  border-left: none !important;
+  border-right: 1px solid var(--sidebar-border-color, var(--color-gray-20));
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1) !important;
+  z-index: 999 !important;
+}
+
+/* Hide the dock (pin) button on the left sidebar because Excalidraw's engine is hardcoded to shift the canvas from the right side */
+.smart-pad-wrapper .excalidraw .sidebar__dock {
+  display: none !important;
+}
+
+

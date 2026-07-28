@@ -34,6 +34,16 @@ export const AuthProvider = ({ children }) => {
       }
     }
     setLoading(false);
+
+    // Listen for force-logout events from axios interceptor
+    const handleForceLogout = () => {
+      setUser(null);
+    };
+    window.addEventListener('auth_logout', handleForceLogout);
+    
+    return () => {
+      window.removeEventListener('auth_logout', handleForceLogout);
+    };
   }, []);
 
   const login = async (email, password, role, organization_id) => {

@@ -3,7 +3,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   Plus, Loader2, X, Clock, MapPin, User, BookOpen,
-  CalendarDays, CheckCircle2, Trash2, Star, ChevronDown, XCircle
+  CalendarDays, CheckCircle2, Trash2, Star, ChevronDown, XCircle, File as FileIcon, Check, Edit2
 } from 'lucide-react';
 import './Sessions.css';
 
@@ -72,8 +72,14 @@ const Sessions = () => {
     schedule_id: null,
     session_id: null,
     dateStr: '',
-    file: null,
-    uploading: false
+    subjectName: '',
+    year: '',
+    stream: '',
+    uploading: false,
+    notes: [],
+    loadingNotes: true,
+    editingNoteId: null,
+    editName: ''
   });
 
   /* ── fetch ─────────────────────────────────────────── */
@@ -304,25 +310,132 @@ const Sessions = () => {
     }
   };
 
+  const openNotesModal = async (item) => {
+    const sId = !item.isCustom ? (item.scheduleId || item.originalId) : null;
+    const sessId = item.isCustom ? item.originalId : null;
+    
+    setNotesModal({
+      open: true,
+      schedule_id: sId ? sId.toString().replace('routine_', '') : null,
+      session_id: sessId ? sessId.toString().replace('db_', '') : null,
+      dateStr: item.date,
+      subjectName: item.subject_name || item.subject,
+      year: item.year,
+      stream: item.stream,
+      uploading: false,
+      notes: [],
+      loadingNotes: true,
+      editingNoteId: null,
+      editName: ''
+    });
+
+    try {
+      const queryParams = {
+        subject_id: item.raw ? item.raw.subject_id : (item.subject_id || item.originalId),
+        date: item.date.includes('/') ? [item.date.split('/')[2], item.date.split('/')[1], item.date.split('/')[0]].join('-') : item.date,
+      };
+      const parsedSId = sId ? sId.toString().replace('routine_', '') : null;
+      const parsedSessId = sessId ? sessId.toString().replace('db_', '') : null;
+      if (parsedSId) queryParams.schedule_id = parsedSId;
+      if (parsedSessId) queryParams.session_id = parsedSessId;
+
+      const res = await api.get('/notes', { params: queryParams });
+      
+      // The API returns the array directly, so res.data is the array of notes.
+      const fetchedNotes = Array.isArray(res.data) ? res.data : (res.data.notes || []);
+      setNotesModal(prev => ({ ...prev, notes: fetchedNotes, loadingNotes: false }));
+    } catch (err) {
+      console.error(err);
+      setNotesModal(prev => ({ ...prev, loadingNotes: false }));
+    }
+  };
+
   const handleUploadNotes = async (e) => {
-    e.preventDefault();
-    if (!notesModal.file) return alert('Please select a file');
-    setNotesModal(prev => ({ ...prev, uploading: true }));
+    if (e) e.preventDefault();
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    if (notesModal.notes.length + selectedFiles.length > 30) {
+      alert(`Upload failed: Maximum 30 files allowed per folder. You can only add ${30 - notesModal.notes.length} more file(s).`);
+      return;
+    }
+
+    const optimisticNotes = selectedFiles.map((file, index) => {
+      const isImage = file.type.startsWith('image/');
+      return {
+        _id: Date.now().toString() + index,
+        file_name: file.name,
+        file_url: isImage ? URL.createObjectURL(file) : '',
+        created_at: new Date().toISOString(),
+        isUploading: true
+      };
+    });
+
+    setNotesModal(prev => ({ ...prev, notes: [...prev.notes, ...optimisticNotes], uploading: true }));
+
     try {
       const formData = new FormData();
-      formData.append('file', notesModal.file);
-      if (notesModal.schedule_id) formData.append('schedule_id', notesModal.schedule_id);
-      if (notesModal.session_id) formData.append('session_id', notesModal.session_id);
+      selectedFiles.forEach(file => formData.append('file', file));
+      
+      if (notesModal.schedule_id) {
+        formData.append('schedule_id', notesModal.schedule_id);
+      }
+      if (notesModal.session_id) {
+        formData.append('session_id', notesModal.session_id);
+      }
       formData.append('upload_date', notesModal.dateStr.includes('/') ? [notesModal.dateStr.split('/')[2], notesModal.dateStr.split('/')[1], notesModal.dateStr.split('/')[0]].join('-') : notesModal.dateStr);
 
-      await api.post('/notes/upload', formData, {
+      const res = await api.post('/notes/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Notes uploaded successfully');
-      setNotesModal({ open: false, schedule_id: null, session_id: null, dateStr: '', file: null, uploading: false });
+      
+      setNotesModal(prev => {
+        const newNotes = [...prev.notes];
+        optimisticNotes.forEach((optNote, idx) => {
+           const index = newNotes.findIndex(n => n._id === optNote._id);
+           if (index !== -1 && res.data.notes[idx]) {
+              newNotes[index] = res.data.notes[idx];
+           }
+        });
+        return { ...prev, notes: newNotes, uploading: false };
+      });
     } catch (err) {
       alert('Upload failed: ' + (err.response?.data?.message || err.message));
-      setNotesModal(prev => ({ ...prev, uploading: false }));
+      setNotesModal(prev => ({
+        ...prev,
+        notes: prev.notes.filter(n => !optimisticNotes.some(opt => opt._id === n._id)),
+        uploading: false
+      }));
+    }
+    
+    e.target.value = null;
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    try {
+      await api.delete(`/notes/${noteId}`);
+      setNotesModal(prev => ({
+        ...prev,
+        notes: prev.notes.filter(n => n._id !== noteId && n.id !== noteId)
+      }));
+    } catch (err) {
+      alert('Delete failed');
+    }
+  };
+
+  const handleRenameNote = async (noteId) => {
+    if (!notesModal.editName.trim()) return;
+    try {
+      const res = await api.patch(`/notes/${noteId}`, { file_name: notesModal.editName });
+      setNotesModal(prev => ({
+        ...prev,
+        notes: prev.notes.map(n => (n._id === noteId || n.id === noteId) ? { ...n, file_name: res.data.note.file_name } : n),
+        editingNoteId: null,
+        editName: ''
+      }));
+    } catch (err) {
+      alert('Rename failed');
     }
   };
 
@@ -385,7 +498,7 @@ const Sessions = () => {
       .map(s => {
         const { dateStr, status, done } = getScheduleInfo(s);
         return {
-          id: `sched_${s.id}_${dateStr}`, originalId: s.id,
+          id: `sched_${s.id}_${dateStr}`, originalId: s.id, subject_id: s.subject_id,
           subject_name: s.subject_name, type: 'Regular',
           year: s.year, stream: s.stream || 'N/A',
           room: `${s.classroom_name} (Cam ${s.camera_id})`,
@@ -416,7 +529,7 @@ const Sessions = () => {
       };
 
       return {
-        id: `db_${s.id}`, originalId: s.id, scheduleId: s.schedule_id || s.id,
+        id: `db_${s.id}`, originalId: s.id, scheduleId: s.schedule_id || s.id, subject_id: s.subject_id,
         subject_name: s.subject_name, type: s.is_custom ? 'Custom' : 'Regular',
         year: s.year, stream: s.stream || 'N/A',
         room: s.classroom_name || s.camera_url || '—',
@@ -647,16 +760,7 @@ const Sessions = () => {
 
                               {/* Upload Notes */}
                               {isTeacher && (item.status === 'ended' || item.status === 'scheduled' || item.status === 'active') && (
-                                <button className="act-btn act-primary" onClick={() => {
-                                  setNotesModal({
-                                    open: true,
-                                    schedule_id: !item.isCustom ? (item.scheduleId || item.originalId) : null,
-                                    session_id: item.isCustom ? item.originalId : null,
-                                    dateStr: item.date,
-                                    file: null,
-                                    uploading: false
-                                  });
-                                }}>
+                                <button className="act-btn act-primary" onClick={() => openNotesModal(item)}>
                                   Upload Notes
                                 </button>
                               )}
@@ -928,35 +1032,95 @@ const Sessions = () => {
         </div>
       )}
 
-      {/* Upload Notes Modal */}
+      {/* Dynamic Upload Notes Modal */}
       {notesModal.open && (
-        <div className="sess-modal-overlay animate-fade-in" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))}>
-          <div className="sess-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="sess-modal-header">
+        <div className="sess-modal-overlay animate-fade-in" onClick={() => !notesModal.uploading && setNotesModal((prev) => ({ ...prev, open: false }))}>
+          <div className="sess-modal animate-scale-in" onClick={(e) => e.stopPropagation()} style={{maxWidth: '600px', width: '90%'}}>
+            <div className="sess-modal-header" style={{borderBottom: '1px solid #e2e8f0', paddingBottom: '16px'}}>
               <div>
-                <h2>Upload Class Notes</h2>
-                <p>Upload PDF or image notes for this class.</p>
+                <h2>Add notes for {notesModal.subjectName} Year {notesModal.year} {notesModal.stream}</h2>
+                <p>Session date: {notesModal.dateStr}</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))}>×</button>
-            </div>
-            <form onSubmit={handleUploadNotes} className="sess-modal-form">
-              <div className="form-field">
-                <label>Select File</label>
-                <input
-                  type="file"
-                  accept=".pdf,image/*"
-                  onChange={(e) => setNotesModal((prev) => ({ ...prev, file: e.target.files[0] }))}
-                  disabled={notesModal.uploading}
-                  required
+              <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+                <input 
+                  type="file" 
+                  id="note-file-upload" 
+                  style={{display: 'none'}} 
+                  onChange={handleUploadNotes}
+                  multiple
                 />
+                {notesModal.notes.length > 0 && !notesModal.loadingNotes && (
+                  <button className="act-btn act-primary" style={{margin: 0}} onClick={() => document.getElementById('note-file-upload').click()} disabled={notesModal.uploading}>
+                    <BookOpen size={16} /> Add Note
+                  </button>
+                )}
+                <button className="modal-close-btn" onClick={() => {
+                  if (notesModal.uploading) {
+                    alert("Please wait until the upload completes before closing.");
+                  } else {
+                    setNotesModal((prev) => ({ ...prev, open: false }));
+                  }
+                }}>×</button>
               </div>
-              <div className="modal-footer-btns">
-                <button type="button" className="modal-cancel-btn" onClick={() => setNotesModal((prev) => ({ ...prev, open: false }))} disabled={notesModal.uploading}>Close</button>
-                <button type="submit" className="modal-submit-btn" disabled={notesModal.uploading}>
-                  {notesModal.uploading ? <Loader2 className="animate-spin" size={18} /> : 'Upload'}
-                </button>
-              </div>
-            </form>
+            </div>
+            
+            <div className="sess-modal-body" style={{padding: '16px 0 0 0', maxHeight: '400px', overflowY: 'auto'}}>
+              {notesModal.loadingNotes ? (
+                <div style={{display: 'flex', justifyContent: 'center', padding: '40px'}}><Loader2 className="animate-spin text-blue-500" /></div>
+              ) : notesModal.notes.length === 0 ? (
+                <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
+                  <BookOpen size={48} style={{margin: '0 auto 16px', opacity: 0.2}} />
+                  <p style={{marginBottom: '16px'}}>No notes available for this session.</p>
+                  <button className="act-btn act-primary" style={{margin: '0 auto'}} onClick={() => document.getElementById('note-file-upload').click()} disabled={notesModal.uploading}>
+                    {notesModal.uploading ? <Loader2 className="animate-spin" size={16} /> : <><Plus size={16} /> Upload First Note</>}
+                  </button>
+                </div>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                  {notesModal.notes.map((note) => {
+                    const nid = note._id || note.id;
+                    return (
+                      <div key={nid} style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc', opacity: note.isUploading ? 0.6 : 1}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '12px', flex: 1, overflow: 'hidden'}}>
+                          <div style={{background: '#e0e7ff', padding: '8px', borderRadius: '6px', color: '#4f46e5'}}>
+                            {note.isUploading ? <Loader2 className="animate-spin" size={20} /> : <FileIcon size={20} />}
+                          </div>
+                          
+                          {notesModal.editingNoteId === nid ? (
+                            <div style={{display: 'flex', alignItems: 'center', gap: '8px', flex: 1}}>
+                              <input 
+                                value={notesModal.editName} 
+                                onChange={e => setNotesModal(p => ({ ...p, editName: e.target.value }))}
+                                autoFocus
+                                style={{padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', flex: 1}}
+                              />
+                              <button onClick={() => handleRenameNote(nid)} style={{background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer'}}><Check size={14} /></button>
+                              <button onClick={() => setNotesModal(p => ({ ...p, editingNoteId: null }))} style={{background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer'}}><X size={14} /></button>
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
+                                <a href={note.file_url} target="_blank" rel="noreferrer" style={{fontWeight: 500, color: '#0f172a', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                  {note.file_name}
+                                </a>
+                                <span style={{fontSize: '12px', color: '#64748b'}}>{new Date(note.created_at).toLocaleDateString()} {note.isUploading && '- Uploading...'}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {!note.isUploading && notesModal.editingNoteId !== nid && (
+                          <div style={{display: 'flex', gap: '8px'}}>
+                            <button onClick={() => setNotesModal(p => ({ ...p, editingNoteId: nid, editName: note.file_name }))} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#64748b'}}><Edit2 size={16} /></button>
+                            <button onClick={() => handleDeleteNote(nid)} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444'}}><Trash2 size={16} /></button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

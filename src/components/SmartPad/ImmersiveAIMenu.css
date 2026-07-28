@@ -1,0 +1,170 @@
+.immersive-ai-menu {
+  position: absolute;
+  z-index: 2000;
+  background-color: var(--surface-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 250px;
+  transform: translate(-50%, -100%);
+  margin-top: -15px; /* Offset from the cursor/element */
+}
+
+html.dark .immersive-ai-menu {
+  position: absolute;
+  z-index: 9999;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+  pointer-events: auto;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.immersive-ai-menu.expanded {
+  background-color: var(--surface-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+}
+
+html.dark .immersive-ai-menu.expanded {
+  background-color: #232329;
+  border-color: #3b3b4f;
+}
+
+.immersive-ai-menu.collapsed {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  min-width: unset;
+  padding: 0;
+}
+
+.magic-wand-trigger {
+  background-color: #5b5377;
+  border: 1px solid #6b6387;
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.magic-wand-trigger:hover {
+  background-color: #6a6286;
+  transform: scale(1.05);
+}
+
+.magic-wand-trigger:active {
+  transform: scale(0.95);
+}
+
+.immersive-ai-quick-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.ai-quick-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-color, #0f172a);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+html.dark .ai-quick-action {
+  color: var(--text-primary, #e2e8f0);
+}
+
+.ai-quick-action:hover {
+  background-color: var(--surface-mid, #f1f5f9);
+  color: var(--primary-color, #16a34a);
+}
+
+html.dark .ai-quick-action:hover {
+  background-color: var(--surface-mid, #1e293b);
+}
+
+.immersive-ai-input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-color, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 4px 4px 4px 10px;
+}
+
+html.dark .immersive-ai-input-wrapper {
+  background-color: var(--bg-color, #0b1120);
+  border-color: var(--border-color, #1e293b);
+}
+
+.immersive-ai-input-wrapper input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--text-color, #0f172a);
+  padding: 4px 0;
+}
+
+html.dark .immersive-ai-input-wrapper input {
+  color: var(--text-primary, #e2e8f0);
+}
+
+.ai-custom-send-btn {
+  background: var(--primary-color, #16a34a);
+  color: white;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ai-custom-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-custom-send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.immersive-ai-generating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--primary-color, #16a34a);
+  font-size: 0.85rem;
+  font-weight: 500;
+}

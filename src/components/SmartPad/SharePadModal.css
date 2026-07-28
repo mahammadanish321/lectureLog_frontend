@@ -1,0 +1,259 @@
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+}
+
+.share-modal-content {
+  background-color: #2b2b36;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  padding: 32px 40px;
+  position: relative;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  font-family: inherit;
+}
+
+.share-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.share-modal-close:hover {
+  background-color: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.share-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #e5e5eb;
+}
+
+.share-desc {
+  font-size: 0.9rem;
+  color: #d1d1d6;
+  margin: 0 0 8px 0;
+}
+
+.share-desc-sub {
+  font-size: 0.8rem;
+  color: #9c9ca4;
+  margin: 0 0 24px 0;
+  line-height: 1.4;
+}
+
+.share-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-btn.primary {
+  background-color: #a5b4fc;
+  color: #1e1e28;
+}
+
+.share-btn.primary:hover {
+  background-color: #c7d2fe;
+}
+
+.share-btn.secondary {
+  background-color: #a5b4fc;
+  color: #1e1e28;
+  margin-top: 16px;
+}
+
+.share-btn.secondary:hover {
+  background-color: #c7d2fe;
+}
+
+.share-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.share-divider {
+  position: relative;
+  text-align: center;
+  margin: 32px 0;
+}
+
+.share-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #40404a;
+  z-index: 1;
+}
+
+.share-divider span {
+  background-color: #2b2b36;
+  padding: 0 16px;
+  color: #d1d1d6;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 2;
+}
+
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.share-active-session {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.share-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+}
+
+.share-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-input-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.share-input {
+  background-color: #1e1e24;
+  border: 1px solid #40404a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.share-input:focus {
+  border-color: #a5b4fc;
+}
+
+.share-link-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.share-link-input {
+  padding-right: 120px;
+}
+
+.share-copy-btn {
+  position: absolute;
+  right: 6px;
+  background-color: #a5b4fc;
+  color: #1e1e24;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.share-copy-btn:hover {
+  background-color: #c7d2fe;
+}
+
+.share-qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.share-qr-box {
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.share-footer-note {
+  border-top: 1px solid #40404a;
+  padding-top: 16px;
+}
+
+.share-footer-note p {
+  font-size: 0.75rem;
+  color: #a0a0a8;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+}
+
+.share-action-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.share-btn.stop-session {
+  background-color: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.share-btn.stop-session:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}

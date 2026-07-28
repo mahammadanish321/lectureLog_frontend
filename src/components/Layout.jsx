@@ -29,7 +29,10 @@ import {
   ClipboardList,
   CreditCard,
   Crown,
-  MessageSquare
+  MessageSquare,
+  Briefcase,
+  Edit3,
+  Flame
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -248,11 +251,14 @@ const Layout = ({ children }) => {
   const isTeacher = user?.role === 'teacher';
   const isElectron = !!(window.electronAPI?.isElectron);
 
-  const menuItems = [
-    { name: 'Dashboard', path: user?.role === 'student' ? '/student/dashboard' : '/dashboard', icon: LayoutDashboard },
-    { name: 'Routine', path: '/routine', icon: Calendar },
-    { name: 'Nodes', path: '/chat', icon: MessageSquare },
-  ];
+    const menuItems = [
+      { name: 'Dashboard', path: user?.role === 'student' ? '/student/dashboard' : '/dashboard', icon: LayoutDashboard },
+      { name: 'Routine', path: '/routine', icon: Calendar },
+      { name: 'Nodes', path: '/chat', icon: MessageSquare },
+      { name: 'Bag', path: '/bag', icon: Briefcase },
+      { name: 'Pads', path: '/pads', icon: Edit3 },
+      { name: 'Drop', path: '/drop', icon: Flame },
+    ];
 
   if (isAdmin || isTeacher) menuItems.push({ name: 'Students', path: '/students', icon: Users });
   if (isAdmin) menuItems.push({ name: 'Teachers', path: '/teachers', icon: ShieldCheck });

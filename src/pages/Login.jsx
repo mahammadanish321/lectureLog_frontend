@@ -619,7 +619,7 @@ const Login = ({ initialView }) => {
                     <button type="button" className="submit-btn" onClick={(e) => { e.preventDefault(); window.location.href = 'https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.0.exe'; }}>Download Desktop App</button>
                   </div>
                 </div>
-              ) : emailChecked && pendingOrganizations.length > 1 ? (
+              ) : emailChecked && pendingOrganizations.length > 1 && !selectedOrg ? (
                 // Show org selector if email check found multiple orgs
                 <div className="auth-form">
                   <div className="form-fields">
@@ -630,7 +630,11 @@ const Login = ({ initialView }) => {
                         {pendingOrganizations.map(org => (
                           <div 
                             key={org.id}
-                            onClick={() => setSelectedOrg(org.id)}
+                            onClick={() => {
+                              setSelectedOrg(org.id);
+                              setError('');
+                              setSuccess('');
+                            }}
                             style={{
                               padding: '1rem',
                               border: `1.5px solid ${selectedOrg === org.id ? 'var(--primary)' : '#e2e8f0'}`,

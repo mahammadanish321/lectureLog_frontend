@@ -24,7 +24,13 @@ import Requests from './pages/Requests';
 import You from './pages/You';
 import GetStarted from './pages/GetStarted';
 import Settings from './pages/Settings';
+import Bag from './pages/Bag';
+import PadDashboard from './pages/PadDashboard';
+import WritingPad from './pages/WritingPad';
+import SharedPad from './pages/SharedPad';
 import Chat from './pages/Chat';
+import Drop from './pages/Drop';
+import DropDetail from './pages/DropDetail';
 // import AppUpdateBanner from './components/AppUpdateBanner';
 import './App.css';
 
@@ -55,6 +61,15 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 function App() {
   const isElectron = !!(window.electronAPI?.isElectron);
+  
+  // Handle Desktop Hash links pasted into Web Browsers
+  React.useEffect(() => {
+    if (!isElectron && window.location.hash && window.location.hash.startsWith('#/')) {
+      const cleanPath = window.location.hash.substring(1); // Removes the '#'
+      window.location.replace(cleanPath);
+    }
+  }, [isElectron]);
+
   const Router = isElectron ? HashRouter : BrowserRouter;
 
   return (
@@ -71,6 +86,7 @@ function App() {
                 <Route path="/activate" element={<Login initialView="verify-email" />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/get-started" element={<GetStarted />} />
+                <Route path="/pad/shared/:id" element={<SharedPad />} />
                 <Route path="/" element={<HomeOrLanding />} />
                 <Route
                   path="/dashboard"
@@ -104,8 +120,34 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/schedules"
+              <Route
+                path="/bag"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}>
+                    <Bag />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pads"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}>
+                    <PadDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pads/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}>
+                    <WritingPad />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/drop" element={<ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}><Drop /></ProtectedRoute>} />
+              <Route path="/drop/:id" element={<ProtectedRoute allowedRoles={['teacher', 'student', 'admin']}><DropDetail /></ProtectedRoute>} />
+              <Route
+                path="/schedules"
               element={
                 <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                   <ScheduleManager />

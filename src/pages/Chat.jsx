@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { io } from 'socket.io-client';
-import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon, Search } from 'lucide-react';
+import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon, Search, Folder, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
@@ -73,7 +74,23 @@ const MessageBubble = ({ msg, isOwnMessage, onDoubleClick, totalMembers }) => {
                 </div>
               )}
               
-              {msg.content}
+                {msg.isNoteFolder ? (
+                  <div 
+                    onClick={() => window.openFolderModal && window.openFolderModal(msg)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', 
+                      background: 'rgba(255,255,255,0.1)', padding: '12px', 
+                      borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)'
+                    }}>
+                    <Folder size={24} color={isOwnMessage ? '#fff' : '#10b981'} />
+                    <div>
+                      <div style={{fontWeight: '500', fontSize: '14px', color: isOwnMessage ? '#fff' : '#1f2937'}}>{msg.noteFolderName || 'Shared Note Folder'}</div>
+                      <div style={{fontSize: '12px', color: isOwnMessage ? 'rgba(255,255,255,0.7)' : '#6b7280'}}>Click to view files</div>
+                    </div>
+                  </div>
+                ) : (
+                  msg.content
+                )}
               
               {/* Render Multiple Attachments */}
               {msg.attachmentUrls && msg.attachmentUrls.length > 0 && (
@@ -137,6 +154,49 @@ const Chat = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const fileInputRef = useRef(null);
   
+  const [folderModal, setFolderModal] = useState({ open: false, scheduleId: null, sessionId: null, title: '', notes: [], loading: false });
+  const [nodeNotesModal, setNodeNotesModal] = useState({ open: false, notes: [], groupedNotes: {}, loading: false, expandedFolders: {} });
+
+  const [autoBagNotes, setAutoBagNotes] = useState(user?.auto_bag_notes !== false);
+  const [togglingAutoBag, setTogglingAutoBag] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'student') {
+      api.get('/students/me').then(res => {
+        setAutoBagNotes(res.data.auto_bag_notes !== false);
+      }).catch(err => console.error("Failed to fetch student profile", err));
+    }
+  }, [user]);
+
+  const toggleAutoBagNotes = async () => {
+    try {
+      setTogglingAutoBag(true);
+      const newValue = !autoBagNotes;
+      await api.patch('/students/me/auto-bag-notes', { auto_bag_notes: newValue });
+      setAutoBagNotes(newValue);
+    } catch (err) {
+      console.error("Failed to toggle auto bag notes", err);
+    } finally {
+      setTogglingAutoBag(false);
+    }
+  };
+
+  // Expose function globally for the widget
+  useEffect(() => {
+    window.openFolderModal = (msg) => {
+      setFolderModal({ open: true, scheduleId: msg.scheduleId, sessionId: msg.sessionId, title: msg.noteFolderName, notes: [], loading: true });
+      const params = {};
+      if (msg.scheduleId) params.schedule_id = msg.scheduleId;
+      if (msg.sessionId) params.session_id = msg.sessionId;
+      api.get('/notes', { params }).then(res => {
+        setFolderModal(p => ({ ...p, notes: res.data, loading: false }));
+      }).catch(err => {
+        setFolderModal(p => ({ ...p, notes: [], loading: false }));
+      });
+    };
+    return () => { delete window.openFolderModal; };
+  }, []);
+
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
@@ -497,18 +557,54 @@ const Chat = () => {
       <div className="chat-main">
         {activeGroup ? (
           <>
-            <div className="chat-header glass-header">
-              <div className="header-avatar">
-                {activeGroup.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="header-info">
-                <h2>{activeGroup.name}</h2>
-                <div className="header-meta">
-                  Year {activeGroup.year} • {activeGroup.stream}
-                  {groupStats && ` • ${groupStats.totalStudents} Students • ${groupStats.totalTeachers} Teachers`}
-                  {onlineUsers > 0 && ` • 🟢 ${onlineUsers} Online`}
+            <div className="chat-header glass-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="header-avatar">
+                  {activeGroup.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="header-info">
+                  <h2>{activeGroup.name}</h2>
+                  <div className="header-meta">
+                    Year {activeGroup.year} • {activeGroup.stream}
+                    {groupStats && ` • ${groupStats.totalStudents} Students • ${groupStats.totalTeachers} Teachers`}
+                    {onlineUsers > 0 && ` • 🟢 ${onlineUsers} Online`}
+                  </div>
                 </div>
               </div>
+              
+              <button 
+                onClick={() => {
+                  setNodeNotesModal({ open: true, notes: [], groupedNotes: {}, loading: true, expandedFolders: {} });
+                  api.get('/notes', { 
+                    params: { subject_id: activeGroup.subject_id, year: activeGroup.year, stream: activeGroup.stream }
+                  }).then(res => {
+                    const notes = res.data;
+                    const grouped = notes.reduce((acc, note) => {
+                      const date = new Date(note.upload_date || note.created_at).toLocaleDateString('en-GB');
+                      if (!acc[date]) acc[date] = [];
+                      acc[date].push(note);
+                      return acc;
+                    }, {});
+                    setNodeNotesModal(p => ({ ...p, notes, groupedNotes: grouped, loading: false }));
+                  }).catch(err => {
+                    setNodeNotesModal(p => ({ ...p, loading: false }));
+                    console.error("Failed to fetch node notes:", err);
+                  });
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', 
+                  padding: '8px 16px', background: '#f3f4f6', 
+                  border: '1px solid #e5e7eb', borderRadius: '8px',
+                  color: '#374151', fontSize: '14px', fontWeight: '500',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  marginRight: '8px'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#e5e7eb'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
+              >
+                <BookOpen size={18} color="#10b981" />
+                Notes
+              </button>
             </div>
 
             <div className="chat-messages">
@@ -633,6 +729,163 @@ const Chat = () => {
           </div>
         )}
       </div>
+
+      {/* Folder Viewer Modal (From Message) */}
+      {folderModal.open && createPortal(
+        <div className="sess-modal-overlay animate-fade-in" onClick={() => setFolderModal(p => ({ ...p, open: false }))} style={{position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div className="sess-modal animate-scale-in" onClick={e => e.stopPropagation()} style={{background: 'white', borderRadius: '12px', width: '90%', maxWidth: '500px', overflow: 'hidden'}}>
+            <div className="sess-modal-header" style={{padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div>
+                <h2 style={{margin: 0, fontSize: '18px', color: '#111827'}}>{folderModal.title || 'Shared Note Folder'}</h2>
+                <p style={{margin: '4px 0 0', fontSize: '13px', color: '#6b7280'}}>Live latest files from this session</p>
+              </div>
+              <button onClick={() => setFolderModal(p => ({ ...p, open: false }))} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af'}}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{padding: '20px', maxHeight: '400px', overflowY: 'auto'}}>
+              {folderModal.loading ? (
+                <div style={{display: 'flex', justifyContent: 'center', padding: '20px'}}><Loader2 className="animate-spin" size={32} /></div>
+              ) : folderModal.notes.length === 0 ? (
+                <div style={{textAlign: 'center', color: '#6b7280', padding: '20px'}}>No files found in this folder.</div>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                  {folderModal.notes.map(note => (
+                    <div key={note.id} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px'}}>
+                      <FileIcon size={24} color="#6366f1" />
+                      <div style={{flex: 1, minWidth: 0}}>
+                        <a href={note.file_url} target="_blank" rel="noreferrer" style={{display: 'block', fontWeight: '500', color: '#1f2937', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                          {note.file_name}
+                        </a>
+                        <div style={{fontSize: '12px', color: '#6b7280'}}>
+                          {new Date(note.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Node Notes Modal (From Header Button) */}
+      {nodeNotesModal.open && createPortal(
+        <div className="sess-modal-overlay animate-fade-in" onClick={() => setNodeNotesModal(p => ({ ...p, open: false }))} style={{position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div className="sess-modal animate-scale-in" onClick={e => e.stopPropagation()} style={{background: 'white', borderRadius: '16px', width: '90%', maxWidth: '700px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'}}>
+            
+            {/* Modal Header */}
+            <div className="sess-modal-header" style={{padding: '24px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafafa'}}>
+              <div style={{display: 'flex', gap: '16px', alignItems: 'center'}}>
+                <div style={{background: '#d1fae5', padding: '12px', borderRadius: '12px', color: '#10b981'}}>
+                  <BookOpen size={28} />
+                </div>
+                <div>
+                  <h2 style={{margin: 0, fontSize: '22px', color: '#111827', fontWeight: '600'}}>All Node Notes</h2>
+                  <p style={{margin: '4px 0 0', fontSize: '14px', color: '#6b7280'}}>
+                    {activeGroup?.name} • Year {activeGroup?.year} ({activeGroup?.stream})
+                  </p>
+                </div>
+              </div>
+              <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                {user?.role === 'student' && (
+                  <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontSize: '14px', color: '#4b5563', fontWeight: '500'}}>Auto-add to My Bag</span>
+                    <button 
+                      onClick={toggleAutoBagNotes}
+                      disabled={togglingAutoBag}
+                      style={{
+                        position: 'relative', width: '44px', height: '24px', borderRadius: '999px',
+                        border: 'none', cursor: togglingAutoBag ? 'not-allowed' : 'pointer',
+                        background: autoBagNotes ? '#10b981' : '#d1d5db',
+                        transition: 'background-color 0.2s', opacity: togglingAutoBag ? 0.7 : 1
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: '2px', left: autoBagNotes ? '22px' : '2px',
+                        width: '20px', height: '20px', background: 'white', borderRadius: '50%',
+                        transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                      }} />
+                    </button>
+                  </div>
+                )}
+                <button onClick={() => setNodeNotesModal(p => ({ ...p, open: false }))} style={{background: '#f3f4f6', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', color: '#6b7280', transition: 'all 0.2s'}}>
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div style={{padding: '24px', overflowY: 'auto', flex: 1, background: '#fff'}}>
+              {nodeNotesModal.loading ? (
+                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '16px', color: '#6b7280'}}>
+                  <Loader2 className="animate-spin" size={40} color="#10b981" />
+                  <p>Loading notes...</p>
+                </div>
+              ) : nodeNotesModal.notes.length === 0 ? (
+                <div style={{textAlign: 'center', color: '#6b7280', padding: '60px 20px', background: '#f9fafb', borderRadius: '12px'}}>
+                  <Folder size={48} color="#9ca3af" style={{marginBottom: '16px'}} />
+                  <h3 style={{margin: '0 0 8px', color: '#374151', fontSize: '18px'}}>No Notes Found</h3>
+                  <p style={{margin: 0}}>There are no notes uploaded for this node yet.</p>
+                </div>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
+                  {Object.entries(nodeNotesModal.groupedNotes).map(([date, notes]) => {
+                    const isExpanded = nodeNotesModal.expandedFolders?.[date];
+                    return (
+                      <div key={date} style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden'}}>
+                        
+                        <div 
+                          onClick={() => setNodeNotesModal(p => ({
+                            ...p, 
+                            expandedFolders: {
+                              ...(p.expandedFolders || {}),
+                              [date]: !(p.expandedFolders || {})[date]
+                            }
+                          }))}
+                          style={{padding: '16px', background: '#f3f4f6', borderBottom: isExpanded ? '1px solid #e5e7eb' : 'none', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}
+                        >
+                          {isExpanded ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#6b7280" />}
+                          <Folder size={20} color="#4f46e5" />
+                          <h3 style={{margin: 0, fontSize: '16px', color: '#1f2937', fontWeight: '600'}}>Folder: {date}</h3>
+                          <span style={{marginLeft: 'auto', background: '#e0e7ff', color: '#4f46e5', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: '500'}}>
+                            {notes.length} file{notes.length !== 1 && 's'}
+                          </span>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div style={{padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px'}}>
+                            {notes.map(note => (
+                              <div key={note.id} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                                <div style={{background: '#eff6ff', padding: '10px', borderRadius: '8px', color: '#3b82f6'}}>
+                                  <FileIcon size={20} />
+                                </div>
+                                <div style={{flex: 1, minWidth: 0}}>
+                                  <a href={note.file_url} target="_blank" rel="noreferrer" style={{display: 'block', fontWeight: '500', color: '#1f2937', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '14px'}}>
+                                    {note.file_name}
+                                  </a>
+                                  <div style={{fontSize: '12px', color: '#6b7280', marginTop: '2px'}}>
+                                    Uploaded {new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 };
