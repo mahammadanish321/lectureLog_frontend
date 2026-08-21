@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Folder, File as FileIcon, Image as ImageIcon, 
+  Folder, File as FileIcon, Image as ImageIcon, FileText,
   Trash2, Plus, Download, MoreVertical, Search, 
   ChevronRight, UploadCloud, X, Edit2, RotateCcw, Loader2
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import GlobalMediaViewer, { isImageFile, isPdfFile } from '../components/GlobalMediaViewer';
 import './Bag.css';
 
 const Bag = () => {
@@ -368,11 +369,13 @@ const Bag = () => {
                   onClick={() => openPreview(file)}
                   onContextMenu={(e) => handleContextMenu(e, file, 'file')}
                 >
-                  <div className={`bag-item-icon ${file.mime_type?.startsWith('image/') ? 'image' : 'file'}`}>
-                    {file.mime_type?.startsWith('image/') ? (
+                  <div className={`bag-item-icon ${isImageFile(file.file_name, file.mime_type) ? 'image' : isPdfFile(file.file_name, file.mime_type) ? 'pdf' : 'file'}`}>
+                    {isImageFile(file.file_name, file.mime_type) ? (
                       <img src={file.file_url} alt={file.file_name} />
+                    ) : isPdfFile(file.file_name, file.mime_type) ? (
+                      <FileText size={24} color="#dc2626" />
                     ) : (
-                      getFileIcon(file.mime_type)
+                      <FileIcon size={24} />
                     )}
                   </div>
                   <div className="bag-item-name" title={file.file_name}>{file.file_name}</div>
@@ -478,41 +481,12 @@ const Bag = () => {
         </div>
       )}
 
-      {/* File Preview Modal */}
+      {/* Global Media Viewer Modal */}
       {previewFile && (
-        <div className="preview-modal-overlay">
-          <div className="preview-modal-header">
-            <div className="preview-modal-title">{previewFile.file_name}</div>
-            <div className="preview-modal-actions">
-              <a href={previewFile.file_url} target="_blank" rel="noreferrer" className="preview-icon-btn">
-                <Download size={20} />
-              </a>
-              <button className="preview-icon-btn" onClick={() => setPreviewFile(null)}>
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-          <div className="preview-modal-content">
-            {previewFile.mime_type?.startsWith('image/') ? (
-              <img src={previewFile.file_url} alt="Preview" className="preview-image" />
-              ) : previewFile.mime_type === 'application/pdf' ? (
-                <iframe 
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewFile.file_url.replace('http://', 'https://'))}&embedded=true`} 
-                  title="PDF Preview" 
-                  className="preview-iframe" 
-                  frameBorder="0"
-                />
-              ) : (
-              <div className="empty-state" style={{ color: 'white' }}>
-                <FileIcon size={64} />
-                <p>No preview available for this file type.</p>
-                <a href={previewFile.file_url} target="_blank" rel="noreferrer" style={{ color: '#818cf8' }}>
-                  Download to view
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
+        <GlobalMediaViewer 
+          file={previewFile} 
+          onClose={() => setPreviewFile(null)} 
+        />
       )}
 
     </div>

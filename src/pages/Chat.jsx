@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { io } from 'socket.io-client';
-import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon, Search, Folder, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { Send, Paperclip, Loader2, MessageSquare, Shield, GraduationCap, Users, X, File as FileIcon, Search, Folder, BookOpen, ChevronDown, ChevronRight, Flame, ExternalLink } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import './Chat.css';
@@ -74,7 +74,27 @@ const MessageBubble = ({ msg, isOwnMessage, onDoubleClick, totalMembers }) => {
                 </div>
               )}
               
-                {msg.isNoteFolder ? (
+                {msg.isSharedDrop ? (
+                  <div className="node-shared-drop-card animate-fade-in">
+                    <div className="node-shared-drop-header">
+                      <Flame size={15} className="text-orange-500" />
+                      <span className="node-shared-drop-badge">SHARED DROP</span>
+                      {msg.sharedDropAuthor && <span className="node-shared-drop-author">• by @{msg.sharedDropAuthor}</span>}
+                    </div>
+                    <h4 className="node-shared-drop-title">{msg.sharedDropTitle || msg.content}</h4>
+                    {msg.sharedDropBody && <p className="node-shared-drop-body">{msg.sharedDropBody}</p>}
+                    <button 
+                      className="node-shared-drop-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = `/drop?id=${msg.sharedDropId}`;
+                      }}
+                    >
+                      <span>View in Drop</span>
+                      <ExternalLink size={14} />
+                    </button>
+                  </div>
+                ) : msg.isNoteFolder ? (
                   <div 
                     onClick={() => window.openFolderModal && window.openFolderModal(msg)}
                     style={{

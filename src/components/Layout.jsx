@@ -340,13 +340,6 @@ const Layout = ({ children }) => {
               <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
                 <Menu size={24} color="var(--primary)" />
               </button>
-              <div className="search-wrapper" onClick={() => setIsCommandPaletteOpen(true)} style={{ cursor: 'pointer' }}>
-                <Search size={18} className="search-icon" />
-                <div className="top-search-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--muted-foreground)', userSelect: 'none' }}>
-                  Search students, sessions, commands...
-                </div>
-                <div className="search-hint"><span>⌘ K</span></div>
-              </div>
             </div>
 
             <div className={`top-navbar-right ${isElectron ? 'electron-controls-offset' : ''}`}>

@@ -167,6 +167,11 @@ const WritingPad = () => {
         titleRef.current = res.data.title || 'Untitled Pad';
         setIsPublic(res.data.is_public || false);
         
+        if (res.data.is_live_active) {
+          setIsLiveSession(true);
+          initSocketSession();
+        }
+        
         let loadedData = { elements: [], appState: {} };
         if (res.data.content_json) {
           try {
@@ -245,33 +250,97 @@ const WritingPad = () => {
     }
   };
 
-  const startLiveSession = () => {
-    setIsLiveSession(true);
+  const handlePointerUpdate = useCallback((payload) => {
+    if (isLiveSession && socketRef.current) {
+      socketRef.current.emit('pointer_update', {
+        padId: id,
+        pointer: payload.pointer,
+        button: payload.button,
+        username: user?.name || user?.email?.split('@')[0] || 'Collaborator'
+      });
+    }
+  }, [id, isLiveSession, user]);
+
+  const initSocketSession = () => {
+    if (socketRef.current) return;
     
-    const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '/pads') : 'http://localhost:3000/pads';
-    socketRef.current = io(socketUrl);
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    socketRef.current = io(`${backendUrl}/pads`, {
+      transports: ['websocket', 'polling']
+    });
     
     socketRef.current.on('connect', () => {
       socketRef.current.emit('join_pad', id);
     });
     
-    socketRef.current.on('collaborator_joined', () => setCollaborators(prev => prev + 1));
-    socketRef.current.on('collaborator_left', () => setCollaborators(prev => Math.max(1, prev - 1)));
+    socketRef.current.on('collaborator_joined', () => {
+      setCollaborators(prev => prev + 1);
+      addToast('⚡ A collaborator joined the session!', 'info');
+    });
+
+    socketRef.current.on('collaborator_left', () => {
+      setCollaborators(prev => Math.max(1, prev - 1));
+    });
     
     socketRef.current.on('pad_update', (data) => {
-      if (excalidrawAPIRef.current) {
+      if (excalidrawAPIRef.current && data.elements) {
         isRemoteUpdateRef.current = true;
-        excalidrawAPIRef.current.updateScene({ elements: data.elements });
+        excalidrawAPIRef.current.updateScene({ 
+          elements: data.elements,
+          ...(data.appState?.viewBackgroundColor ? { appState: { viewBackgroundColor: data.appState.viewBackgroundColor } } : {})
+        });
+      }
+    });
+
+    socketRef.current.on('pointer_update', (data) => {
+      if (excalidrawAPIRef.current && data.pointer) {
+        const currentAppState = excalidrawAPIRef.current.getAppState();
+        const collaboratorsMap = new Map(currentAppState.collaborators || []);
+        collaboratorsMap.set(data.socketId, {
+          pointer: data.pointer,
+          button: data.button || 'up',
+          username: data.username || 'Collaborator',
+          color: { background: '#105934', stroke: '#105934' }
+        });
+        excalidrawAPIRef.current.updateScene({ collaborators: collaboratorsMap });
       }
     });
   };
 
-  const stopLiveSession = () => {
+  const startLiveSession = async (audienceSettings = {}) => {
+    setIsLiveSession(true);
+    setIsPublic(true);
+
+    try {
+      await api.put(`/pads/${id}`, { 
+        is_public: true,
+        is_live_active: true,
+        target_audience_type: audienceSettings.targetAudienceType || 'everyone',
+        target_year: audienceSettings.targetYear || null,
+        target_stream: audienceSettings.targetStream || null,
+        invited_user_ids: audienceSettings.invitedUserIds || [],
+        live_mode: audienceSettings.collabPermission || 'edit'
+      });
+    } catch (err) {
+      console.error('Failed to mark pad as active live session in DB:', err);
+    }
+    
+    initSocketSession();
+  };
+
+  const stopLiveSession = async () => {
     setIsLiveSession(false);
+    try {
+      await api.put(`/pads/${id}`, { is_live_active: false });
+    } catch (err) {
+      console.error('Failed to update live session state in DB:', err);
+    }
     if (socketRef.current) {
+      socketRef.current.emit('leave_pad', id);
       socketRef.current.disconnect();
       socketRef.current = null;
     }
+    addToast('Live session stopped', 'info');
   };
 
   const onExcalidrawChange = (elements, appState) => {
@@ -283,7 +352,11 @@ const WritingPad = () => {
     }
 
     if (isLiveSession && socketRef.current) {
-      socketRef.current.emit('pad_update', { padId: id, elements });
+      socketRef.current.emit('pad_update', { 
+        padId: id, 
+        elements,
+        appState: { viewBackgroundColor: appState.viewBackgroundColor }
+      });
     }
     
     // Save logic
@@ -477,6 +550,7 @@ const WritingPad = () => {
             excalidrawAPI={(api) => excalidrawAPIRef.current = api}
             initialData={initialData}
             onChange={onExcalidrawChange}
+            onPointerUpdate={handlePointerUpdate}
             theme={isDark ? 'dark' : 'light'}
             UIOptions={{
               canvasActions: {

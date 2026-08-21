@@ -2,8 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, Loader2, User, ShieldCheck, Eye, EyeOff, Sparkles, CheckCircle2, ChevronRight, AlertCircle, Monitor, MonitorPlay } from 'lucide-react';
+import { signInWithGooglePopup } from '../config/firebase.config';
 import api from '../api';
 import './Login.css';
+
+/* ── Google Brand Icon ─────────────────────────────────────── */
+const GoogleIcon = () => (
+  <svg className="google-icon-svg" viewBox="0 0 24 24">
+    <path
+      fill="#4285F4"
+      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+    />
+  </svg>
+);
 
 /* ── Eye Components ────────────────────────────────────────── */
 
@@ -111,9 +134,11 @@ const Login = ({ initialView }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [cachedGoogleToken, setCachedGoogleToken] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [emailCheckResult, setEmailCheckResult] = useState(null); // NEW: Track email check result
-  const [emailChecked, setEmailChecked] = useState(false); // NEW: Track if email has been checked
+  const [emailCheckResult, setEmailCheckResult] = useState(null);
+  const [emailChecked, setEmailChecked] = useState(false);
   const isForgotPasswordView = view === 'forgot-otp' || view === 'forgot-password';
 
   const [mouseX, setMouseX] = useState(0);
@@ -127,7 +152,7 @@ const Login = ({ initialView }) => {
   const char3Ref = useRef(null);
   const char4Ref = useRef(null);
 
-  const { login, adminLogin, studentLogin } = useAuth();
+  const { login, adminLogin, studentLogin, firebaseLogin, firebaseClaim } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -164,6 +189,7 @@ const Login = ({ initialView }) => {
     };
     fetchOrgs();
   }, []);
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMouseX(e.clientX);
@@ -252,6 +278,101 @@ const Login = ({ initialView }) => {
     }
   }, [searchQuery, view]);
 
+  // ── Firebase Google Login Handler ──
+  const handleGoogleLogin = async () => {
+    setError('');
+    setSuccess('');
+    setGoogleLoading(true);
+    try {
+      const { idToken } = await signInWithGooglePopup();
+      setCachedGoogleToken(idToken);
+
+      const res = await firebaseLogin(idToken, loginMode, selectedOrg);
+
+      if (res && res.status === 'select_organization') {
+        setPendingOrganizations(res.organizations);
+        return;
+      }
+
+      if (loginMode === 'student') {
+        navigate('/student/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('[AUTH] Google login error:', err);
+      setError(err.response?.data?.message || err.message || 'Google authentication failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // ── Firebase Google Multi-Org Select Handler (Direct password-free login) ──
+  const handleGoogleOrgSelect = async (orgId) => {
+    setSelectedOrg(orgId);
+    setError('');
+    setLoading(true);
+    try {
+      await firebaseLogin(cachedGoogleToken, loginMode, orgId);
+      if (loginMode === 'student') {
+        navigate('/student/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('[AUTH] Google Org Select error:', err);
+      setError(err.response?.data?.message || err.message || 'Google login failed for the selected organization.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Firebase Google Account Activation Handler (Skips OTP) ──
+  const handleGoogleActivate = async () => {
+    setError('');
+    setSuccess('');
+
+    let targetOrgId = selectedOrg;
+    if (!targetOrgId && searchQuery) {
+      const matchedOrg = organizations.find(
+        o => o.name.toLowerCase() === searchQuery.toLowerCase() || o.slug.toLowerCase() === searchQuery.toLowerCase()
+      );
+      if (matchedOrg) {
+        targetOrgId = matchedOrg.id;
+      }
+    }
+
+    if (!targetOrgId) {
+      setError('Please search and select your institution before activating with Google.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const { idToken } = await signInWithGooglePopup();
+      // Instantly verify with Google and claim account (skips OTP!)
+      await firebaseClaim(idToken, loginMode, targetOrgId);
+
+      setSuccess('Account successfully activated with Google! Redirecting...');
+      setTimeout(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const redirectParam = searchParams.get('redirect');
+        if (redirectParam) {
+          navigate(decodeURIComponent(redirectParam));
+        } else if (loginMode === 'student') {
+          navigate('/student/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 800);
+    } catch (err) {
+      console.error('[AUTH] Google activate error:', err);
+      setError(err.response?.data?.message || err.message || 'Google account activation failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -259,7 +380,7 @@ const Login = ({ initialView }) => {
     try {
       // If email not checked yet, do email check first
       if (!emailChecked) {
-        // NEW: First, check if email+role combination exists and get org list
+        // First, check if email+role combination exists and get org list
         const checkRes = await api.get('/auth/check-email', {
           params: { email, role: loginMode }
         });
@@ -311,6 +432,12 @@ const Login = ({ initialView }) => {
         res = await studentLogin(emailVal, passwordVal, orgId);
       }
 
+      const searchParams = new URLSearchParams(location.search);
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam) {
+        return { redirectTo: decodeURIComponent(redirectParam) };
+      }
+
       if (roleVal === 'student') {
         return { redirectTo: '/student/dashboard' };
       } else {
@@ -329,6 +456,16 @@ const Login = ({ initialView }) => {
       if (!selectedOrg) {
         setError('Please select an organization.');
         setLoading(false);
+        return;
+      }
+
+      if (cachedGoogleToken) {
+        await firebaseLogin(cachedGoogleToken, loginMode, selectedOrg);
+        if (loginMode === 'student') {
+          navigate('/student/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
         return;
       }
 
@@ -545,8 +682,8 @@ const Login = ({ initialView }) => {
               {view === 'login'
                 ? 'Please enter your credentials to access your dashboard.'
                 : isForgotPasswordView
-                  ? 'Verify your email and choose a new password.'
-                  : 'Please verify your details to activate your account.'}
+                  ? 'Verify your identity to choose a new password.'
+                  : 'Claim your account using your institutional verification code.'}
             </p>
           </div>
 
@@ -619,6 +756,64 @@ const Login = ({ initialView }) => {
                     <button type="button" className="submit-btn" onClick={(e) => { e.preventDefault(); window.location.href = 'https://github.com/mahammadanish321/lectureLog_frontend/releases/latest/download/Merge.Admin.Setup.1.0.0.exe'; }}>Download Desktop App</button>
                   </div>
                 </div>
+              ) : cachedGoogleToken && pendingOrganizations.length > 1 ? (
+                // Dedicated Google Multi-Org picker: 1-click on any institution signs in directly with NO password
+                <div className="auth-form">
+                  <div className="form-fields">
+                    <div className="field-group">
+                      <label>Select Your Institution</label>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>
+                        Your Google account is registered with multiple institutions. Click your institution to enter:
+                      </p>
+                      <div className="org-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '300px', overflowY: 'auto' }}>
+                        {pendingOrganizations.map(org => (
+                          <div 
+                            key={org.id}
+                            onClick={() => !loading && handleGoogleOrgSelect(org.id)}
+                            style={{
+                              padding: '1rem',
+                              border: '1.5px solid #e2e8f0',
+                              borderRadius: '10px',
+                              cursor: loading ? 'not-allowed' : 'pointer',
+                              background: 'white',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.backgroundColor = '#f0fdf4'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = 'white'; }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#1e293b' }}>{org.name}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{org.slug}</div>
+                            </div>
+                            {loading && selectedOrg === org.id ? (
+                              <Loader2 className="animate-spin" size={20} color="var(--primary)" />
+                            ) : (
+                              <ChevronRight size={18} color="var(--primary)" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => { 
+                        setSelectedOrg(''); 
+                        setPendingOrganizations([]); 
+                        setCachedGoogleToken(null); 
+                        setError(''); 
+                      }} 
+                      style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}
+                    >
+                      Back to Login
+                    </button>
+                  </div>
+                </div>
               ) : emailChecked && pendingOrganizations.length > 1 && !selectedOrg ? (
                 // Show org selector if email check found multiple orgs
                 <div className="auth-form">
@@ -670,13 +865,32 @@ const Login = ({ initialView }) => {
                   </button>
 
                   <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                    <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); setEmailChecked(false); setEmailCheckResult(null); setError(''); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
+                    <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); setEmailChecked(false); setEmailCheckResult(null); setCachedGoogleToken(null); setError(''); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
                       Back
                     </button>
                   </div>
                 </div>
               ) : (
                 <>
+                  {/* Google Login Button */}
+                  {!emailChecked && (
+                    <>
+                      <button
+                        type="button"
+                        className="google-auth-btn"
+                        onClick={handleGoogleLogin}
+                        disabled={loading || googleLoading}
+                      >
+                        {googleLoading ? <Loader2 className="animate-spin" size={18} /> : <GoogleIcon />}
+                        <span>Continue with Google</span>
+                      </button>
+
+                      <div className="auth-divider">
+                        <span>or continue with email</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="form-fields">
                     {/* Email Field - Always visible initially */}
                     {loginMode !== 'student' ? (
@@ -837,6 +1051,7 @@ const Login = ({ initialView }) => {
                           setPendingOrganizations([]); 
                           setEmailCheckResult(null); 
                           setPassword('');
+                          setCachedGoogleToken(null);
                           setError(''); 
                         }} 
                         style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}
@@ -893,7 +1108,7 @@ const Login = ({ initialView }) => {
               <button 
                 type="button" 
                 className="submit-btn" 
-                onClick={handleLogin} 
+                onClick={handleLoginWithOrgSelected} 
                 disabled={loading || !selectedOrg}
                 style={{ marginTop: '1.5rem' }}
               >
@@ -902,7 +1117,7 @@ const Login = ({ initialView }) => {
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
+                <button type="button" onClick={() => { setView('login'); setSelectedOrg(''); setPendingOrganizations([]); setCachedGoogleToken(null); }} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: '500', cursor: 'pointer', fontSize: '0.9rem' }}>
                   Back to Login
                 </button>
               </div>
@@ -944,17 +1159,17 @@ const Login = ({ initialView }) => {
                           {organizations
                             .filter(org =>
                               searchQuery === ''
-                                ? true // Show all if empty, we will slice later
+                                ? true
                                 : org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                 org.slug.toLowerCase().includes(searchQuery.toLowerCase())
                             )
-                            .sort((a, b) => b.id - a.id) // Sort by ID descending (latest first)
-                            .slice(0, searchQuery === '' ? 2 : 10) // Show only 2 if empty, else show more
+                            .sort((a, b) => b.id - a.id)
+                            .slice(0, searchQuery === '' ? 2 : 10)
                             .map(org => (
                               <div
                                 key={org.id}
                                 onMouseDown={(e) => {
-                                  e.preventDefault(); // Prevent input from blurring immediately
+                                  e.preventDefault();
                                   setSelectedOrg(org.id);
                                   setSearchQuery(org.name);
                                   setShowSearchDropdown(false);
@@ -985,6 +1200,23 @@ const Login = ({ initialView }) => {
                             )}
                         </div>
                       )}
+                    </div>
+
+                    {/* Google 1-Click Activation Option */}
+                    <div style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="google-auth-btn"
+                        onClick={handleGoogleActivate}
+                        disabled={loading || googleLoading}
+                      >
+                        {googleLoading ? <Loader2 className="animate-spin" size={18} /> : <GoogleIcon />}
+                        <span>Activate Account with Google (Skip OTP)</span>
+                      </button>
+
+                      <div className="auth-divider">
+                        <span>or verify via email OTP</span>
+                      </div>
                     </div>
 
                     <div className="field-group">

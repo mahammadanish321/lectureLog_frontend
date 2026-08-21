@@ -119,6 +119,61 @@ export const AuthProvider = ({ children }) => {
     return user;
   };
 
+  const firebaseLogin = async (idToken, role, organization_id) => {
+    const response = await api.post('/auth/firebase-login', { idToken, role, organization_id });
+    
+    if (response.data.status === 'select_organization') {
+      return response.data;
+    }
+
+    const { token, user } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
+
+    const tourKey = `merge_tour_v1_${user.id}`;
+    if (!localStorage.getItem(tourKey)) {
+      setShouldShowTour(true);
+    }
+
+    if (isElectronEnv()) {
+      window.electronAPI.setAuthRole(user.role);
+      if (user.role === 'admin') {
+        try {
+          await window.electronAPI.startAI({ role: 'admin', organization_id: user.organization_id });
+        } catch (err) {
+          console.warn('[AUTH] Failed to start AI via IPC:', err);
+        }
+      }
+    }
+    return user;
+  };
+
+  const firebaseClaim = async (idToken, role, organization_id, password) => {
+    const response = await api.post('/auth/firebase-claim', { idToken, role, organization_id, password });
+    const { token, user } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
+
+    const tourKey = `merge_tour_v1_${user.id}`;
+    if (!localStorage.getItem(tourKey)) {
+      setShouldShowTour(true);
+    }
+
+    if (isElectronEnv()) {
+      window.electronAPI.setAuthRole(user.role);
+      if (user.role === 'admin') {
+        try {
+          await window.electronAPI.startAI({ role: 'admin', organization_id: user.organization_id });
+        } catch (err) {
+          console.warn('[AUTH] Failed to start AI via IPC:', err);
+        }
+      }
+    }
+    return user;
+  };
+
   // ── Logout with full AI shutdown (Refinement #3) ────────────
   const logout = async () => {
     // Step 1: If on Electron, stop AI FIRST and WAIT for full shutdown
@@ -152,7 +207,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, logout, loading, isElectronEnv, shouldShowTour, markTourComplete, restartTour }}>
+    <AuthContext.Provider value={{ user, login, adminLogin, studentLogin, firebaseLogin, firebaseClaim, logout, loading, isElectronEnv, shouldShowTour, markTourComplete, restartTour }}>
       {children}
     </AuthContext.Provider>
   );

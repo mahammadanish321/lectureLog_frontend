@@ -30,42 +30,64 @@ const StudentDashboard = () => {
     const fetchData = async () => {
       console.log('StudentDashboard: Fetching data...');
       try {
-        const [attRes, statsRes] = await Promise.all([
-          api.get('/students/my-attendance'),
-          api.get('/students/my-stats')
-        ]);
-        setAttendance(attRes.data);
-        setStats(statsRes.data);
-        console.log('StudentDashboard: Attendance and Stats fetched');
+        let attData = [];
+        let statsData = { present: 0, total: 0 };
+        let liveYear = null;
+        let liveStream = null;
 
-        // Get student info from profile API or fallback to AuthContext
-        let liveYear, liveStream;
         try {
-          const profileRes = await api.get('/students/me');
-          console.log('StudentDashboard: Profile fetched', profileRes.data);
-          setStudentProfileId(profileRes.data.id);
-          liveYear = profileRes.data.year;
-          liveStream = profileRes.data.stream;
-        } catch (profileErr) {
-          console.warn('StudentDashboard: Profile fetch failed, using context fallback', profileErr);
+          const attRes = await api.get('/students/my-attendance');
+          attData = attRes.data || [];
+          setAttendance(attData);
+        } catch (e) {
+          console.warn('StudentDashboard: attendance fetch warning', e);
         }
 
-        // Use context user if profile API didn't provide info
+        try {
+          const statsRes = await api.get('/students/my-stats');
+          statsData = statsRes.data || { present: 0, total: 0 };
+          setStats(statsData);
+        } catch (e) {
+          console.warn('StudentDashboard: stats fetch warning', e);
+        }
+
+        try {
+          const profileRes = await api.get('/students/me');
+          if (profileRes.data) {
+            setStudentProfileId(profileRes.data.id);
+            liveYear = profileRes.data.year;
+            liveStream = profileRes.data.stream;
+          }
+        } catch (profileErr) {
+          console.warn('StudentDashboard: Profile fetch warning, using context fallback', profileErr);
+        }
+
         const finalYear = liveYear || user?.year;
         const finalStream = liveStream || user?.stream;
 
         if (finalYear && finalStream) {
-          console.log(`StudentDashboard: Fetching schedules for Year ${finalYear}, Stream ${finalStream}`);
-          const [schedRes, sessionRes] = await Promise.all([
-            api.get(`/schedules?year=${finalYear}&stream=${finalStream}`),
-            api.get('/sessions')
-          ]);
+          let schedData = [];
+          let sessionData = [];
+
+          try {
+            const schedRes = await api.get(`/schedules?year=${finalYear}&stream=${finalStream}`);
+            schedData = schedRes.data || [];
+          } catch (e) {
+            console.warn('StudentDashboard: schedules fetch warning', e);
+          }
+
+          try {
+            const sessionRes = await api.get('/sessions');
+            sessionData = sessionRes.data || [];
+          } catch (e) {
+            console.warn('StudentDashboard: sessions fetch warning', e);
+          }
 
           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           const today = days[new Date().getDay()];
 
-          const todayRegular = schedRes.data.filter(s => s.day_of_week === today).map(s => ({ ...s, isCustom: false, isCancelled: s.is_cancelled }));
-          const todaySessions = sessionRes.data.filter(s => {
+          const todayRegular = schedData.filter(s => s.day_of_week === today).map(s => ({ ...s, isCustom: false, isCancelled: s.is_cancelled }));
+          const todaySessions = sessionData.filter(s => {
             const sessDate = new Date(s.start_time);
             const isToday = sessDate.toDateString() === new Date().toDateString();
             const isMyBatch = String(s.year) === String(finalYear) && String(s.stream).toLowerCase() === String(finalStream).toLowerCase();
@@ -111,14 +133,14 @@ const StudentDashboard = () => {
           const combinedSchedules = [...todaySessions, ...filteredRegular].sort((a, b) => toMins(a.start_time) - toMins(b.start_time));
           
           // Find live session for precise tracking
-          const currentActive = sessionRes.data.find(s => s.status === 'active');
-          setActiveSession(currentActive);
+          const currentActive = sessionData.find(s => s.status === 'active');
+          setActiveSession(currentActive || null);
           
           setSchedules(combinedSchedules);
           console.log('StudentDashboard: Schedules set', combinedSchedules);
           setError(null);
         } else {
-          console.error('StudentDashboard: Missing year or stream info', { finalYear, finalStream, user });
+          console.warn('StudentDashboard: Missing year or stream info', { finalYear, finalStream, user });
           setError('Profile information (Year/Stream) is missing. Please contact admin.');
         }
       } catch (err) {

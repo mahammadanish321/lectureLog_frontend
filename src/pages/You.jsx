@@ -26,7 +26,7 @@ const You = () => {
           return;
         }
 
-        const endpoint = user?.role === 'student' ? '/api/students/profile' : '/api/teachers/profile';
+        const endpoint = user?.role === 'student' ? '/students/me' : '/teachers/me';
         const response = await api.get(endpoint);
         setProfileData(response.data);
       } catch (err) {
